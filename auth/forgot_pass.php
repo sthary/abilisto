@@ -147,7 +147,7 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fp_newpass'])) {
             // Determine redirect
             $redirect = match($role) {
                 'worker'   => '../worker/dashboard.php',
-                'business' => '../business/dashboard.php',
+                // TODO: no business dashboard exists yet - business accounts land on the client dashboard as an interim fallback
                 default    => '../client/dashboard.php',
             };
 

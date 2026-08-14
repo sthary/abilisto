@@ -59,7 +59,7 @@ if (isset($_GET['google_token']) && !empty($_GET['google_token'])) {
         } elseif ($user['role'] === 'admin') {
             header("Location: ../admin/dashboard.php");
         } elseif ($user['role'] === 'business') {
-            header("Location: ../business/dashboard.php");
+            header("Location: ../client/dashboard.php"); // TODO: no business dashboard exists yet - business accounts land on the client dashboard as an interim fallback
         } elseif ($user['role'] === 'finance') {
             header("Location: ../admin/finance.php");
         } elseif ($user['role'] === 'hr') {
@@ -139,7 +139,7 @@ if (isset($_POST['login_btn'])) {
             } elseif ($user['role'] === 'worker') {
                 header("Location: ../worker/dashboard.php");
             } elseif ($user['role'] === 'business') {
-                header("Location: ../business/dashboard.php");
+                header("Location: ../client/dashboard.php"); // TODO: no business dashboard exists yet - business accounts land on the client dashboard as an interim fallback
             } elseif ($user['role'] === 'finance') {
                 header("Location: ../admin/finance.php");
             } elseif ($user['role'] === 'hr') {
