@@ -710,7 +710,7 @@ $impactStats = getImpactStats($pdo, 'today');
                 </div>
                 <p class="text-slate-400 text-sm leading-relaxed">Abilidad. Bilis. Listo.<br>Connecting skilled workers with customers who need them, fast.</p>
                 <div class="flex gap-4">
-                    <a class="size-10 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center hover:bg-primary transition-colors" href="https://www.facebook.com/sthxrysm.gr" target="_blank"><i class="fa-brands fa-facebook-f text-sm"></i></a>
+                    <a class="size-10 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center hover:bg-primary transition-colors" href="https://www.facebook.com/profile.php?id=61590436745827" target="_blank"><i class="fa-brands fa-facebook-f text-sm"></i></a>
                     <a class="size-10 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center hover:bg-primary transition-colors" href="https://www.instagram.com/sthxrysm.gr?igsh=d2lpY2wzZ2RlZTg0" target="_blank"><i class="fa-brands fa-instagram text-sm"></i></a>
                 </div>
             </div>
@@ -718,7 +718,7 @@ $impactStats = getImpactStats($pdo, 'today');
                 <h4 class="font-bold mb-6 text-lg">Contact & Address</h4>
                 <ul class="space-y-4 text-slate-400 text-sm">
                     <li class="flex items-center gap-3"><i class="fa-solid fa-phone text-primary"></i><a href="tel:09639159674" class="hover:text-white transition-colors">09639159674</a></li>
-                    <li class="flex items-center gap-3"><i class="fa-solid fa-envelope text-primary"></i><a href="mailto:reyesmartsthary@gmail.com" class="hover:text-white transition-colors">reyesmartsthary@gmail.com</a></li>
+                    <li class="flex items-center gap-3"><i class="fa-solid fa-envelope text-primary"></i><a href="mailto:abilistodevunit@abilisto.site" class="hover:text-white transition-colors">abilistodevunit@abilisto.site</a></li>
                     <li class="flex items-center gap-3"><i class="fa-solid fa-location-dot text-primary"></i><span>Prk. Piyape Burgos, Cortes, Surigao del Sur</span></li>
                 </ul>
             </div>

@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
         $_SESSION['success'] = "Message sent successfully! We'll respond within 24 hours.";
         
         // Send email notification to support
-        $to = "reyesmartsthary@gmail.com";
+        $to = "abilistodevunit@abilisto.site";
         $email_subject = "New Support Request: $subject";
         $email_message = "Name: $name\nEmail: $email\n\nMessage:\n$message";
         mail($to, $email_subject, $email_message);
@@ -293,17 +293,17 @@ $faqs = [
             <!-- Contact Options -->
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
                 <!-- Facebook Messenger -->
-                <a href="https://www.facebook.com/sthxrysm.gr" target="_blank" 
+                <a href="https://www.facebook.com/profile.php?id=61590436745827" target="_blank"
                    class="w-full sm:w-auto px-10 py-4 bg-[#1877F2] text-white rounded-full font-bold text-[11px] uppercase tracking-[0.2em] shadow-lg shadow-[#1877F2]/20 hover:bg-[#0d65d9] transition-all flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined text-lg">chat</span>
                     Message on Facebook
                 </a>
-                
+
                 <!-- Email -->
-                <a href="mailto:reyesmartsthary@gmail.com" 
+                <a href="mailto:abilistodevunit@abilisto.site"
                    class="w-full sm:w-auto px-10 py-4 border border-slate-200 bg-white text-slate-700 rounded-full font-bold text-[11px] uppercase tracking-[0.2em] hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined text-lg">mail</span>
-                    reyesmartsthary@gmail.com
+                    abilistodevunit@abilisto.site
                 </a>
             </div>
 
