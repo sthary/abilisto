@@ -1,42 +1,49 @@
 # Deploy
 
-Chosen approach: **SSH into the Hostinger server, deploy via `git pull`.**
+**Status: wired up and live.** Push-to-deploy via a bare git repo + `post-receive` hook on
+Hostinger.
 
-This is not wired up yet — it needs your Hostinger SSH host/username and for SSH key auth to be
-set up (no passwords handled here). Once you have that:
+## How it works
 
-## One-time setup
-
-1. **Enable SSH access** in hPanel (Hostinger → Advanced → SSH Access) if not already on.
-2. **Generate/add an SSH key** for your local machine and add the public key in hPanel, or use
-   `ssh-copy-id` if Hostinger allows it. Test with `ssh -p <port> <user>@<host>`.
-3. On the server, turn the live `public_html` into a git repo that tracks this one:
-   ```bash
-   ssh -p <port> <user>@<host>
-   cd ~/public_html
-   git init
-   git remote add origin <your local/GitHub repo URL, however you choose to host it>
-   git fetch origin
-   git reset --hard origin/main   # first sync — review what this overwrites first!
-   ```
-   ⚠️ `public_html` on Hostinger currently has live `uploads/`, `private_uploads/`, and `.env` —
-   none of those are in the git repo (by design, see `.gitignore`), so a `git reset --hard` won't
-   touch them as long as they're untracked on the server too. Double-check with `git status`
-   before running `reset --hard` on production.
-4. Create `.env` directly on the server (via SSH, not committed) with the real production values.
-5. Confirm `storage/secrets/<firebase-service-account>.json` exists on the server at the path set
-   in `FIREBASE_SERVICE_ACCOUNT_PATH`.
+- Bare repo on the server: `~/repo-abilisto.git` (outside the web root, not public).
+- `~/repo-abilisto.git/hooks/post-receive` runs `git checkout -f master` with
+  `GIT_WORK_TREE=/home/u942667021/domains/abilisto.site/public_html` — every push lands directly
+  in the live site.
+- Local remote: `git remote -v` shows `production` →
+  `ssh://145.223.108.65:65002/home/u942667021/repo-abilisto.git`. SSH auth uses a dedicated
+  deploy key (`~/.ssh/id_ed25519_hostinger`), configured in `~/.ssh/config` under the
+  `hostinger-abilisto` host alias and a matching entry for the raw IP (git connects via the IP
+  in the remote URL, not the alias).
+- `.env` and `storage/secrets/<firebase-service-account>.json` live directly on the server,
+  created once by hand — they are never part of the git history (see `.gitignore`), so a push
+  never touches them.
 
 ## Ongoing deploys
 
 ```bash
-ssh -p <port> <user>@<host>
-cd ~/public_html
-git pull origin main
+git push production master
 ```
 
-Consider adding a `post-merge` git hook on the server later if you want this to run automatically
-after every pull (e.g. clearing a cache, restarting the chat server).
+That's it — the hook checks the new code out over the live files. `uploads/`, `private_uploads/`,
+`.env`, and `storage/secrets/` are never tracked, so they're untouched by every push.
+
+**Caveat:** a `git checkout -f` only updates paths that are part of the repo. If you ever add a
+file on the server by hand (outside of a push) that shares a path with something you later delete
+from the repo, the push won't remove it — you'd clean that up manually over SSH, the same way the
+original `key.txt`/`info.php`/test-script cleanup was done by hand alongside the first deploy.
+
+## First deploy (already done, kept here for reference)
+
+1. Moved the live `api/<firebase-service-account>.json` into `storage/secrets/` and added a
+   denying `.htaccess` there, *before* the first push (the new code expects it at that path).
+2. Created `.env` on the server with production values, *before* the first push (avoids a window
+   where deployed code has no secrets to read).
+3. `git push production master` → hook deployed the cleaned-up code.
+4. Manually removed the leftover files a checkout can't touch because they were never tracked:
+   `key.txt`, `info.php`, `abilisto.zip`, `Logo.zip`, `OneSignalSDK-v16-ServiceWorker(.zip)`, and
+   the 10 test/debug scripts.
+5. Verified: `https://abilisto.site` loads, `/info.php` and `/key.txt` 404, `/.env` and
+   `/storage/secrets/*.json` return 403, Google OAuth login still renders with the right client ID.
 
 ## Secret rotation checklist
 
