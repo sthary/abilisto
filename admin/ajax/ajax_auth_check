@@ -1,0 +1,22 @@
+<?php
+// ajax_auth_check.php
+require_once 'db.php';
+
+header('Content-Type: application/json');
+
+// Function to return JSON error
+function sendUnauthorized($message = 'Unauthorized') {
+    http_response_code(401);
+    echo json_encode([
+        'success' => false, 
+        'error' => $message,
+        'debug' => [
+            'session_id' => session_id(),
+            'session_status' => session_status(),
+            'user_id' => $_SESSION['user_id'] ?? null,
+            'role' => $_SESSION['role'] ?? null
+        ]
+    ]);
+    exit();
+}
+?>

@@ -1,0 +1,19 @@
+{
+  "name": "abilisto-chat",
+  "version": "1.0.0",
+  "description": "Real-time chat server for Abilisto",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.1",
+    "mysql": "^2.18.1",
+    "socket.io": "^4.8.3"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

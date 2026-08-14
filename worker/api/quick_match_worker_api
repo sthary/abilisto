@@ -1,0 +1,161 @@
+<?php
+// worker/api/quick_match_worker_api.php
+session_start();
+require_once '../db.php';
+
+header('Content-Type: application/json');
+
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
+    echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+    exit();
+}
+
+$worker_id = $_SESSION['user_id'];
+$action = $_POST['action'] ?? '';
+
+if ($action === 'get_available_jobs') {
+    // Get worker's location for distance calculation
+    $worker = $conn->query("SELECT latitude, longitude FROM users WHERE id = '$worker_id'")->fetch_assoc();
+    $lat = $worker['latitude'];
+    $lng = $worker['longitude'];
+    
+    // Get available quick match jobs
+    $query = "SELECT 
+                b.id,
+                b.client_id,
+                b.service_category,
+                b.problem_tags,
+                b.urgency,
+                b.expires_at,
+                b.client_lat,
+                b.client_lng,
+                u.full_name as client_name,
+                (6371 * acos(cos(radians($lat)) * cos(radians(b.client_lat)) * 
+                cos(radians(b.client_lng) - radians($lng)) + sin(radians($lat)) * 
+                sin(radians(b.client_lat)))) AS distance,
+                bk.calculated_fee
+              FROM job_broadcasts b
+              JOIN users u ON b.client_id = u.id
+              JOIN bookings bk ON bk.client_id = b.client_id AND bk.worker_id = '$worker_id' AND bk.status = 'Pending'
+              WHERE b.status = 'searching' 
+                AND b.is_quick_match = 1
+                AND b.expires_at > NOW()
+                AND JSON_CONTAINS(b.candidate_workers, '$worker_id')
+                AND (b.declined_workers IS NULL OR NOT JSON_CONTAINS(b.declined_workers, '$worker_id'))
+              ORDER BY 
+                CASE b.urgency 
+                    WHEN 'Emergency' THEN 1 
+                    WHEN 'High' THEN 2 
+                    ELSE 3 
+                END,
+                distance ASC";
+    
+    $result = $conn->query($query);
+    $jobs = [];
+    
+    while ($row = $result->fetch_assoc()) {
+        $jobs[] = [
+            'id' => $row['id'],
+            'client_id' => $row['client_id'],
+            'client_name' => $row['client_name'],
+            'service_category' => $row['service_category'],
+            'problem_tags' => $row['problem_tags'],
+            'urgency' => $row['urgency'],
+            'expires_at' => $row['expires_at'],
+            'distance' => round($row['distance'], 1),
+            'calculated_fee' => $row['calculated_fee']
+        ];
+    }
+    
+    echo json_encode(['status' => 'success', 'jobs' => $jobs]);
+    
+} elseif ($action === 'get_job_details') {
+    $broadcast_id = intval($_POST['broadcast_id']);
+    
+    $query = "SELECT 
+                b.*,
+                u.full_name as client_name,
+                bk.calculated_fee,
+                bk.id as booking_id
+              FROM job_broadcasts b
+              JOIN users u ON b.client_id = u.id
+              JOIN bookings bk ON bk.client_id = b.client_id AND bk.worker_id = '$worker_id' AND bk.status = 'Pending'
+              WHERE b.id = '$broadcast_id'
+                AND JSON_CONTAINS(b.candidate_workers, '$worker_id')";
+    
+    $result = $conn->query($query);
+    
+    if ($row = $result->fetch_assoc()) {
+        echo json_encode(['status' => 'success', 'job' => $row]);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Job not found']);
+    }
+    
+} elseif ($action === 'accept_job') {
+    $broadcast_id = intval($_POST['broadcast_id']);
+    
+    // Start transaction
+    $conn->begin_transaction();
+    
+    try {
+        // Check if job is still available
+        $check = $conn->query("SELECT * FROM job_broadcasts 
+                               WHERE id = '$broadcast_id' 
+                               AND status = 'searching' 
+                               AND expires_at > NOW()
+                               FOR UPDATE");
+        
+        if ($check->num_rows === 0) {
+            throw new Exception('Job is no longer available');
+        }
+        
+        // Get the booking ID
+        $booking = $conn->query("SELECT id FROM bookings 
+                                 WHERE worker_id = '$worker_id' 
+                                 AND client_id = (SELECT client_id FROM job_broadcasts WHERE id = '$broadcast_id')
+                                 AND status = 'Pending' 
+                                 LIMIT 1")->fetch_assoc();
+        
+        if (!$booking) {
+            throw new Exception('Booking not found');
+        }
+        
+        $booking_id = $booking['id'];
+        
+        // Update broadcast
+        $conn->query("UPDATE job_broadcasts 
+                      SET status = 'accepted', 
+                          accepted_worker_id = '$worker_id',
+                          accepted_booking_id = '$booking_id'
+                      WHERE id = '$broadcast_id'");
+        
+        // Update booking to Accepted
+        $conn->query("UPDATE bookings 
+                      SET status = 'Accepted', 
+                          updated_at = NOW() 
+                      WHERE id = '$booking_id'");
+        
+        // Get client ID for notification
+        $broadcast = $conn->query("SELECT client_id FROM job_broadcasts WHERE id = '$broadcast_id'")->fetch_assoc();
+        $client_id = $broadcast['client_id'];
+        
+        // Get worker name for notification
+        $worker = $conn->query("SELECT full_name FROM users WHERE id = '$worker_id'")->fetch_assoc();
+        
+        $conn->commit();
+        
+        echo json_encode([
+            'status' => 'success',
+            'booking_id' => $booking_id,
+            'client_id' => $client_id,
+            'worker_name' => $worker['full_name']
+        ]);
+        
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+}
+
+$conn->close();
+?>

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Abilisto · hyper‑modern loader</title>
+  <style>
+    /* global reset & smooth base */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      background: #f4f7fb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* demo hint – subtle context */
+    .demo-note {
+      position: fixed;
+      bottom: 20px;
+      right: 24px;
+      background: rgba(255,255,255,0.7);
+      backdrop-filter: blur(8px);
+      padding: 8px 16px;
+      border-radius: 40px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #1e1e2f;
+      box-shadow: 0 10px 25px -8px rgba(0,0,0,0.1);
+      border: 1px solid rgba(255,255,255,0.5);
+      letter-spacing: 0.3px;
+      z-index: 100;
+    }
+
+    .demo-note span {
+      background: linear-gradient(145deg, #3a1b8f, #5f3dc3);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LOADER – hyper‑modern, ABILISTO with black/gradient split -->
+  <div id="page-loader" class="fullscreen-loader">
+    <style>
+      .fullscreen-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #ffffff;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        font-family: 'Montserrat', 'Inter', system-ui, sans-serif;
+        opacity: 1;
+        transition: opacity 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+        letter-spacing: -0.02em;
+      }
+
+      /* main text container – now "Abi" (black) + "listo" (gradient) */
+      .loading-text {
+        font-size: clamp(72px, 18vw, 140px);
+        font-weight: 900;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: baseline;
+        line-height: 1;
+        filter: drop-shadow(0 4px 12px rgba(0,0,0,0.05));
+      }
+
+      /* base letter style (static black for Abi) */
+      .loading-text .abi {
+        color: #000000;         /* deep black */
+        position: relative;
+        display: inline-block;
+      }
+
+      /* listo letters: gradient base – but fill animation will clip the gradient */
+      .loading-text .listo-part span {
+        position: relative;
+        color: transparent;      /* hide the raw letter, show pseudo gradient */
+        display: inline-block;
+        overflow: hidden;
+      }
+
+      /* the gradient pseudo-element (animated clip) – blue‑violet gradient */
+      .loading-text .listo-part span::before {
+        content: attr(data-letter);
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: linear-gradient(145deg, #3b1e8c, #5f3dc3, #7b4eda, #9f7afa);
+        background-size: 300% 300%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation: gradientFlow 4.5s ease infinite;
+        clip-path: polygon(0 0, 0 0, 0 100%, 0% 100%); /* initially hidden */
+      }
+
+      /* fill animations for each listo letter (modern, fluid) */
+      .loading-text .listo-part span:nth-child(1)::before { /* l */
+        animation: fillLeftToRight 1.4s cubic-bezier(0.65, 0, 0.35, 1) forwards,
+                   gradientFlow 4.5s ease infinite;
+      }
+      .loading-text .listo-part span:nth-child(2)::before { /* i */
+        animation: fillBottomToTop 1.4s cubic-bezier(0.65, 0, 0.35, 1) forwards 0.15s,
+                   gradientFlow 4.5s ease infinite 0.15s;
+      }
+      .loading-text .listo-part span:nth-child(3)::before { /* s */
+        animation: fillDiagonalTLtoBR 1.4s cubic-bezier(0.65, 0, 0.35, 1) forwards 0.3s,
+                   gradientFlow 4.5s ease infinite 0.3s;
+      }
+      .loading-text .listo-part span:nth-child(4)::before { /* t */
+        animation: fillTopToBottom 1.4s cubic-bezier(0.65, 0, 0.35, 1) forwards 0.45s,
+                   gradientFlow 4.5s ease infinite 0.45s;
+      }
+      .loading-text .listo-part span:nth-child(5)::before { /* o */
+        animation: fillCenterOut 1.4s cubic-bezier(0.65, 0, 0.35, 1) forwards 0.6s,
+                   gradientFlow 4.5s ease infinite 0.6s;
+      }
+
+      /* clip-path animations – modern & crisp */
+      @keyframes fillLeftToRight {
+        0% { clip-path: polygon(0 0, 0 0, 0 100%, 0% 100%); }
+        100% { clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%); }
+      }
+      @keyframes fillBottomToTop {
+        0% { clip-path: polygon(0 100%, 100% 100%, 100% 100%, 0 100%); }
+        100% { clip-path: polygon(0 100%, 100% 100%, 100% 0, 0 0); }
+      }
+      @keyframes fillDiagonalTLtoBR {
+        0% { clip-path: polygon(0 0, 0 0, 0 0, 0 0); }
+        100% { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+      }
+      @keyframes fillTopToBottom {
+        0% { clip-path: polygon(0 0, 100% 0, 100% 0, 0 0); }
+        100% { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+      }
+      @keyframes fillCenterOut {
+        0% { clip-path: polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%); }
+        100% { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+      }
+
+      /* flowing gradient extra movement */
+      @keyframes gradientFlow {
+        0% { background-position: 0% 20%; }
+        50% { background-position: 100% 80%; }
+        100% { background-position: 0% 20%; }
+      }
+
+      /* optional smooth transition for hiding (just reuse) */
+      .fullscreen-loader.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* modern touch: tiny glint overlay (optional but hyper-modern) */
+      .loading-text::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: radial-gradient(circle at 30% 40%, rgba(255,255,255,0.15) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      /* fine tuning alignment */
+      .loading-text {
+        position: relative;
+        gap: 0.02em;
+      }
+      /* 'Abi' black letters with slight modern spacing */
+      .abi {
+        margin-right: 0.1em;
+        letter-spacing: -0.01em;
+      }
+      .listo-part {
+        display: flex;
+        margin-left: 0.02em;
+      }
+    </style>
+
+    <!-- MAIN STRUCTURE: Abi (black) + listo (gradient animated) -->
+    <div class="loading-text">
+      <span class="abi">Abi</span>
+      <div class="listo-part">
+        <span data-letter="l">l</span>
+        <span data-letter="i">i</span>
+        <span data-letter="s">s</span>
+        <span data-letter="t">t</span>
+        <span data-letter="o">o</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-note">
+    <span>Abilisto</span> · Abi black · listo blue‑violet gradient
+  </div>
+
+  <!-- tiny script to demonstrate loader fade out (optional, just for interaction) -->
+  <script>
+    (function() {
+      // hyper-modern: loader hides after 3 seconds to reveal content (simulate page load)
+      const loader = document.getElementById('page-loader');
+      // keep it at least 2.5s to enjoy animations, then fade
+      setTimeout(() => {
+        loader.style.opacity = '0';
+        // optional: remove after fade to avoid blocking clicks
+        setTimeout(() => {
+          loader.style.display = 'none';
+        }, 600);
+      }, 2800); // 2.8s – animations complete around 2.0s but linger to admire gradient
+    })();
+  </script>
+</body>
+</html>

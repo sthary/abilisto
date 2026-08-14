@@ -1,0 +1,17 @@
+# 1. Prevent Directory Browsing
+Options -Indexes
+
+# 2. Protect .htaccess and sensitive files (parehas sa .env)
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# 3. Prevent XSS / Clickjacking (Gi-wrap sa IfModule para dili mag-error kung walay mod_headers)
+<IfModule mod_headers.c>
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set X-Frame-Options "DENY"
+    Header always set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# 4. Disable Server Signatures (Aron dili makita sa hacker unsay version sa imong server)
+ServerSignature Off

@@ -1,0 +1,41 @@
+# --- Secrets: never commit ---
+.env
+.env.*
+!.env.example
+key.txt
+storage/secrets/
+api/*.json
+
+# --- Logs ---
+*.log
+logs/
+**/verification_*.log
+**/*_debug.log
+**/*debug.log
+sms_logs.txt
+
+# --- User data / PII (never commit) ---
+uploads/
+private_uploads/
+
+# --- Database dumps ---
+*.sql
+*.sql.gz
+
+# --- Archives / stale backups ---
+*.zip
+
+# --- Dependencies ---
+node_modules/
+vendor/
+
+# --- Caches / runtime ---
+token_cache.json
+*.cache
+
+# --- OS / editor junk ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/

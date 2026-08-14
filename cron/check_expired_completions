@@ -1,0 +1,44 @@
+<?php
+// cron/check_expired_completions.php
+// Run this every hour via cron job
+
+require_once '../db.php';
+require_once '../includes/fcm_sender.php';
+
+// Find bookings where worker submitted proof > 48 hours ago and client hasn't confirmed
+$sql = "SELECT b.*, p.id as proof_id, p.file_path, p.description
+        FROM bookings b
+        JOIN job_completion_proofs p ON b.id = p.booking_id
+        WHERE b.status = 'completed_pending_confirmation'
+        AND p.submitted_at < DATE_SUB(NOW(), INTERVAL 48 HOUR)
+        AND p.status = 'pending'";
+
+$result = $conn->query($sql);
+
+while ($booking = $result->fetch_assoc()) {
+    // Auto-escalate to admin
+    $admin_sql = "SELECT fcm_token FROM users WHERE role = 'admin' LIMIT 1";
+    $admin_result = $conn->query($admin_sql);
+    
+    if ($admin_result && $admin_result->num_rows > 0) {
+        $admin = $admin_result->fetch_assoc();
+        if (!empty($admin['fcm_token'])) {
+            $fcm = new FCMv1();
+            $fcm->send(
+                $admin['fcm_token'],
+                "⏰ Client Unresponsive - Action Required",
+                "Booking #{$booking['id']} - Client hasn't responded for 48 hours. Please review proof.",
+                [
+                    'type' => 'admin_review_needed',
+                    'booking_id' => (string)$booking['id'],
+                    'proof_id' => (string)$booking['proof_id']
+                ]
+            );
+        }
+    }
+    
+    // Create admin notification
+    $notif_msg = "⏰ Client unresponsive for 48 hours. Please review completion proof for booking #{$booking['id']}";
+    $conn->query("INSERT INTO notifications (user_id, message, link, is_read, created_at) 
+                  VALUES (1, '$notif_msg', 'admin/review_proof.php?booking_id={$booking['id']}', 0, NOW())");
+}
