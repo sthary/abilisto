@@ -10,8 +10,8 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 
 // 1. Handle Actions (Approve/Reject)
 if (isset($_GET['action']) && isset($_GET['doc_id']) && isset($_GET['worker_id'])) {
-    $doc_id = $_GET['doc_id'];
-    $worker_id = $_GET['worker_id'];
+    $doc_id = intval($_GET['doc_id']);
+    $worker_id = intval($_GET['worker_id']);
     $action = $_GET['action']; // 'approve' or 'reject'
 
     if ($action == 'approve') {

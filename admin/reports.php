@@ -199,7 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'lift_
 // FILTERS & DATA
 // ============================================================
 $type_f   = $_GET['type']   ?? 'all';
-$status_f = $_GET['status'] ?? 'all';
+$status_f = $conn->real_escape_string($_GET['status'] ?? 'all');
 $sort     = $_GET['sort']   ?? 'newest';
 $search   = $conn->real_escape_string($_GET['search'] ?? '');
 

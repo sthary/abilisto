@@ -46,8 +46,8 @@ if (isset($_POST['save_services'])) {
         $conn->commit();
 
         $enabled_list = implode(', ', array_keys($services));
-        $details = "Updated service availability. Enabled: " . ($enabled_list ?: 'none');
-        $conn->query("INSERT INTO system_logs (user_id, action, details, ip_address) 
+        $details = $conn->real_escape_string("Updated service availability. Enabled: " . ($enabled_list ?: 'none'));
+        $conn->query("INSERT INTO system_logs (user_id, action, details, ip_address)
                       VALUES ($current_user_id, 'update_services', '$details', '$current_ip')");
 
         $message = "Service availability updated!";

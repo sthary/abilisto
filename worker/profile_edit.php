@@ -58,11 +58,11 @@ if (isset($_POST['update_profile'])) {
     $full_name   = $conn->real_escape_string($_POST['full_name']);
     $address     = $conn->real_escape_string($_POST['address']);
     $municipality= $conn->real_escape_string($_POST['municipality']);
-    $new_lat     = $_POST['latitude'];
-    $new_lng     = $_POST['longitude'];
+    $new_lat     = floatval($_POST['latitude']);
+    $new_lng     = floatval($_POST['longitude']);
     $new_phone   = $conn->real_escape_string($_POST['phone']);
-    $birthdate   = $_POST['birthdate'];
-    $category    = $_POST['service_category'];
+    $birthdate   = $conn->real_escape_string($_POST['birthdate']);
+    $category    = $conn->real_escape_string($_POST['service_category']);
     $bio         = $conn->real_escape_string($_POST['bio']);
     $rate        = floatval($_POST['minimum_standard_rate'] ?? 0);
 

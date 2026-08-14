@@ -15,9 +15,9 @@ error_log("=== ACCEPT QUICK MATCH CALLED ===");
 error_log("POST data: " . file_get_contents('php://input'));
 
 $data = json_decode(file_get_contents('php://input'), true);
-$booking_id = $data['booking_id'] ?? 0;
-$broadcast_id = $data['broadcast_id'] ?? 0;
-$worker_id = $_SESSION['user_id'];
+$booking_id = intval($data['booking_id'] ?? 0);
+$broadcast_id = intval($data['broadcast_id'] ?? 0);
+$worker_id = intval($_SESSION['user_id']);
 
 if (!$booking_id || !$broadcast_id) {
     echo json_encode(['success' => false, 'message' => 'Missing parameters']);

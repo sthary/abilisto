@@ -83,11 +83,17 @@ if (!empty($_POST['selected_workers']) && is_array($_POST['selected_workers'])) 
 }
 
 $category = $_SESSION['quick_match']['sub_category'] ?? $_SESSION['quick_match']['category'] ?? '';
-$problems = is_array($_SESSION['quick_match']['problems']) ? 
-            implode(", ", $_SESSION['quick_match']['problems']) : 
+$problems = is_array($_SESSION['quick_match']['problems']) ?
+            implode(", ", $_SESSION['quick_match']['problems']) :
             $_SESSION['quick_match']['problems'];
 $urgency = $_SESSION['quick_match']['urgency'];
 $fee = $_SESSION['quick_match']['fee'];
+
+// Escape before use in raw SQL below — these values originate from user POST input
+// relayed through the session in quick_match.php, and were never escaped there.
+$category = $conn->real_escape_string($category);
+$problems = $conn->real_escape_string($problems);
+$urgency  = $conn->real_escape_string($urgency);
 
 // Get client info
 $client = $conn->query("SELECT full_name, latitude, longitude FROM users WHERE id = '$client_id'")->fetch_assoc();

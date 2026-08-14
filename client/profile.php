@@ -23,8 +23,8 @@ if (isset($_POST['update_profile'])) {
     $full_name = $conn->real_escape_string($_POST['full_name']);
     $address = $conn->real_escape_string($_POST['address']);
     $municipality = $conn->real_escape_string($_POST['municipality']);
-    $new_lat = $_POST['latitude'];
-    $new_lng = $_POST['longitude'];
+    $new_lat = floatval($_POST['latitude']);
+    $new_lng = floatval($_POST['longitude']);
     $new_phone = $conn->real_escape_string($_POST['phone']);
 
     $curr_check = $conn->query("SELECT phone FROM users WHERE id = '$user_id'")->fetch_assoc();
