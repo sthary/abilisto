@@ -207,7 +207,7 @@ function getUserAvatar($pic, $name) {
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
     
     <!-- Fonts - Using Material Icons Round to match navbar -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
     
     <script>
@@ -216,14 +216,14 @@ function getUserAvatar($pic, $name) {
             theme: {
                 extend: {
                     colors: {
-                        primary: "#3B82F6",
+                        primary: "#146af5",
                         "background-light": "#F8FAFC",
                         "background-dark": "#0F172A",
                         accent: "#8B5CF6",
                     },
                     fontFamily: {
-                        display: ["Inter", "sans-serif"],
-                        sans: ["Inter", "sans-serif"],
+                        display: ["Plus Jakarta Sans", "sans-serif"],
+                        sans: ["Plus Jakarta Sans", "sans-serif"],
                     },
                     borderRadius: {
                         DEFAULT: "12px",
@@ -255,7 +255,7 @@ function getUserAvatar($pic, $name) {
     
     <style type="text/tailwindcss">
         @layer base {
-            body { font-family: 'Inter', sans-serif; }
+            body { font-family: 'Plus Jakarta Sans', sans-serif; }
         }
         .glass {
             background: rgba(255, 255, 255, 0.6);

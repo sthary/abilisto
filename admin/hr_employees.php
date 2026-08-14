@@ -120,18 +120,18 @@ $PAY_FREQS = ['Monthly','Semi-monthly','Weekly'];
 <meta charset="utf-8"/><meta content="width=device-width,initial-scale=1.0" name="viewport"/>
 <title>Abilisto — Employees</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
 <script>
-    tailwind.config={darkMode:"class",theme:{extend:{colors:{hr:"#8B5CF6",equity:"#10B981",danger:"#F43F5E",expense:"#F59E0B"},fontFamily:{display:["Syne","sans-serif"],body:["DM Sans","sans-serif"]}}}};
+    tailwind.config={darkMode:"class",theme:{extend:{colors:{hr:"#8B5CF6",equity:"#10B981",danger:"#F43F5E",expense:"#F59E0B"},fontFamily:{display:["Plus Jakarta Sans","sans-serif"],body:["Plus Jakarta Sans","sans-serif"]}}}};
     if(localStorage.getItem('darkMode')==='true')document.documentElement.classList.add('dark');
     function toggleDarkMode(){document.documentElement.classList.toggle('dark');localStorage.setItem('darkMode',document.documentElement.classList.contains('dark'));}
     function toggleMobileMenu(){document.getElementById('mobile-sidebar').classList.toggle('-translate-x-full');document.getElementById('menu-overlay').classList.toggle('hidden');}
 </script>
 <style>
-    body{font-family:'DM Sans',sans-serif;background:#F5F3FF;}
+    body{font-family:'Plus Jakarta Sans',sans-serif;background:#F5F3FF;}
     .dark body{background:#0B0F1A;}
-    h1,h2,h3,.font-display{font-family:'Syne',sans-serif;}
+    h1,h2,h3,.font-display{font-family:'Plus Jakarta Sans',sans-serif;}
     .glass-card{background:rgba(255,255,255,0.75);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.6);box-shadow:0 4px 24px rgba(0,0,0,0.06);}
     .dark .glass-card{background:rgba(17,24,39,0.75);border:1px solid rgba(255,255,255,0.07);}
     .hr-input{background:rgba(255,255,255,0.8);border:1.5px solid rgba(0,0,0,0.1);border-radius:10px;padding:8px 12px;font-size:13px;width:100%;color:#1e293b;transition:border-color .2s;}
@@ -139,7 +139,7 @@ $PAY_FREQS = ['Monthly','Semi-monthly','Weekly'];
     .hr-input:focus{outline:none;border-color:#8B5CF6;box-shadow:0 0 0 3px rgba(139,92,246,.15);}
     .hr-label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;display:block;margin-bottom:4px;}
     .dark .hr-label{color:#94a3b8;}
-    .fin-table thead th{font-family:'Syne',sans-serif;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;padding:10px 16px;border-bottom:1px solid rgba(0,0,0,0.06);white-space:nowrap;}
+    .fin-table thead th{font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;padding:10px 16px;border-bottom:1px solid rgba(0,0,0,0.06);white-space:nowrap;}
     .dark .fin-table thead th{border-color:rgba(255,255,255,0.06);}
     .fin-table tbody td{padding:12px 16px;font-size:13px;border-bottom:1px solid rgba(0,0,0,0.04);}
     .dark .fin-table tbody td{border-color:rgba(255,255,255,0.04);}

@@ -142,17 +142,17 @@ $SUB_EMOJI=['Electrical'=>'⚡','Plumbing'=>'💧','Carpentry'=>'🔨','Masonry'
 <meta charset="utf-8"/><meta content="width=device-width,initial-scale=1.0" name="viewport"/>
 <title>Abilisto HR — Worker Verifications</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
 <script>
-    tailwind.config={darkMode:"class",theme:{extend:{colors:{hr:"#8B5CF6",equity:"#10B981",danger:"#F43F5E"},fontFamily:{display:["Syne","sans-serif"],body:["DM Sans","sans-serif"]}}}};
+    tailwind.config={darkMode:"class",theme:{extend:{colors:{hr:"#8B5CF6",equity:"#10B981",danger:"#F43F5E"},fontFamily:{display:["Plus Jakarta Sans","sans-serif"],body:["Plus Jakarta Sans","sans-serif"]}}}};
     if(localStorage.getItem('darkMode')==='true')document.documentElement.classList.add('dark');
     function toggleDarkMode(){document.documentElement.classList.toggle('dark');localStorage.setItem('darkMode',document.documentElement.classList.contains('dark'));}
     function toggleMobileMenu(){document.getElementById('mobile-sidebar').classList.toggle('-translate-x-full');document.getElementById('menu-overlay').classList.toggle('hidden');}
 </script>
 <style>
-    body{font-family:'DM Sans',sans-serif;background:#F5F3FF;} .dark body{background:#0B0F1A;}
-    h1,h2,h3,.font-display{font-family:'Syne',sans-serif;}
+    body{font-family:'Plus Jakarta Sans',sans-serif;background:#F5F3FF;} .dark body{background:#0B0F1A;}
+    h1,h2,h3,.font-display{font-family:'Plus Jakarta Sans',sans-serif;}
     .glass-card{background:rgba(255,255,255,0.75);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.6);box-shadow:0 4px 24px rgba(0,0,0,0.06);}
     .dark .glass-card{background:rgba(17,24,39,0.75);border:1px solid rgba(255,255,255,0.07);}
     .stat-card-shadow{box-shadow:0 10px 25px -5px rgba(0,0,0,.04),0 8px 10px -6px rgba(0,0,0,.04);}
@@ -172,7 +172,7 @@ $SUB_EMOJI=['Electrical'=>'⚡','Plumbing'=>'💧','Carpentry'=>'🔨','Masonry'
     .badge-btn.active-silver{background:#F1F5F9;color:#475569;border-color:#94A3B8;box-shadow:0 0 0 2px rgba(148,163,184,.2);}
     .badge-btn.active-bronze{background:#FEF3C7;color:#92400E;border-color:#D97706;box-shadow:0 0 0 2px rgba(217,119,6,.2);}
     .badge-btn.active-reject{background:#FEF2F2;color:#DC2626;border-color:#FCA5A5;box-shadow:0 0 0 2px rgba(239,68,68,.15);}
-    .fin-table thead th{font-family:'Syne',sans-serif;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;padding:10px 16px;border-bottom:1px solid rgba(0,0,0,0.06);}
+    .fin-table thead th{font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;padding:10px 16px;border-bottom:1px solid rgba(0,0,0,0.06);}
     .dark .fin-table thead th{border-color:rgba(255,255,255,0.06);}
     .fin-table tbody td{padding:12px 16px;font-size:13px;border-bottom:1px solid rgba(0,0,0,0.04);}
     .dark .fin-table tbody td{border-color:rgba(255,255,255,0.04);}

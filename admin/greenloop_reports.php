@@ -22,16 +22,16 @@ $notif_count = $notif_res->fetch_assoc()['c'] ?? 0;
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GreenLoop Reports — Abilisto Admin</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <script>
   tailwind.config = {
     darkMode: 'class',
     theme: {
       extend: {
-        fontFamily: { display: ['Inter','sans-serif'], sans: ['Inter','sans-serif'] },
+        fontFamily: { display: ['Plus Jakarta Sans','sans-serif'], sans: ['Plus Jakarta Sans','sans-serif'] },
         colors: {
-          primary: '#6366F1',
+          primary: '#146af5',
           'background-light': '#F8FAFC',
           'background-dark':  '#0F172A',
         },
@@ -46,7 +46,7 @@ $notif_count = $notif_res->fetch_assoc()['c'] ?? 0;
   if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
 </script>
 <style>
-  body { font-family: 'Inter', sans-serif; }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; }
   .glass {
     background: rgba(255,255,255,0.7);
     backdrop-filter: blur(12px);

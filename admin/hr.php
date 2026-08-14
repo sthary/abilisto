@@ -59,19 +59,19 @@ $notif_count  = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHER
 <meta charset="utf-8"/><meta content="width=device-width,initial-scale=1.0" name="viewport"/>
 <title>Abilisto — HR Dashboard</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    tailwind.config={darkMode:"class",theme:{extend:{colors:{hr:"#8B5CF6",equity:"#10B981",danger:"#F43F5E",expense:"#F59E0B"},fontFamily:{display:["Syne","sans-serif"],body:["DM Sans","sans-serif"]}}}};
+    tailwind.config={darkMode:"class",theme:{extend:{colors:{hr:"#8B5CF6",equity:"#10B981",danger:"#F43F5E",expense:"#F59E0B"},fontFamily:{display:["Plus Jakarta Sans","sans-serif"],body:["Plus Jakarta Sans","sans-serif"]}}}};
     if(localStorage.getItem('darkMode')==='true')document.documentElement.classList.add('dark');
     function toggleDarkMode(){document.documentElement.classList.toggle('dark');localStorage.setItem('darkMode',document.documentElement.classList.contains('dark'));}
     function toggleMobileMenu(){document.getElementById('mobile-sidebar').classList.toggle('-translate-x-full');document.getElementById('menu-overlay').classList.toggle('hidden');}
 </script>
 <style>
-    body{font-family:'DM Sans',sans-serif;background:#F5F3FF;}
+    body{font-family:'Plus Jakarta Sans',sans-serif;background:#F5F3FF;}
     .dark body{background:#0B0F1A;}
-    h1,h2,h3,.font-display{font-family:'Syne',sans-serif;}
+    h1,h2,h3,.font-display{font-family:'Plus Jakarta Sans',sans-serif;}
     .glass-card{background:rgba(255,255,255,0.75);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.6);box-shadow:0 4px 24px rgba(0,0,0,0.06);}
     .dark .glass-card{background:rgba(17,24,39,0.75);border:1px solid rgba(255,255,255,0.07);}
     .kpi-card{position:relative;overflow:hidden;}

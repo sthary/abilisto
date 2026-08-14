@@ -159,7 +159,7 @@ $current_date = date('M d, Y');
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Abilisto Admin - Analytical Dashboard</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
@@ -168,12 +168,12 @@ $current_date = date('M d, Y');
             theme: {
                 extend: {
                     colors: {
-                        primary: "#6366F1",
+                        primary: "#146af5",
                         "background-light": "#F8FAFC",
                         "background-dark": "#0F172A",
                         accent: "#8B5CF6",
                     },
-                    fontFamily: { display: ["Inter","sans-serif"], sans: ["Inter","sans-serif"] },
+                    fontFamily: { display: ["Plus Jakarta Sans","sans-serif"], sans: ["Plus Jakarta Sans","sans-serif"] },
                     borderRadius: { DEFAULT: "12px", 'xl': '16px', '2xl': '24px' },
                 },
             },
@@ -192,7 +192,7 @@ $current_date = date('M d, Y');
         if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
     </script>
     <style type="text/tailwindcss">
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .glass {
             background: rgba(255,255,255,0.7);
             @apply backdrop-blur-md;

@@ -24,9 +24,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <!-- Logo / Brand -->
     <div class="px-6 py-6 border-b border-slate-100 dark:border-slate-800/60">
         <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-sky-500 flex items-center justify-center shadow-md shadow-sky-200 dark:shadow-sky-900/40">
-                <span class="material-icons-round text-white text-lg">account_balance</span>
-            </div>
+            <img src="../1.png" alt="Abilisto Logo" class="w-9 h-9 rounded-xl object-cover shadow-md shadow-sky-200 dark:shadow-sky-900/40">
             <div>
                 <p class="font-display font-bold text-sm leading-tight text-slate-900 dark:text-white">Abilisto</p>
                 <p class="text-[9px] font-bold uppercase tracking-widest text-sky-500">Finance Dept.</p>

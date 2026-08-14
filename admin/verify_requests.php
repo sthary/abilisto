@@ -151,19 +151,19 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Verification Queue | Abilisto</title>
     
-    <!-- Font Awesome 6 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
-    <!-- Google Fonts - Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
+    <!-- Font Awesome 7 (local) -->
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
+
+    <!-- Google Fonts - Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
         /* ===== FUTURISTIC COLOR SCHEME ===== */
         :root {
-            --primary: #2563eb;
-            --primary-dark: #1e4bb3;
-            --primary-light: #60a5fa;
-            --primary-gradient: linear-gradient(135deg, #2563eb 0%, #1e4bb3 100%);
+            --primary: #146af5;
+            --primary-dark: #0f52c2;
+            --primary-light: #6ea6f9;
+            --primary-gradient: linear-gradient(135deg, #146af5 0%, #0f52c2 100%);
             --success: #10b981;
             --success-light: #d1fae5;
             --danger: #ef4444;
@@ -197,7 +197,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
         }
 
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             background-attachment: fixed;
             min-height: 100vh;
@@ -807,7 +807,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                 </h2>
                 
                 <div style="display: flex; gap: 10px;">
-                    <select id="filterType" style="padding: 10px 20px; border-radius: 30px; border: none; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); font-family: 'Inter', sans-serif;">
+                    <select id="filterType" style="padding: 10px 20px; border-radius: 30px; border: none; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); font-family: 'Plus Jakarta Sans', sans-serif;">
                         <option value="all">📄 All Documents</option>
                         <option value="TESDA">🎓 TESDA Certificate</option>
                         <option value="Valid ID">🪪 Valid ID</option>

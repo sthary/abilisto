@@ -79,15 +79,15 @@ $current_date = date('M d, Y');
 <meta charset="utf-8"/><meta content="width=device-width,initial-scale=1.0" name="viewport"/>
 <title>Abilisto Support — Users</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
 <script>
-    tailwind.config={darkMode:"class",theme:{extend:{colors:{primary:"#6366F1","background-light":"#F8FAFC","background-dark":"#0F172A"},fontFamily:{display:["Inter","sans-serif"],sans:["Inter","sans-serif"]}}}};
+    tailwind.config={darkMode:"class",theme:{extend:{colors:{primary:"#146af5","background-light":"#F8FAFC","background-dark":"#0F172A"},fontFamily:{display:["Plus Jakarta Sans","sans-serif"],sans:["Plus Jakarta Sans","sans-serif"]}}}};
     if(localStorage.getItem('darkMode')==='true')document.documentElement.classList.add('dark');
     function toggleDarkMode(){document.documentElement.classList.toggle('dark');localStorage.setItem('darkMode',document.documentElement.classList.contains('dark'));}
 </script>
 <style>
-    body{font-family:'Inter',sans-serif;}
+    body{font-family:'Plus Jakarta Sans',sans-serif;}
     .glass{background:rgba(255,255,255,0.7);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.3);}
     .dark .glass{background:rgba(30,41,59,0.7);border:1px solid rgba(255,255,255,0.1);}
     .card{background:white;border:1px solid #f1f5f9;border-radius:20px;box-shadow:0 4px 24px rgba(0,0,0,0.05);}

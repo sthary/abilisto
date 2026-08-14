@@ -266,7 +266,7 @@ $current_date = date('M d, Y');
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
 
     <!-- Fonts: Syne (display) + DM Sans (body) -->
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
 
     <!-- Chart.js -->
@@ -278,7 +278,7 @@ $current_date = date('M d, Y');
             theme: {
                 extend: {
                     colors: {
-                        primary:   "#6366F1",
+                        primary:   "#146af5",
                         fin:       "#0EA5E9",   // finance accent — sky blue
                         equity:    "#10B981",   // equity green
                         danger:    "#F43F5E",   // liability red
@@ -287,8 +287,8 @@ $current_date = date('M d, Y');
                         "bg-dark":  "#0B0F1A",
                     },
                     fontFamily: {
-                        display: ["Syne", "sans-serif"],
-                        body:    ["DM Sans", "sans-serif"],
+                        display: ["Plus Jakarta Sans", "sans-serif"],
+                        body:    ["Plus Jakarta Sans", "sans-serif"],
                     },
                 },
             },
@@ -312,10 +312,10 @@ $current_date = date('M d, Y');
 
     <style>
         /* ── Base ──────────────────────────────────────── */
-        body { font-family: 'DM Sans', sans-serif; background: #F0F4FF; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #F0F4FF; }
         .dark body, .dark { background: #0B0F1A; }
 
-        h1, h2, h3, .font-display { font-family: 'Syne', sans-serif; }
+        h1, h2, h3, .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
 
         /* ── Glassmorphism card ────────────────────────── */
         .glass-card {
@@ -376,7 +376,7 @@ $current_date = date('M d, Y');
 
         /* ── Table ─────────────────────────────────────── */
         .fin-table thead th {
-            font-family: 'Syne', sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             font-size: 10px;
             letter-spacing: 0.08em;
             text-transform: uppercase;

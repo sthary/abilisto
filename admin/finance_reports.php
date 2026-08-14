@@ -121,7 +121,7 @@ $notif_count = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHERE
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Abilisto — Financial Reports</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
@@ -129,7 +129,7 @@ $notif_count = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHERE
         darkMode:"class",
         theme:{ extend:{
             colors:{ fin:"#0EA5E9", equity:"#10B981", danger:"#F43F5E", expense:"#F59E0B" },
-            fontFamily:{ display:["Syne","sans-serif"], body:["DM Sans","sans-serif"] }
+            fontFamily:{ display:["Plus Jakarta Sans","sans-serif"], body:["Plus Jakarta Sans","sans-serif"] }
         }}
     };
     if(localStorage.getItem('darkMode')==='true') document.documentElement.classList.add('dark');
@@ -137,17 +137,17 @@ $notif_count = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHERE
     function toggleMobileMenu(){ document.getElementById('mobile-sidebar').classList.toggle('-translate-x-full'); document.getElementById('menu-overlay').classList.toggle('hidden'); }
 </script>
 <style>
-    body{ font-family:'DM Sans',sans-serif; background:#F0F4FF; }
+    body{ font-family:'Plus Jakarta Sans',sans-serif; background:#F0F4FF; }
     .dark body{ background:#0B0F1A; }
-    h1,h2,h3,.font-display{ font-family:'Syne',sans-serif; }
+    h1,h2,h3,.font-display{ font-family:'Plus Jakarta Sans',sans-serif; }
     .glass-card{ background:rgba(255,255,255,0.72); backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,0.6); box-shadow:0 4px 24px rgba(0,0,0,0.06); }
     .dark .glass-card{ background:rgba(17,24,39,0.72); border:1px solid rgba(255,255,255,0.07); }
     .fin-input{ background:rgba(255,255,255,0.7); border:1.5px solid rgba(0,0,0,0.1); border-radius:10px; padding:8px 12px; font-size:13px; width:100%; color:#1e293b; }
     .dark .fin-input{ background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.1); color:#e2e8f0; }
     .fin-input:focus{ outline:none; border-color:#0EA5E9; box-shadow:0 0 0 3px rgba(14,165,233,0.15); }
-    .section-title{ font-family:'Syne',sans-serif; font-size:14px; font-weight:700; margin-bottom:4px; }
+    .section-title{ font-family:'Plus Jakarta Sans',sans-serif; font-size:14px; font-weight:700; margin-bottom:4px; }
     .section-sub{ font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:#94a3b8; margin-bottom:20px; }
-    .fin-table thead th{ font-family:'Syne',sans-serif; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:#94a3b8; padding:10px 14px; border-bottom:1px solid rgba(0,0,0,0.06); white-space:nowrap; }
+    .fin-table thead th{ font-family:'Plus Jakarta Sans',sans-serif; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:#94a3b8; padding:10px 14px; border-bottom:1px solid rgba(0,0,0,0.06); white-space:nowrap; }
     .dark .fin-table thead th{ border-color:rgba(255,255,255,0.06); }
     .fin-table tbody td{ padding:10px 14px; font-size:12px; border-bottom:1px solid rgba(0,0,0,0.04); }
     .dark .fin-table tbody td{ border-color:rgba(255,255,255,0.04); }
@@ -556,8 +556,8 @@ function buildCharts(){
         responsive:true, maintainAspectRatio:false,
         plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => callback(ctx) }}},
         scales:{
-            y:{ beginAtZero:true, grid:{color:t.grid,drawBorder:false}, ticks:{color:t.text,font:{size:10,family:'DM Sans'},callback:v=>'₱'+v.toLocaleString()} },
-            x:{ grid:{display:false}, ticks:{color:t.text,font:{size:10,family:'DM Sans'}} }
+            y:{ beginAtZero:true, grid:{color:t.grid,drawBorder:false}, ticks:{color:t.text,font:{size:10,family:'Plus Jakarta Sans'},callback:v=>'₱'+v.toLocaleString()} },
+            x:{ grid:{display:false}, ticks:{color:t.text,font:{size:10,family:'Plus Jakarta Sans'}} }
         }
     });
     const fmt = ctx => ' ₱'+ctx.parsed.y.toLocaleString('en-PH',{minimumFractionDigits:2});

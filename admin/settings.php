@@ -171,7 +171,7 @@ if (in_array($active_tab, ['general', 'security'])) {
     <title>Abilisto Admin - Configuration</title>
     
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
     
     <script>
@@ -180,14 +180,14 @@ if (in_array($active_tab, ['general', 'security'])) {
             theme: {
                 extend: {
                     colors: {
-                        primary: "#3B82F6",
+                        primary: "#146af5",
                         "background-light": "#F8FAFC",
                         "background-dark": "#0F172A",
                         accent: "#8B5CF6",
                     },
                     fontFamily: {
-                        display: ["Inter", "sans-serif"],
-                        sans: ["Inter", "sans-serif"],
+                        display: ["Plus Jakarta Sans", "sans-serif"],
+                        sans: ["Plus Jakarta Sans", "sans-serif"],
                     },
                     borderRadius: {
                         DEFAULT: "12px",
@@ -265,7 +265,7 @@ if (in_array($active_tab, ['general', 'security'])) {
     
     <style type="text/tailwindcss">
         @layer base {
-            body { font-family: 'Inter', sans-serif; }
+            body { font-family: 'Plus Jakarta Sans', sans-serif; }
         }
         .glass {
             background: rgba(255, 255, 255, 0.6);
@@ -290,7 +290,7 @@ if (in_array($active_tab, ['general', 'security'])) {
             @apply relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none cursor-pointer;
         }
         .toggle-active {
-            @apply bg-primary shadow-[0_0_15px_rgba(59,130,246,0.5)];
+            @apply bg-primary shadow-[0_0_15px_rgba(20,106,245,0.5)];
         }
         .toggle-inactive {
             @apply bg-slate-200 dark:bg-slate-700;

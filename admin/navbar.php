@@ -55,9 +55,7 @@ function nav_item($href, $icon, $label, $cur_page, $badge=0) {
     <!-- Brand -->
     <div class="p-6 flex items-center justify-between flex-shrink-0">
         <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span class="material-icons-round text-white text-sm">support_agent</span>
-            </div>
+            <img src="../1.png" alt="Abilisto Logo" class="w-8 h-8 rounded-lg object-cover">
             <div>
                 <span class="text-base font-bold tracking-tight text-slate-800 dark:text-white">Abilisto</span>
                 <p class="text-[9px] font-bold uppercase tracking-widest text-primary">Support Admin</p>
