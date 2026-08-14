@@ -227,7 +227,7 @@ $minRate = number_format($worker['minimum_standard_rate'], 2);
             theme: {
                 extend: {
                     colors: {
-                        primary: "#2563eb",
+                        primary: "#146af5",
                         "background-light": "#F8FAFC",
                         "background-dark": "#0f172a",
                     },
@@ -240,7 +240,7 @@ $minRate = number_format($worker['minimum_standard_rate'], 2);
                     },
                     boxShadow: {
                         'ambient': '0 20px 50px -12px rgba(0, 0, 0, 0.08)',
-                        'glow': '0 0 20px rgba(37, 99, 235, 0.2)',
+                        'glow': '0 0 20px rgba(20, 106, 245, 0.2)',
                     }
                 },
             },
@@ -259,10 +259,10 @@ $minRate = number_format($worker['minimum_standard_rate'], 2);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         .gradient-bg {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            background: linear-gradient(135deg, #3b82f6 0%, #146af5 100%);
         }
         .profile-glow {
-            box-shadow: 0 0 30px rgba(37, 99, 235, 0.3);
+            box-shadow: 0 0 30px rgba(20, 106, 245, 0.3);
         }
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -703,8 +703,8 @@ $minRate = number_format($worker['minimum_standard_rate'], 2);
 
         // Add service area circle (showing approximate range)
         L.circle([workerLat, workerLng], {
-            color: '#2563eb',
-            fillColor: '#2563eb',
+            color: '#146af5',
+            fillColor: '#146af5',
             fillOpacity: 0.1,
             weight: 2,
             radius: 400

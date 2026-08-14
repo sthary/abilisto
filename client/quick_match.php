@@ -326,7 +326,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
 
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
 
     <?php if ($step == 4 || $step == 5): ?>
     <!-- Leaflet CSS -->
@@ -339,13 +339,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             theme: {
                 extend: {
                     colors: {
-                        primary: "#3B82F6",
+                        primary: "#146af5",
                         "background-light": "#F8FAFC",
                         "background-dark":  "#0F172A",
                     },
                     fontFamily: {
                         display: ["Plus Jakarta Sans", "sans-serif"],
-                        sans:    ['Inter', 'system-ui', 'sans-serif'],
+                        sans:    ["Plus Jakarta Sans", "Inter", "system-ui", "sans-serif"],
                     },
                     borderRadius: { DEFAULT: "1rem" },
                 },
@@ -378,7 +378,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .category-hover.category-selected {
             background: linear-gradient(135deg, rgba(59,130,246,.15) 0%, rgba(99,102,241,.1) 100%) !important;
-            border-color: #3B82F6 !important;
+            border-color: #146af5 !important;
             box-shadow: 0 0 0 2px rgba(59,130,246,.25), 0 0 20px rgba(59,130,246,.2);
             transform: translateY(-2px) scale(1.03);
         }
@@ -386,7 +386,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             filter: drop-shadow(0 0 8px rgba(59,130,246,.7));
         }
         .chip-selected {
-            background: #3B82F6 !important;
+            background: #146af5 !important;
             color: white !important;
             box-shadow: 0 0 15px rgba(59,130,246,.5);
         }

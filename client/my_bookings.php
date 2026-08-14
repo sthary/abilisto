@@ -306,7 +306,7 @@ function renderBookingCard($row, $lang, $type, $index = 0) {
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
 
     <!-- Font Awesome (for backward compatibility) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
 
     <!-- Flatpickr (for reschedule calendar) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -318,7 +318,7 @@ function renderBookingCard($row, $lang, $type, $index = 0) {
             theme: {
                 extend: {
                     colors: {
-                        primary: "#1d4ed8",
+                        primary: "#146af5",
                         "background-light": "#F8FAFC",
                         "background-dark": "#0f172a",
                         surface: {
@@ -377,11 +377,11 @@ function renderBookingCard($row, $lang, $type, $index = 0) {
             color: white;
         }
         .flatpickr-day.selected {
-            background: #1d4ed8 !important;
-            border-color: #1d4ed8 !important;
+            background: #146af5 !important;
+            border-color: #146af5 !important;
         }
         .flatpickr-day.today {
-            border-color: #1d4ed8 !important;
+            border-color: #146af5 !important;
         }
     </style>
 </head>

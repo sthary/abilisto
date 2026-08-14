@@ -64,8 +64,8 @@ if ($now < $start_window || $now > $end_window) {
     <title>Live Tracking | Abilisto</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
@@ -74,14 +74,14 @@ if ($now < $start_window || $now > $end_window) {
         :root {
             --glass-bg: rgba(28, 28, 30, 0.85);
             --glass-border: rgba(255, 255, 255, 0.1);
-            --accent: #3b82f6;
+            --accent: #146af5;
             --success: #22c55e;
             --danger: #ef4444;
             --text: #ffffff;
             --text-muted: #9ca3af;
         }
 
-        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; overflow: hidden; background: #000; }
+        body { margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; overflow: hidden; background: #000; }
         
         #map { 
             position: absolute; 
@@ -389,7 +389,7 @@ if ($now < $start_window || $now > $end_window) {
                 L.latLng(clientLat, clientLng)
             ],
             lineOptions: {
-                styles: [{color: '#3b82f6', opacity: 0.8, weight: 6}] // Modern Blue Path
+                styles: [{color: '#146af5', opacity: 0.8, weight: 6}] // Modern Blue Path
             },
             createMarker: function() { return null; },
             show: false,

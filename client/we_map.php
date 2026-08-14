@@ -203,7 +203,7 @@ function getAvatarData($worker) {
     
     <style type="text/tailwindcss">
         :root {
-            --primary-color: #3B82F6;
+            --primary-color: #146af5;
             --background-light: #F8FAFC;
             --background-dark: #0F172A;
         }
@@ -212,7 +212,7 @@ function getAvatarData($worker) {
                 @apply bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-white/20 dark:border-white/10;
             }
             .profile-gradient {
-                background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+                background: linear-gradient(135deg, #146af5 0%, #8b5cf6 100%);
             }
             .no-scrollbar::-webkit-scrollbar {
                 display: none;
@@ -290,7 +290,7 @@ function getAvatarData($worker) {
             theme: {
                 extend: {
                     colors: {
-                        primary: "#3B82F6",
+                        primary: "#146af5",
                     },
                     fontFamily: {
                         display: ["Plus Jakarta Sans", "sans-serif"],
@@ -1023,8 +1023,8 @@ document.addEventListener('DOMContentLoaded', () => {
         z-index: 1000 !important;
     }
     .marker-el.ring-4 .glass {
-        background: rgba(59, 130, 246, 0.3) !important;
-        border-color: #3B82F6 !important;
+        background: rgba(20, 106, 245, 0.3) !important;
+        border-color: #146af5 !important;
     }
     
     /* Force circular containers for all avatars */

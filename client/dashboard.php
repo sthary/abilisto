@@ -164,7 +164,7 @@ function getInitials(string $name): string {
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
     
     <!-- Intro.js for guided tours -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/introjs.min.css">
@@ -271,18 +271,18 @@ function getInitials(string $name): string {
         }
         
         .introjs-nextbutton {
-            background: #3B82F6 !important;
+            background: #146af5 !important;
             color: white !important;
-            border-color: #2563eb !important;
+            border-color: #0f52c2 !important;
         }
-        
+
         .introjs-nextbutton:hover {
-            background: #2563eb !important;
+            background: #0f52c2 !important;
             color: white !important;
         }
-        
+
         .dark .introjs-nextbutton {
-            background: #3B82F6 !important;
+            background: #146af5 !important;
             color: white !important;
         }
         
@@ -295,7 +295,7 @@ function getInitials(string $name): string {
         }
         
         .introjs-bullets ul li a.active {
-            background: #3B82F6 !important;
+            background: #146af5 !important;
         }
         
         .introjs-arrow {
@@ -359,7 +359,7 @@ function getInitials(string $name): string {
         darkMode: "class",
         theme: {
             extend: {
-                colors: { primary: "#3B82F6", "background-light": "#F8FAFC", "background-dark": "#0F172A" },
+                colors: { primary: "#146af5", "background-light": "#F8FAFC", "background-dark": "#0F172A" },
                 fontFamily: { display: ["Plus Jakarta Sans","sans-serif"], sans: ["Plus Jakarta Sans","sans-serif"] },
             },
         },
@@ -368,7 +368,7 @@ function getInitials(string $name): string {
 
     <style type="text/tailwindcss">
         .glass { background:rgba(255,255,255,0.1); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.2); }
-        .hero-gradient { background: linear-gradient(135deg, #3B82F6 0%, #2DD4BF 100%); }
+        .hero-gradient { background: linear-gradient(135deg, #146af5 0%, #2DD4BF 100%); }
         .card-shadow { box-shadow: 0 20px 25px -5px rgba(59,130,246,0.05), 0 8px 10px -6px rgba(59,130,246,0.05); }
         .no-scrollbar::-webkit-scrollbar { display:none; }
         .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }

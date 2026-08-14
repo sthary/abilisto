@@ -159,7 +159,7 @@ try {
         <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
         
         <!-- Fonts -->
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
         
         <script id="tailwind-config">
@@ -167,13 +167,13 @@ try {
                 theme: {
                     extend: {
                         colors: {
-                            "primary": "#0d59f2",
+                            "primary": "#146af5",
                             "off-white": "#F8FAFC",
                             "escrow-blue": "#E3F2FD",
                             "dark-text": "#1A1A1A",
                         },
                         fontFamily: {
-                            "display": ["Inter", "sans-serif"]
+                            "display": ["Plus Jakarta Sans", "sans-serif"]
                         },
                         borderRadius: {
                             "DEFAULT": "0.25rem",
@@ -190,7 +190,7 @@ try {
         
         <style type="text/tailwindcss">
             body {
-                font-family: 'Inter', sans-serif;
+                font-family: 'Plus Jakarta Sans', sans-serif;
             }
             .glass-card {
                 background: rgba(255, 255, 255, 0.7);
@@ -345,7 +345,7 @@ try {
         <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
         
         <!-- Fonts -->
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
         
         <script id="tailwind-config">
@@ -353,12 +353,12 @@ try {
                 theme: {
                     extend: {
                         colors: {
-                            "primary": "#0d59f2",
+                            "primary": "#146af5",
                             "off-white": "#F8FAFC",
                             "dark-text": "#1A1A1A",
                         },
                         fontFamily: {
-                            "display": ["Inter", "sans-serif"]
+                            "display": ["Plus Jakarta Sans", "sans-serif"]
                         },
                     },
                 },

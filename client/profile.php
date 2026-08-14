@@ -133,7 +133,7 @@ $initials = getInitials($user['full_name']);
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
     
     <!-- Font Awesome (for backward compatibility) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
     
     <script>
         tailwind.config = {
@@ -141,7 +141,7 @@ $initials = getInitials($user['full_name']);
             theme: {
                 extend: {
                     colors: {
-                        primary: "#2563EB",
+                        primary: "#146af5",
                         "background-light": "#F8FAFC",
                         "background-dark": "#0F172A",
                         accent: {
@@ -175,7 +175,7 @@ $initials = getInitials($user['full_name']);
             border: 1px solid rgba(255, 255, 255, 0.1)
         }
         .vibrant-gradient {
-            background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
+            background: linear-gradient(135deg, #146af5 0%, #3B82F6 100%);
         }
         
         /* Animation for slideUp */

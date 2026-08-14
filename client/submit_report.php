@@ -164,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             theme: {
                 extend: {
                     colors: {
-                        primary: "#1d4ed8",
+                        primary: "#146af5",
                         "background-light": "#F8FAFC",
                         "background-dark": "#0f172a",
                     },

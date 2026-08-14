@@ -252,10 +252,10 @@ $initials = getInitials($worker['full_name']);
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
 
     <style type="text/tailwindcss">
-        :root { --primary-blue:#3B82F6; --accent-blue:#00C2FF; --bg-light:#F8FAFC; }
+        :root { --primary-blue:#146af5; --accent-blue:#00C2FF; --bg-light:#F8FAFC; }
         body { font-family:'Plus Jakarta Sans',sans-serif; }
         .glass-card { background:rgba(255,255,255,.15); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,.2); }
         .gradient-bg { background:linear-gradient(135deg,var(--primary-blue) 0%,var(--accent-blue) 100%); }
@@ -268,8 +268,8 @@ $initials = getInitials($worker['full_name']);
         .shake-animation{animation:shake .5s ease}
         .flatpickr-calendar{background:white!important;border-radius:16px!important;box-shadow:0 20px 25px -5px rgba(0,0,0,.1)!important;border:1px solid #e2e8f0!important}
         .dark .flatpickr-calendar{background:#1e293b!important;border-color:#334155!important;color:white!important}
-        .flatpickr-day.selected{background:#3B82F6!important;border-color:#3B82F6!important}
-        .flatpickr-day.today{border-color:#3B82F6!important}
+        .flatpickr-day.selected{background:#146af5!important;border-color:#146af5!important}
+        .flatpickr-day.today{border-color:#146af5!important}
         /* Suggestion banner */
         #availabilityBanner{transition:all .3s ease}
     </style>
@@ -278,7 +278,7 @@ $initials = getInitials($worker['full_name']);
         tailwind.config = {
             darkMode:"class",
             theme:{ extend:{
-                colors:{ primary:"#3B82F6","background-light":"#F8FAFC","background-dark":"#0F172A" },
+                colors:{ primary:"#146af5","background-light":"#F8FAFC","background-dark":"#0F172A" },
                 borderRadius:{ DEFAULT:"1rem",xl:"1.5rem","2xl":"2rem" }
             }}
         };
