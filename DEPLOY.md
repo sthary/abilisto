@@ -20,11 +20,21 @@ Hostinger.
 
 ## Ongoing deploys
 
+**Primary path:** push to GitHub — `.github/workflows/deploy.yml` auto-deploys on every push to
+`master` (it SSHs into Hostinger using the `HOSTINGER_SSH_KEY`/`HOSTINGER_KNOWN_HOSTS` repo
+secrets and pushes to the `production` remote itself, triggering the same hook below).
+
+```bash
+git push origin master
+```
+
+**Manual fallback**, if you ever need to deploy without GitHub (e.g. CI is down):
+
 ```bash
 git push production master
 ```
 
-That's it — the hook checks the new code out over the live files. `uploads/`, `private_uploads/`,
+Either way, the hook checks the new code out over the live files. `uploads/`, `private_uploads/`,
 `.env`, and `storage/secrets/` are never tracked, so they're untouched by every push.
 
 **Caveat:** a `git checkout -f` only updates paths that are part of the repo. If you ever add a
