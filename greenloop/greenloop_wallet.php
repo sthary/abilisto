@@ -642,16 +642,20 @@ body::before {
   <?php if ($redemptions): ?>
   <div class="section">
     <div class="section-label">🎟️ My Active Rewards</div>
-    <?php foreach ($redemptions as $rd): ?>
+    <?php foreach ($redemptions as $rd): $rd_status = gc_voucher_status($rd); ?>
     <div class="redemption-card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
         <div class="redemption-code"><?= htmlspecialchars($rd['promo_code'] ?? '—') ?></div>
-        <span class="status-pill <?= $rd['status'] ?>"><?= ucfirst($rd['status']) ?></span>
+        <span class="status-pill <?= $rd_status ?>"><?= ucfirst($rd_status) ?></span>
       </div>
       <div class="redemption-name"><?= htmlspecialchars($rd['reward_name']) ?></div>
       <div class="redemption-meta">
         <?= number_format($rd['green_coins_spent'], 0) ?> coins spent ·
-        Expires <?= $rd['expires_at'] ? date('M d, Y', strtotime($rd['expires_at'])) : 'N/A' ?>
+        <?php if ($rd_status === 'used' && $rd['used_at']): ?>
+          Used <?= date('M d, Y', strtotime($rd['used_at'])) ?>
+        <?php else: ?>
+          Expires <?= $rd['expires_at'] ? date('M d, Y', strtotime($rd['expires_at'])) : 'N/A' ?>
+        <?php endif; ?>
       </div>
     </div>
     <?php endforeach; ?>

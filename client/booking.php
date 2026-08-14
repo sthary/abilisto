@@ -64,6 +64,22 @@ $cash_report_blocked = $report_row['cnt'] > 0;
 $cash_enabled      = ($cash_admin_enabled == 1) && !$cash_report_blocked;
 
 // ============================================
+// AVAILABLE GREENLOOP VOUCHERS
+// ============================================
+$vouchers_res = $conn->query("
+    SELECT rd.id, rd.promo_code, rw.reward_name, rw.reward_value
+    FROM greenloop_redemptions rd
+    JOIN greenloop_rewards rw ON rd.reward_id = rw.id
+    WHERE rd.user_id = $client_id
+      AND rd.status = 'active'
+      AND rd.expires_at > NOW()
+      AND rw.reward_type IN ('booking_discount','free_booking')
+    ORDER BY rw.reward_value DESC
+");
+$available_vouchers = [];
+while ($row = $vouchers_res->fetch_assoc()) { $available_vouchers[] = $row; }
+
+// ============================================
 // 3. FETCH WORKER DATA
 // ============================================
 $sql = "SELECT u.id, u.full_name, u.latitude, u.longitude, u.profile_pic,
@@ -141,6 +157,28 @@ if (isset($_POST['book_btn'])) {
         $discount_amount  = $subtotal - $calculated_fee;
         $client_name      = $conn->real_escape_string($_SESSION['full_name']);
 
+        // Re-validate the voucher server-side — never trust the submitted ID alone.
+        $voucher_id       = isset($_POST['voucher_id']) ? intval($_POST['voucher_id']) : 0;
+        $applied_voucher  = null;
+        $voucher_discount = 0;
+        if ($voucher_id > 0) {
+            $v_stmt = $conn->prepare("
+                SELECT rd.id, rd.promo_code, rw.reward_name, rw.reward_value
+                FROM greenloop_redemptions rd
+                JOIN greenloop_rewards rw ON rd.reward_id = rw.id
+                WHERE rd.id = ? AND rd.user_id = ? AND rd.status = 'active'
+                  AND rd.expires_at > NOW()
+                  AND rw.reward_type IN ('booking_discount','free_booking')
+            ");
+            $v_stmt->bind_param("ii", $voucher_id, $client_id);
+            $v_stmt->execute();
+            $applied_voucher = $v_stmt->get_result()->fetch_assoc();
+            if ($applied_voucher) {
+                $voucher_discount = min((float)$applied_voucher['reward_value'], $calculated_fee);
+                $calculated_fee   = round($calculated_fee - $voucher_discount, 2);
+            }
+        }
+
         $urgency_icons  = ['Emergency' => '🚨', 'High' => '⚠️', 'Normal' => '📋'];
         $urgency_labels = ['Emergency' => 'EMERGENCY', 'High' => 'HIGH PRIORITY', 'Normal' => 'NORMAL'];
         $urgency_icon   = $urgency_icons[$urgency]  ?? '📋';
@@ -170,8 +208,19 @@ if (isset($_POST['book_btn'])) {
             $check_row = $check_res->fetch_assoc();
             error_log("✅ Booking #$booking_id created with fee: " . $check_row['calculated_fee']);
 
+            // Mark the voucher used — the status='active' guard makes this safe
+            // against a double-submit race (a repeat attempt matches zero rows).
+            if ($applied_voucher) {
+                $mark_stmt = $conn->prepare("UPDATE greenloop_redemptions SET status='used', used_at=NOW(), used_booking_id=? WHERE id=? AND user_id=? AND status='active'");
+                $mark_stmt->bind_param("iii", $booking_id, $applied_voucher['id'], $client_id);
+                $mark_stmt->execute();
+            }
+
             $formatted_date = date('F j, Y \a\t g:i A', strtotime($booking_datetime));
             $discount_text  = ($discount_amount > 0) ? " (₱{$discount_amount} GCash discount applied!)" : "";
+            if ($applied_voucher) {
+                $discount_text .= " (voucher {$applied_voucher['promo_code']}: -₱{$voucher_discount})";
+            }
 
             // Push notification
             try {
@@ -207,14 +256,16 @@ if (isset($_POST['book_btn'])) {
                 }
             }
 
-            $client_notif = "✅ Booking request sent to {$worker['full_name']} for {$formatted_date}" . (($discount_amount > 0) ? " with ₱{$discount_amount} GCash discount!" : "");
+            $voucher_notif_text = $applied_voucher ? " Voucher {$applied_voucher['promo_code']} applied: -₱{$voucher_discount}." : "";
+            $client_notif = "✅ Booking request sent to {$worker['full_name']} for {$formatted_date}" . (($discount_amount > 0) ? " with ₱{$discount_amount} GCash discount!" : "") . $voucher_notif_text;
             if (function_exists('sendNotification')) { sendNotification($conn, $client_id, $client_notif, "my_bookings.php"); }
 
+            $voucher_js_msg = $applied_voucher ? "\\nVoucher {$applied_voucher['promo_code']} applied: -₱{$voucher_discount}" : "";
             if ($payment_method === 'Xendit') {
-                echo "<script>alert('✅ Booking Created with 10% GCash Discount!\\n\\nOriginal: ₱{$subtotal}\\nDiscounted: ₱{$calculated_fee}\\nYou saved: ₱{$discount_amount}\\n\\nYou will now be redirected to payment.');window.location.href='process_payment_xendit.php?booking_id=$booking_id&amount=$calculated_fee';</script>";
+                echo "<script>alert('✅ Booking Created with 10% GCash Discount!\\n\\nOriginal: ₱{$subtotal}\\nDiscounted: ₱{$calculated_fee}\\nYou saved: ₱{$discount_amount}{$voucher_js_msg}\\n\\nYou will now be redirected to payment.');window.location.href='process_payment_xendit.php?booking_id=$booking_id&amount=$calculated_fee';</script>";
             } else {
                 $cash_msg = ($discount_amount > 0) ? "Note: You could have saved ₱{$discount_amount} by paying with GCash!" : "";
-                echo "<script>alert('✅ Booking Request Sent Successfully!\\n\\n{$urgency_icon} Urgency: {$urgency_label}\\nTotal: ₱{$calculated_fee}\\n{$cash_msg}\\nThe worker will be notified immediately.');window.location.href='my_bookings.php';</script>";
+                echo "<script>alert('✅ Booking Request Sent Successfully!\\n\\n{$urgency_icon} Urgency: {$urgency_label}\\nTotal: ₱{$calculated_fee}{$voucher_js_msg}\\n{$cash_msg}\\nThe worker will be notified immediately.');window.location.href='my_bookings.php';</script>";
             }
             exit();
         } else {
@@ -566,6 +617,33 @@ $initials = getInitials($worker['full_name']);
                 </div>
             </div>
 
+            <!-- GreenLoop Voucher -->
+            <div class="space-y-3">
+                <label class="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200">
+                    <span class="material-symbols-outlined text-primary text-xl">redeem</span>
+                    Apply a Voucher (optional)
+                </label>
+                <?php if (!empty($available_vouchers)): ?>
+                <div class="relative group">
+                    <select id="voucherSelect" name="voucher_id" class="w-full h-14 pl-12 pr-10 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary/20 focus:border-primary appearance-none transition-all text-slate-900 dark:text-white" onchange="updatePrice()">
+                        <option value="0">No voucher</option>
+                        <?php foreach ($available_vouchers as $v): ?>
+                        <option value="<?php echo (int)$v['id']; ?>" data-value="<?php echo (float)$v['reward_value']; ?>">
+                            <?php echo htmlspecialchars($v['reward_name']); ?> — ₱<?php echo number_format($v['reward_value'], 0); ?> off (<?php echo htmlspecialchars($v['promo_code']); ?>)
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span class="material-symbols-outlined absolute left-4 top-4 text-slate-400">redeem</span>
+                    <span class="material-symbols-outlined absolute right-4 top-4 text-slate-400 pointer-events-none">expand_more</span>
+                </div>
+                <?php else: ?>
+                <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-sm">
+                    <span class="material-symbols-outlined text-base flex-shrink-0">info</span>
+                    <span>No vouchers available. <a href="../greenloop/greenloop_wallet.php" class="text-primary font-bold hover:underline">Earn Green Coins</a> to redeem rewards!</span>
+                </div>
+                <?php endif; ?>
+            </div>
+
             <!-- T&C -->
             <div class="bg-slate-50 dark:bg-slate-800/50 p-4 md:p-5 rounded-2xl flex items-start gap-4 border border-slate-100 dark:border-slate-800">
                 <input type="checkbox" class="mt-1 rounded text-primary focus:ring-primary/20 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700" required>
@@ -887,20 +965,33 @@ function updatePrice() {
         if(dd) dd.innerHTML='<span class="material-symbols-outlined text-[14px] md:text-sm">location_on</span> '+dist.toFixed(2)+' km';
     }
     var sub=base+distFee+urgencyFee, total=pm==='Xendit'?Math.round(sub*0.9*100)/100:sub, disc=sub-total;
+
+    var voucherEl=document.getElementById('voucherSelect'), voucherRaw=0, voucherLabel='';
+    if(voucherEl && voucherEl.value!=='0'){
+        var opt=voucherEl.options[voucherEl.selectedIndex];
+        voucherRaw=parseFloat(opt.getAttribute('data-value'))||0;
+        voucherLabel=opt.textContent.split('—')[0].trim();
+    }
+    var voucherDiscount=Math.min(voucherRaw, total);
+    total=Math.round((total-voucherDiscount)*100)/100;
+
     var pd=document.getElementById("priceDisplay");
     pd.style.transform='scale(1.1)'; setTimeout(function(){pd.style.transform='scale(1)'},200);
-    pd.innerHTML = (pm==='Xendit'&&disc>0)
+    pd.innerHTML = (disc>0||voucherDiscount>0)
         ? '<span class="line-through opacity-70 text-lg md:text-2xl">₱'+sub.toFixed(2)+'</span> ₱'+total.toFixed(2)
         : '₱'+total.toFixed(2);
     document.getElementById("feeInput").value=total;
     document.getElementById("urgencyNote").innerHTML=
         '<div class="flex justify-between"><span>Travel ('+dist.toFixed(2)+'km)</span><span>+₱'+distFee.toFixed(2)+'</span></div>'+
-        '<div class="flex justify-between"><span>Urgency Fee ('+urgency+')</span><span>+₱'+urgencyFee+'</span></div>';
-    document.getElementById("cashText").innerHTML='₱'+sub.toFixed(2);
+        '<div class="flex justify-between"><span>Urgency Fee ('+urgency+')</span><span>+₱'+urgencyFee+'</span></div>'+
+        (voucherDiscount>0 ? '<div class="flex justify-between"><span>Voucher ('+voucherLabel+')</span><span>-₱'+voucherDiscount.toFixed(2)+'</span></div>' : '');
+    var cashFinal=Math.max(0, Math.round((sub-Math.min(voucherRaw,sub))*100)/100);
+    document.getElementById("cashText").innerHTML='₱'+cashFinal.toFixed(2);
     var disc2=Math.round(sub*0.9*100)/100;
+    var onlineFinal=Math.max(0, Math.round((disc2-Math.min(voucherRaw,disc2))*100)/100);
     document.getElementById("onlineText").innerHTML=
         '<p class="text-slate-400 line-through text-xs md:text-sm">₱'+sub.toFixed(2)+'</p>'+
-        '<p class="text-emerald-600 text-lg md:text-xl font-extrabold">₱'+disc2.toFixed(2)+'</p>';
+        '<p class="text-emerald-600 text-lg md:text-xl font-extrabold">₱'+onlineFinal.toFixed(2)+'</p>';
 }
 
 // ============================================

@@ -4,6 +4,7 @@
 include '../db.php';
 include '../includes/init_lang.php';
 include '../includes/sms_sender.php';
+require_once '../greenloop/greenloop_db.php';
 
 // 2. Security Check
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
@@ -100,8 +101,19 @@ if (isset($_POST['change_password'])) {
 $sql = "SELECT * FROM users WHERE id = '$user_id'";
 $user = $conn->query($sql)->fetch_assoc();
 
-$lat = $user['latitude'] ?: 12.8797; 
+$lat = $user['latitude'] ?: 12.8797;
 $lng = $user['longitude'] ?: 121.7740;
+
+// --- My Vouchers ---
+$voucher_stmt = $pdo->prepare("
+    SELECT rd.*, rw.reward_name, rw.description
+    FROM greenloop_redemptions rd
+    JOIN greenloop_rewards rw ON rd.reward_id = rw.id
+    WHERE rd.user_id = ?
+    ORDER BY rd.created_at DESC
+");
+$voucher_stmt->execute([$user_id]);
+$my_vouchers = $voucher_stmt->fetchAll();
 
 // Helper function to get initials
 function getInitials($name) {
@@ -416,7 +428,53 @@ $initials = getInitials($user['full_name']);
         </section>
         <input type="hidden" name="update_profile" value="1">
     </form>
-    
+
+    <!-- My Vouchers -->
+    <section class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 overflow-hidden animate-slideUp" style="animation-delay: 0.15s;">
+        <div class="p-4 md:p-5 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700">
+            <div class="p-2 bg-primary/10 rounded-lg">
+                <span class="material-symbols-outlined text-primary text-xl">redeem</span>
+            </div>
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">My Vouchers</h2>
+        </div>
+
+        <div class="p-4 md:p-6 space-y-3">
+            <?php if (empty($my_vouchers)): ?>
+            <div class="text-center py-6">
+                <span class="material-symbols-outlined text-slate-300 dark:text-slate-600 text-4xl">redeem</span>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">No vouchers yet — redeem Green Coins for rewards in GreenLoop.</p>
+                <a href="../greenloop/greenloop_wallet.php" class="inline-block mt-3 text-sm font-bold text-primary hover:underline">Go to GreenLoop Wallet</a>
+            </div>
+            <?php else: foreach ($my_vouchers as $v):
+                $v_status = gc_voucher_status($v);
+                $v_badge = [
+                    'active'    => 'bg-primary/10 text-primary',
+                    'used'      => 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400',
+                    'expired'   => 'bg-red-50 dark:bg-red-900/20 text-red-500',
+                    'cancelled' => 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400',
+                ][$v_status] ?? 'bg-slate-100 text-slate-500';
+            ?>
+            <div class="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span class="font-mono text-sm font-bold text-slate-800 dark:text-slate-100"><?php echo htmlspecialchars($v['promo_code'] ?? '—'); ?></span>
+                        <span class="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full <?php echo $v_badge; ?>"><?php echo ucfirst($v_status); ?></span>
+                    </div>
+                    <p class="text-sm text-slate-600 dark:text-slate-300 truncate"><?php echo htmlspecialchars($v['reward_name']); ?></p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500">
+                        <?php echo number_format($v['green_coins_spent'], 0); ?> coins spent ·
+                        <?php if ($v_status === 'used' && $v['used_at']): ?>
+                            Used <?php echo date('M d, Y', strtotime($v['used_at'])); ?><?php echo $v['used_booking_id'] ? " (Booking #{$v['used_booking_id']})" : ''; ?>
+                        <?php elseif ($v['expires_at']): ?>
+                            Expires <?php echo date('M d, Y', strtotime($v['expires_at'])); ?>
+                        <?php endif; ?>
+                    </p>
+                </div>
+            </div>
+            <?php endforeach; endif; ?>
+        </div>
+    </section>
+
     <!-- Security Section -->
     <section class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 overflow-hidden animate-slideUp" style="animation-delay: 0.2s;">
         <div class="cursor-pointer" onclick="toggleSecurity()">

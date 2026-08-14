@@ -80,3 +80,18 @@ function gc_spend(PDO $pdo, int $user_id, float $amount, int $redemption_id, str
         return false;
     }
 }
+
+/**
+ * Effective status of a greenloop_redemptions row: passes through
+ * used/cancelled as stored, but reports 'expired' for a row still marked
+ * 'active' in the DB whose expires_at has passed (expiry is computed on
+ * read, never written back).
+ */
+function gc_voucher_status(array $redemption): string {
+    if ($redemption['status'] === 'active'
+        && !empty($redemption['expires_at'])
+        && strtotime($redemption['expires_at']) < time()) {
+        return 'expired';
+    }
+    return $redemption['status'];
+}
