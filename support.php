@@ -137,12 +137,12 @@ $faqs = [
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     
     <style>
         :root {
-            --primary: #135bec;
+            --primary: #146af5;
             --background-light: #f8fafc;
         }
         @layer utilities {
@@ -150,13 +150,13 @@ $faqs = [
                 background: rgba(255, 255, 255, 0.7);
                 backdrop-filter: blur(12px);
                 -webkit-backdrop-filter: blur(12px);
-                border: 1px solid rgba(19, 91, 236, 0.1);
+                border: 1px solid rgba(20, 106, 245, 0.1);
             }
             .search-glow {
-                box-shadow: 0 0 40px -10px rgba(19, 91, 236, 0.2);
+                box-shadow: 0 0 40px -10px rgba(20, 106, 245, 0.2);
             }
             .faq-gradient-active {
-                background: linear-gradient(90deg, rgba(19, 91, 236, 0.03) 0%, rgba(255, 255, 255, 0) 100%);
+                background: linear-gradient(90deg, rgba(20, 106, 245, 0.03) 0%, rgba(255, 255, 255, 0) 100%);
             }
         }
         .material-symbols-outlined {
@@ -178,11 +178,11 @@ $faqs = [
             theme: {
                 extend: {
                     colors: {
-                        "primary": "#135bec",
+                        "primary": "#146af5",
                         "background-light": "#f8fafc",
                     },
                     fontFamily: {
-                        "display": ["Inter", "sans-serif"]
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
                     },
                     borderRadius: {
                         "DEFAULT": "1rem",

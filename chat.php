@@ -67,7 +67,7 @@ $quick_replies = ($role == 'client')
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Chat · Abilisto</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 
@@ -77,11 +77,11 @@ $quick_replies = ($role == 'client')
             theme: {
                 extend: {
                     colors: {
-                        "primary": "#137fec",
+                        "primary": "#146af5",
                         "background-light": "#f6f7f8",
                         "background-dark": "#101922",
                     },
-                    fontFamily: { "display": ["Manrope", "sans-serif"] },
+                    fontFamily: { "display": ["Plus Jakarta Sans", "sans-serif"] },
                     borderRadius: {
                         "DEFAULT": "1rem", "lg": "2rem",
                         "xl": "3rem", "full": "9999px"
@@ -98,7 +98,7 @@ $quick_replies = ($role == 'client')
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255,255,255,0.3);
         }
-        .chat-gradient { background: linear-gradient(135deg, #137fec 0%, #8b5cf6 100%); }
+        .chat-gradient { background: linear-gradient(135deg, #146af5 0%, #8b5cf6 100%); }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .chat-image, .chat-video { max-width: 100%; border-radius: 0.75rem; cursor: pointer; }

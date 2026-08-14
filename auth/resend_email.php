@@ -42,12 +42,12 @@ if ($user) {
     
     $html_body = "
     <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;'>
-        <h2 style='color: #3B82F6; text-align: center;'>Welcome to Abilisto!</h2>
+        <h2 style='color: #146af5; text-align: center;'>Welcome to Abilisto!</h2>
         <p>Hi " . htmlspecialchars($user['full_name']) . ",</p>
         <p>Thank you for signing up. To complete your registration and unlock all features, please verify your email address by clicking the button below:</p>
-        
+
         <div style='text-align: center; margin: 30px 0;'>
-            <a href='" . $verify_link . "' style='background-color: #3B82F6; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;'>Verify My Account</a>
+            <a href='" . $verify_link . "' style='background-color: #146af5; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;'>Verify My Account</a>
         </div>
         
         <p style='color: #666; font-size: 14px;'>If the button doesn't work, copy and paste this link into your browser:</p>
@@ -96,7 +96,7 @@ if ($user) {
             theme: {
                 extend: {
                     colors: {
-                        primary: "#2563eb",
+                        primary: "#146af5",
                         "background-light": "#f8faff",
                         "background-dark": "#0f172a",
                     },

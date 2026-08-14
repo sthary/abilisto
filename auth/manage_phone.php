@@ -97,7 +97,7 @@ if (isset($_POST['continue_btn'])) {
             theme: {
                 extend: {
                     colors: {
-                        primary: "#2563eb",
+                        primary: "#146af5",
                         "background-light": "#f8faff",
                         "background-dark": "#0f172a",
                     },
@@ -154,8 +154,8 @@ if (isset($_POST['continue_btn'])) {
             transition: border-color 0.2s, box-shadow 0.2s;
         }
         .phone-input:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+            border-color: #146af5;
+            box-shadow: 0 0 0 3px rgba(20,106,245,0.1);
         }
         .dark .phone-input {
             background: rgba(30,41,59,0.5);
@@ -171,7 +171,7 @@ if (isset($_POST['continue_btn'])) {
 
         /* Current phone pill */
         .phone-pill {
-            background: rgba(37, 99, 235, 0.1);
+            background: rgba(20, 106, 245, 0.1);
             border-radius: 9999px;
             padding: 0.5rem 1.25rem;
             display: inline-flex;
@@ -179,7 +179,7 @@ if (isset($_POST['continue_btn'])) {
             gap: 0.75rem;
         }
         .dark .phone-pill {
-            background: rgba(37, 99, 235, 0.2);
+            background: rgba(20, 106, 245, 0.2);
         }
     </style>
 </head>

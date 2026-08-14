@@ -62,7 +62,7 @@ if (isset($_GET['token'])) {
             --success-light: #d1fae5;
             --error: #ef4444;
             --error-light: #fee2e2;
-            --blue: #3b82f6;
+            --blue: #146af5;
             --text-primary: #0f172a;
             --text-secondary: #64748b;
             --border: #e2e8f0;
@@ -89,7 +89,7 @@ if (isset($_GET['token'])) {
             position: fixed;
             inset: 0;
             background:
-                radial-gradient(circle at 20% 20%, rgba(59,130,246,0.06) 0%, transparent 50%),
+                radial-gradient(circle at 20% 20%, rgba(20,106,245,0.06) 0%, transparent 50%),
                 radial-gradient(circle at 80% 80%, rgba(16,185,129,0.06) 0%, transparent 50%);
             pointer-events: none;
             z-index: 0;
@@ -210,13 +210,13 @@ if (isset($_GET['token'])) {
         .btn-success:active { transform: scale(0.98); }
 
         .btn-error {
-            background: linear-gradient(135deg, #60a5fa, #2563eb);
+            background: linear-gradient(135deg, #60a5fa, #0f52c2);
             color: white;
-            box-shadow: 0 8px 20px -4px rgba(59,130,246,0.35);
+            box-shadow: 0 8px 20px -4px rgba(20,106,245,0.35);
         }
         .btn-error:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 28px -4px rgba(59,130,246,0.45);
+            box-shadow: 0 12px 28px -4px rgba(20,106,245,0.45);
         }
         .btn-error:active { transform: scale(0.98); }
 

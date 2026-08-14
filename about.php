@@ -94,13 +94,13 @@ $technologies = [
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet"/>
+    <link href="assets/fontawesome/css/all.min.css" rel="stylesheet"/>
     
     <style>
         :root {
-            --primary: #135bec;
+            --primary: #146af5;
             --background-light: #f8fafc;
         }
         @layer utilities {
@@ -108,7 +108,7 @@ $technologies = [
                 background: rgba(255, 255, 255, 0.7);
                 backdrop-filter: blur(12px);
                 -webkit-backdrop-filter: blur(12px);
-                border: 1px solid rgba(19, 91, 236, 0.1);
+                border: 1px solid rgba(20, 106, 245, 0.1);
             }
             .profile-glass {
                 background: rgba(255, 255, 255, 0.4);
@@ -116,10 +116,10 @@ $technologies = [
                 border: 2px solid rgba(255, 255, 255, 0.8);
             }
             .ambient-shadow {
-                box-shadow: 0 20px 40px -15px rgba(19, 91, 236, 0.08);
+                box-shadow: 0 20px 40px -15px rgba(20, 106, 245, 0.08);
             }
             .tool-pill:hover {
-                box-shadow: 0 0 20px rgba(19, 91, 236, 0.15);
+                box-shadow: 0 0 20px rgba(20, 106, 245, 0.15);
                 transform: translateY(-2px);
             }
             .hide-scrollbar::-webkit-scrollbar {
@@ -144,11 +144,11 @@ $technologies = [
             theme: {
                 extend: {
                     colors: {
-                        "primary": "#135bec",
+                        "primary": "#146af5",
                         "background-light": "#f8fafc",
                     },
                     fontFamily: {
-                        "display": ["Inter", "sans-serif"]
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
                     },
                     borderRadius: {
                         "DEFAULT": "1rem",

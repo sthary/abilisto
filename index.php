@@ -131,9 +131,9 @@ $impactStats = getImpactStats($pdo, 'today');
     
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/fontawesome/css/all.min.css">
     
     <script id="tailwind-config">
         tailwind.config = {
@@ -145,7 +145,7 @@ $impactStats = getImpactStats($pdo, 'today');
                         "background-light": "#f5f7f8",
                         "background-dark": "#101722",
                     },
-                    fontFamily: { "display": ["Inter", "sans-serif"] },
+                    fontFamily: { "display": ["Plus Jakarta Sans", "sans-serif"] },
                     borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
                 },
             },

@@ -19,7 +19,7 @@ include '../includes/init_lang.php';
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
     
     <!-- Font Awesome (for backward compatibility) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
     
     <script>
         tailwind.config = {
@@ -27,7 +27,7 @@ include '../includes/init_lang.php';
             theme: {
                 extend: {
                     colors: {
-                        primary: "#3b82f6",
+                        primary: "#146af5",
                         "background-light": "#f8fafc",
                         "background-dark": "#0f172a",
                     },

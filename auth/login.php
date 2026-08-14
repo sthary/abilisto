@@ -169,14 +169,14 @@ if (isset($_POST['login_btn'])) {
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
     <script>
         tailwind.config = {
             darkMode: "class",
             theme: {
                 extend: {
                     colors: {
-                        primary: "#2563eb",
+                        primary: "#146af5",
                         "background-light": "#f8faff",
                         "background-dark": "#0f172a",
                     },
@@ -312,7 +312,7 @@ if (isset($_POST['login_btn'])) {
                 Google Account
             </a>
 
-            <p class="text-[10px] text-center text-slate-400 mt-4">
+            <p class="text-xs text-center text-slate-400 mt-4">
                 By continuing, you agree to Abilisto's
                 <a href="../privacy.html" class="underline">Privacy Policy</a> and
                 <a href="../terms.html" class="underline">Terms of Service</a>.

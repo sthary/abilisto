@@ -118,7 +118,7 @@ if (isset($_POST['verify_btn'])) {
             theme: {
                 extend: {
                     colors: {
-                        primary: "#2563eb",
+                        primary: "#146af5",
                         "background-light": "#f8faff",
                         "background-dark": "#0f172a",
                     },
@@ -175,8 +175,8 @@ if (isset($_POST['verify_btn'])) {
             transition: border-color 0.2s, box-shadow 0.2s;
         }
         .otp-input:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+            border-color: #146af5;
+            box-shadow: 0 0 0 3px rgba(20,106,245,0.1);
         }
         .dark .otp-input {
             background: rgba(30,41,59,0.5);

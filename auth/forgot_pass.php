@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fp_email'])) {
         $subject = "Your Abilisto Password Reset Code";
         $html_body = "
         <div style='font-family:\"Plus Jakarta Sans\",Arial,sans-serif; max-width:560px; margin:0 auto; background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden;'>
-            <div style='background:linear-gradient(135deg,#60a5fa,#2563eb); padding:32px; text-align:center;'>
+            <div style='background:linear-gradient(135deg,#60a5fa,#0f52c2); padding:32px; text-align:center;'>
                 <span style='font-size:22px; font-weight:800; color:#fff; letter-spacing:-0.03em;'>Abi<span style='opacity:0.85'>listo</span></span>
             </div>
             <div style='padding:36px 32px;'>
@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fp_email'])) {
                     Use the code below to reset your password. It expires in <strong>10 minutes</strong>.
                 </p>
                 <div style='background:#f8fafc; border:2px dashed #e2e8f0; border-radius:12px; padding:24px; text-align:center; margin-bottom:28px;'>
-                    <span style='font-size:40px; font-weight:800; letter-spacing:0.18em; color:#2563eb; font-family:monospace;'>" . $otp . "</span>
+                    <span style='font-size:40px; font-weight:800; letter-spacing:0.18em; color:#146af5; font-family:monospace;'>" . $otp . "</span>
                 </div>
                 <p style='color:#94a3b8; font-size:13px; line-height:1.6; margin:0;'>
                     If you didn't request this, you can safely ignore this email. Your password won't change.
@@ -230,8 +230,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             color: #f1f5f9;
         }
         .input-field:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+            border-color: #146af5;
+            box-shadow: 0 0 0 3px rgba(20,106,245,0.12);
         }
         .input-field.error-field { border-color: #ef4444; }
         .input-field.error-field:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.12); }
@@ -258,8 +258,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             color: #93c5fd;
         }
         .otp-input:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 4px rgba(59,130,246,0.12);
+            border-color: #146af5;
+            box-shadow: 0 0 0 4px rgba(20,106,245,0.12);
         }
         .otp-input.error-field { border-color: #ef4444; }
 
@@ -270,7 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         .btn-primary {
             width: 100%;
             padding: 0.875rem;
-            background: linear-gradient(135deg, #60a5fa, #2563eb);
+            background: linear-gradient(135deg, #60a5fa, #0f52c2);
             color: white;
             font-family: inherit;
             font-size: 0.95rem;
@@ -283,10 +283,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             justify-content: center;
             gap: 8px;
             transition: all 0.2s;
-            box-shadow: 0 8px 20px -4px rgba(59,130,246,0.35);
+            box-shadow: 0 8px 20px -4px rgba(20,106,245,0.35);
             letter-spacing: -0.01em;
         }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px -4px rgba(59,130,246,0.45); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px -4px rgba(20,106,245,0.45); }
         .btn-primary:active { transform: scale(0.98); }
 
         .material-symbols-rounded {
@@ -300,8 +300,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             background: #e2e8f0;
             transition: all 0.3s;
         }
-        .step-dot.active { width: 24px; background: #3b82f6; border-radius: 4px; }
-        .step-dot.done   { background: #3b82f6; opacity: 0.4; }
+        .step-dot.active { width: 24px; background: #146af5; border-radius: 4px; }
+        .step-dot.done   { background: #146af5; opacity: 0.4; }
 
         @keyframes slideUp {
             from { opacity: 0; transform: translateY(24px); }

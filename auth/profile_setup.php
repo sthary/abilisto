@@ -158,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
 // ── View vars ───────────────────────────────────────────────
 // [CHANGED] Worker now uses blue (#3b82f6) like client
-$role_color    = '#3b82f6'; // Blue for both worker and client
+$role_color    = '#146af5'; // Blue for both worker and client
 $role_gradient = $is_worker ? 'from-blue-400 to-blue-600' : 'from-blue-400 to-blue-600';
 $role_icon     = $is_worker ? 'construction' : 'person';
 $role_title    = ucfirst($role);
@@ -171,10 +171,10 @@ $total_steps   = $is_worker ? 5 : 1;
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" name="viewport"/>
     <title>Profile Setup | Abilisto</title>
 
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -188,7 +188,7 @@ $total_steps   = $is_worker ? 5 : 1;
                     "background-light": "#F8FAFC",
                     "card-border": "#E2E8F0",
                 },
-                fontFamily: { display: ["Manrope", "sans-serif"] },
+                fontFamily: { display: ["Plus Jakarta Sans", "sans-serif"] },
                 borderRadius: { DEFAULT:"0.25rem", lg:"0.5rem", xl:"0.75rem", full:"9999px" },
                 boxShadow: { ambient: "0 20px 50px rgba(0,0,0,0.05)" }
             }
@@ -197,10 +197,10 @@ $total_steps   = $is_worker ? 5 : 1;
     </script>
 
     <style type="text/tailwindcss">
-        body { font-family: "Manrope", sans-serif; }
+        body { font-family: "Plus Jakarta Sans", sans-serif; }
         .radial-bg {
-            background: radial-gradient(circle at top right, rgba(19,127,236,0.08), transparent),
-                        radial-gradient(circle at bottom left, rgba(19,127,236,0.03), #F8FAFC);
+            background: radial-gradient(circle at top right, rgba(20,106,245,0.08), transparent),
+                        radial-gradient(circle at bottom left, rgba(20,106,245,0.03), #F8FAFC);
         }
         .glass-card {
             background: rgba(255,255,255,0.82);
@@ -226,7 +226,7 @@ $total_steps   = $is_worker ? 5 : 1;
         .skill-bubble:hover:not(.maxed-out) .bubble-icon { transform: scale(1.1); }
         .skill-bubble.on {
             border-color: <?php echo $role_color; ?>;
-            background: rgba(59,130,246,0.08);
+            background: rgba(20,106,245,0.08);
             color: <?php echo $role_color; ?>;
             box-shadow: 0 0 0 3px <?php echo $role_color; ?>20, 0 8px 20px <?php echo $role_color; ?>18;
         }
@@ -281,13 +281,13 @@ $total_steps   = $is_worker ? 5 : 1;
         .bio-card:hover { transform: translateY(-2px); border-color: <?php echo $role_color; ?>50; }
         .bio-card.on {
             border-color: <?php echo $role_color; ?>;
-            background: rgba(59,130,246,0.06);
+            background: rgba(20,106,245,0.06);
             color: #1e40af;
         }
         .btn-primary {
             @apply w-full font-bold rounded-2xl flex items-center justify-center gap-3 text-base transition-all text-white;
             padding: 18px;
-            background: linear-gradient(to right, #137fec, #2563eb);
+            background: linear-gradient(to right, #146af5, #0f52c2);
             box-shadow: 0 10px 25px -5px <?php echo $role_color; ?>40;
         }
         .btn-primary:hover { transform: translateY(-1px) scale(1.005); box-shadow: 0 15px 30px -5px <?php echo $role_color; ?>50; }

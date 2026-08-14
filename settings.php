@@ -104,7 +104,7 @@ $saved_workers_link = ($user_role === 'client') ? 'client/saved_workers.php' : '
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
     
     <script>
@@ -113,12 +113,12 @@ $saved_workers_link = ($user_role === 'client') ? 'client/saved_workers.php' : '
             theme: {
                 extend: {
                     colors: {
-                        "primary": "#135bec",
+                        "primary": "#146af5",
                         "background-light": "#f8fafc",
                         "background-dark": "#101622",
                     },
                     fontFamily: {
-                        "display": ["Inter", "Plus Jakarta Sans"]
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
                     },
                     borderRadius: {
                         "DEFAULT": "1rem",
@@ -142,9 +142,9 @@ $saved_workers_link = ($user_role === 'client') ? 'client/saved_workers.php' : '
             background: rgba(30, 41, 59, 0.7);
         }
         .glass-card:hover {
-            box-shadow: 0 20px 40px -15px rgba(19, 91, 236, 0.15);
+            box-shadow: 0 20px 40px -15px rgba(20, 106, 245, 0.15);
             transform: translateY(-4px);
-            border-color: rgba(19, 91, 236, 0.4);
+            border-color: rgba(20, 106, 245, 0.4);
         }
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;

@@ -6,7 +6,7 @@ include 'google_config.php';
 $role       = isset($_GET['role']) ? $_GET['role'] : 'client';
 $role_title = ucfirst($role);
 $is_worker  = ($role == 'worker');
-$role_color    = $is_worker ? '#10b981' : '#3b82f6';
+$role_color    = $is_worker ? '#10b981' : '#146af5';
 $role_gradient = $is_worker ? 'from-emerald-400 to-emerald-600' : 'from-blue-400 to-blue-600';
 $role_icon     = $is_worker ? 'construction' : 'person';
 
@@ -33,7 +33,7 @@ if (isset($_SESSION['signup_error'])) {
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
     <script>
         tailwind.config = {
             darkMode: "class",
@@ -63,13 +63,13 @@ if (isset($_SESSION['signup_error'])) {
             border: 1px solid rgba(255, 255, 255, 0.3);
         }
         .input-glow:focus {
-            box-shadow: 0 0 15px <?php echo $is_worker ? 'rgba(16, 185, 129, 0.2)' : 'rgba(59, 130, 246, 0.2)'; ?>;
+            box-shadow: 0 0 15px <?php echo $is_worker ? 'rgba(16, 185, 129, 0.2)' : 'rgba(20, 106, 245, 0.2)'; ?>;
         }
         .btn-glow {
-            box-shadow: 0 10px 25px -5px <?php echo $is_worker ? 'rgba(16, 185, 129, 0.4)' : 'rgba(59, 130, 246, 0.4)'; ?>;
+            box-shadow: 0 10px 25px -5px <?php echo $is_worker ? 'rgba(16, 185, 129, 0.4)' : 'rgba(20, 106, 245, 0.4)'; ?>;
         }
         .btn-glow:hover {
-            box-shadow: 0 15px 30px -5px <?php echo $is_worker ? 'rgba(16, 185, 129, 0.5)' : 'rgba(59, 130, 246, 0.5)'; ?>;
+            box-shadow: 0 15px 30px -5px <?php echo $is_worker ? 'rgba(16, 185, 129, 0.5)' : 'rgba(20, 106, 245, 0.5)'; ?>;
         }
         @keyframes slideUp {
             from { opacity: 0; transform: translateY(30px); }
