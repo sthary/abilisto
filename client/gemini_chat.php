@@ -58,8 +58,8 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
 
 // --- THE FIX FOR LOCALHOST (XAMPP) ---
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, getenv('APP_DEBUG') !== '1'); // verify in production, skip only on local XAMPP (no CA bundle)
+curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, getenv('APP_DEBUG') !== '1' ? 2 : 0);
 
 $response = curl_exec($ch);
 

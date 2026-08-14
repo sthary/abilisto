@@ -47,7 +47,7 @@ class FCMv1 {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($message));
             
             // 🔥 CRITICAL FIX: Kept your XAMPP override intact here!
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, getenv('APP_DEBUG') !== '1'); // verify in production, skip only on local XAMPP (no CA bundle)
             curl_setopt($ch, CURLOPT_TIMEOUT, 30);
             
             $response = curl_exec($ch);

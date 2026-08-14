@@ -7,11 +7,6 @@ include '../includes/init_lang.php';
 include '../includes/functions/booking_functions.php';
 include '../config/constants.php';
 
-// Enable error reporting for debugging
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 // Check if user is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
     header("Location: ../auth/login.php");
@@ -105,7 +100,7 @@ if (isset($_GET['booking_id'])) {
         'Content-Type: application/json',
         'Authorization: Basic ' . base64_encode($secret_key . ':')
     ]);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, getenv('APP_DEBUG') !== '1'); // verify in production, skip only on local XAMPP (no CA bundle)
     
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);

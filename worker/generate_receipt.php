@@ -62,7 +62,7 @@ $remaining_balance = $mobilization_paid ? $labor_materials : $total_cost;
 // edge case of reaching this page without going through complete_job.php first.
 $admin_fee = floatval($booking['admin_fee_amount']);
 if ($admin_fee <= 0 && $total_cost > 0) {
-    $admin_fee = round($total_cost * 0.04, 2);
+    $admin_fee = round($total_cost * (ADMIN_COMMISSION_PERCENT / 100), 2);
 }
 $worker_gets = $total_cost - $admin_fee;
 
@@ -121,7 +121,7 @@ if ($remaining_balance > 0 && $booking['final_payment_status'] != 'paid') {
             'Content-Type: application/json',
             'Authorization: Basic ' . base64_encode($secret_key . ':')
         ]);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, getenv('APP_DEBUG') !== '1'); // verify in production, skip only on local XAMPP (no CA bundle)
         
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);

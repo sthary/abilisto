@@ -72,7 +72,7 @@ if (!$booking_id) {
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Authorization: Basic ' . base64_encode($secret_key . ':')
             ]);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, getenv('APP_DEBUG') !== '1'); // verify in production, skip only on local XAMPP (no CA bundle)
             $xres      = curl_exec($ch);
             $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);

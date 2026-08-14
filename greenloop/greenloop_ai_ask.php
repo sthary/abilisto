@@ -365,8 +365,8 @@ class AILayer {
                 ],
                 CURLOPT_TIMEOUT        => Config::TIMEOUT_RESPONSE,
                 CURLOPT_CONNECTTIMEOUT => Config::TIMEOUT_CONNECT,
-                CURLOPT_SSL_VERIFYPEER => false,
-                CURLOPT_SSL_VERIFYHOST => 0,   // ← MUST be int 0, not false
+                CURLOPT_SSL_VERIFYPEER => getenv('APP_DEBUG') !== '1', // verify in production, skip only on local XAMPP (no CA bundle)
+                CURLOPT_SSL_VERIFYHOST => getenv('APP_DEBUG') !== '1' ? 2 : 0,
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_MAXREDIRS      => 3,
             ]);

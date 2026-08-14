@@ -21,7 +21,7 @@ if (isset($_GET['code'])) {
     curl_setopt($ch, CURLOPT_POST, 1);
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, getenv('APP_DEBUG') !== '1'); // verify in production, skip only on local XAMPP (no CA bundle)
     $response   = curl_exec($ch);
     $token_data = json_decode($response, true);
     curl_close($ch);
@@ -36,7 +36,7 @@ if (isset($_GET['code'])) {
     $ch        = curl_init();
     curl_setopt($ch, CURLOPT_URL, $user_info_url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, getenv('APP_DEBUG') !== '1'); // verify in production, skip only on local XAMPP (no CA bundle)
     $user_info = json_decode(curl_exec($ch), true);
     curl_close($ch);
 
