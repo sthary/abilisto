@@ -6,7 +6,7 @@ require_once __DIR__ . '/greenloop_db.php';
 session_start();
 
 $client_id = (int)($_SESSION['user_id'] ?? 0);
-if (!$client_id) { header('Location: ../login.php'); exit; }
+if (!$client_id) { header('Location: ../auth/login.php'); exit; }
 $client_name = htmlspecialchars($_SESSION['full_name'] ?? 'there');
 
 // Handle reward redemption (POST)

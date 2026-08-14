@@ -3,7 +3,7 @@
 $userAgent = $_SERVER['HTTP_USER_AGENT'];
 
 if (strpos($userAgent, 'median') !== false || strpos($userAgent, 'Median') !== false) {
-    header("Location: login.php");
+    header("Location: auth/login.php");
     exit();
 }
 

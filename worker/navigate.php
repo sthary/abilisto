@@ -7,7 +7,7 @@ date_default_timezone_set('Asia/Manila');
 
 // Check if worker is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
-    header("Location: ../login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
