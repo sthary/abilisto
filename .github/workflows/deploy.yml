@@ -1,0 +1,27 @@
+name: Deploy to Hostinger
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up deploy SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.HOSTINGER_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "${{ secrets.HOSTINGER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Push to Hostinger (triggers post-receive deploy hook)
+        env:
+          GIT_SSH_COMMAND: ssh -i ~/.ssh/id_deploy -o UserKnownHostsFile=~/.ssh/known_hosts -o IdentitiesOnly=yes
+        run: |
+          git remote add production ssh://u942667021@145.223.108.65:65002/home/u942667021/repo-abilisto.git
+          git push production HEAD:master

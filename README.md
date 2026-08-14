@@ -30,9 +30,16 @@ contain real user PII and live data. See `.gitignore`.
 
 1. Copy `.env.example` to `.env` and fill in real values (ask whoever has access to the current
    secrets — Xendit, Gemini, Firebase, Google OAuth, OpenRouter, Resend, OneSignal, iProgSMS).
-2. Local dev currently points at the **live Hostinger MySQL database** (`DB_HOST`/`DB_NAME`/
-   `DB_USER`/`DB_PASS` in `.env`) — there is no local/seed database yet. Be careful: writes from
-   local testing hit production data.
+2. Local dev uses a **local MySQL database via XAMPP**, seeded from `u942667021_abilisto_db.sql`
+   (never the live DB). To (re)create it:
+   ```bash
+   mysql -u root -e "CREATE DATABASE u942667021_abilisto_db CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+   mysql -u root u942667021_abilisto_db -e "SET FOREIGN_KEY_CHECKS=0; SOURCE u942667021_abilisto_db.sql; SET FOREIGN_KEY_CHECKS=1;"
+   ```
+   (`SET FOREIGN_KEY_CHECKS=0` is needed — the dump has a stale orphaned reference in
+   `payroll_items.employee_id`, a pre-existing data issue, not an import bug.)
+   `.env`'s `DB_HOST=localhost`, `DB_USER=root`, `DB_PASS=` (XAMPP defaults) point here. Production
+   `.env` (on the server) has its own separate real credentials — the two never mix.
 3. Place the Firebase service-account JSON at the path set in `FIREBASE_SERVICE_ACCOUNT_PATH`
    (defaults to `storage/secrets/<file>.json`).
 4. Serve the PHP app through XAMPP/Apache as usual (`C:\xampp\htdocs\public_html`).
