@@ -9,6 +9,12 @@ if (!defined('ADMIN_FEE_PER_BOOKING')) {
     define('FREE_CREDIT_AMOUNT', 100); // ₱100 free for new workers
     define('FREE_BOOKINGS_LIMIT', 3); // First 3 bookings covered by free credits
 
+    // Platform commission on job completion (labor fee only, not materials)
+    // Single source of truth — was previously duplicated as separate hardcoded
+    // 4.00/0.04 literals in worker/complete_job.php (PHP and embedded JS) and
+    // includes/functions/wallet_functions.php.
+    define('ADMIN_COMMISSION_PERCENT', 4.00); // 4%
+
     // Urgency Fees (as array - can't use define for array in older PHP, so use variable)
     $URGENCY_FEES = [
         'Normal' => 0,

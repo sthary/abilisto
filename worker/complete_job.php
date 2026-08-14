@@ -41,8 +41,8 @@ $rate_stmt->execute();
 $rate_row = $rate_stmt->get_result()->fetch_assoc();
 $minimum_standard_rate = floatval($rate_row['minimum_standard_rate'] ?? 0);
 
-// Platform commission rate
-$COMMISSION_RATE = 4.00; // 4%
+// Platform commission rate — see config/constants.php (ADMIN_COMMISSION_PERCENT)
+$COMMISSION_RATE = ADMIN_COMMISSION_PERCENT;
 
 // Handle form submission
 if (isset($_POST['submit_completion'])) {
@@ -421,7 +421,7 @@ $mobilization_paid = ($booking['payment_method'] == 'Xendit' && $booking['paymen
     const isMobilizationPaid = document.getElementById('isMobilizationPaid').value === 'true';
     const minRate           = parseFloat(document.getElementById('minStandardRate').value) || 0;
 
-    const COMMISSION = 0.04; // 4%
+    const COMMISSION = <?= ADMIN_COMMISSION_PERCENT / 100 ?>; // kept in sync with config/constants.php (ADMIN_COMMISSION_PERCENT)
 
     function recalc() {
         const labor     = parseFloat(laborInput.value) || 0;

@@ -502,8 +502,8 @@ class WalletManager {
                 return ['success' => true, 'message' => 'Commission already processed', 'commission' => 0];
             }
 
-            // Calculate 4% commission
-            $commission = round($total_final_cost * 0.04, 2);
+            // Calculate commission — see config/constants.php (ADMIN_COMMISSION_PERCENT)
+            $commission = round($total_final_cost * (ADMIN_COMMISSION_PERCENT / 100), 2);
 
             // Fetch worker wallet
             $worker = $this->getWorkerWallet($worker_id);
