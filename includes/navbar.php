@@ -40,8 +40,8 @@ $current_lang = $_SESSION['lang'] ?? 'en';
 ?>
 
 <!-- Fonts & Icons -->
-<link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
 <!-- Material Symbols (optional, for logo) -->
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 
@@ -135,7 +135,7 @@ $current_lang = $_SESSION['lang'] ?? 'en';
 
     /* Special styling for Quick Match */
     .user-menu-item.quick-match {
-        background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+        background: linear-gradient(135deg, #8b5cf6, #146af5);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -145,13 +145,13 @@ $current_lang = $_SESSION['lang'] ?? 'en';
         opacity: 0.8;
     }
     .user-menu-item.quick-match.active {
-        background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+        background: linear-gradient(135deg, #8b5cf6, #146af5);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
     }
     .user-menu-item.quick-match.active::after {
-        background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+        background: linear-gradient(135deg, #8b5cf6, #146af5);
     }
 
     /* Right side actions (desktop) */
@@ -344,14 +344,14 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     
     /* Quick Match special styling in mobile */
     .nav-item-mobile.quick-match-item {
-        background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+        background: linear-gradient(135deg, #8b5cf6, #146af5);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
         font-weight: 600;
     }
     .nav-item-mobile.quick-match-item i {
-        background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+        background: linear-gradient(135deg, #8b5cf6, #146af5);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -366,7 +366,7 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     .dark .nav-item-mobile.active { color: #146af5; }
     .dark .nav-item-mobile.quick-match-item,
     .dark .nav-item-mobile.quick-match-item i {
-        background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+        background: linear-gradient(135deg, #8b5cf6, #146af5);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;

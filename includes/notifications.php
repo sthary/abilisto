@@ -43,7 +43,7 @@ $unread_count = $unread_count_res->fetch_assoc()['count'] ?? 0;
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
     
     <script>
@@ -52,7 +52,7 @@ $unread_count = $unread_count_res->fetch_assoc()['count'] ?? 0;
             theme: {
                 extend: {
                     colors: {
-                        primary: "#3B82F6",
+                        primary: "#146af5",
                         "background-light": "#F8FAFC",
                         "background-dark": "#0F172A",
                         "card-light": "#FFFFFF",
@@ -97,7 +97,7 @@ $unread_count = $unread_count_res->fetch_assoc()['count'] ?? 0;
             top: 0;
             bottom: 0;
             width: 4px;
-            background: linear-gradient(to bottom, #3B82F6, #60A5FA);
+            background: linear-gradient(to bottom, #146af5, #60A5FA);
             border-radius: 0 4px 4px 0;
         }
         .material-symbols-outlined {

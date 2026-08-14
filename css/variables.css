@@ -1,18 +1,18 @@
 :root {
-    /* --- PALETTE: Professional Blue & Clean Grey --- */
-    --primary: #0f4c81;       /* Classic Blue - Trustworthy */
-    --primary-hover: #0a355c; /* Darker for interactions */
+    /* --- PALETTE: Abilisto Blue & Clean Grey --- */
+    --primary: #146af5;       /* Abilisto Blue - matches index.php, the site's brand reference */
+    --primary-hover: #0f52c2; /* Darker for interactions */
     --accent: #eebb4d;        /* Gold/Mustard - For warnings or highlights */
-    
+
     /* --- NEUTRALS --- */
     --bg-body: #f4f6f8;       /* Very light grey-blue (Easier on eyes than pure white) */
     --bg-card: #ffffff;       /* Pure white for containers */
     --text-main: #2d3748;     /* Dark Grey (Never use pure black #000) */
     --text-muted: #718096;    /* For timestamps, labels */
-    --border-color: #e2e8f0;  
-    
+    --border-color: #e2e8f0;
+
     /* --- SHAPES & SPACING --- */
     --radius: 8px;            /* Modern standard */
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }

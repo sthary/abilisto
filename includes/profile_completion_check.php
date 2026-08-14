@@ -91,7 +91,7 @@ if (count($required_missing) === 0) {
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <!-- Material Symbols and Fonts -->
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 
 <!-- Tailwind (if needed) -->
@@ -236,7 +236,7 @@ if (count($required_missing) === 0) {
         border: 1px solid rgba(255, 255, 255, 0.1);
     }
     .progress-gradient {
-        background: linear-gradient(90deg, #3B82F6 0%, #2563EB 100%);
+        background: linear-gradient(90deg, #146af5 0%, #0f52c2 100%);
     }
     .step-gradient {
         background: linear-gradient(135deg, rgba(219, 234, 254, 0.5) 0%, rgba(191, 219, 254, 0.3) 100%);

@@ -14,7 +14,7 @@
     body {
       background: #e5f0ff;
       min-height: 100vh;
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     }
 
     /* ========== ORBIT WIDGET CONTAINER ========== */
@@ -300,7 +300,7 @@
       padding: 8px 16px !important;
       border-radius: 40px !important;
       font-size: 0.8rem !important;
-      font-family: 'Inter', system-ui, sans-serif !important;
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
       z-index: 1000001 !important;
       box-shadow: 0 8px 20px rgba(0,0,0,0.2) !important;
       backdrop-filter: blur(4px) !important;
