@@ -55,8 +55,15 @@ $total_cost = floatval($booking['total_final_cost']);
 // Calculate remaining balance
 $remaining_balance = $mobilization_paid ? $labor_materials : $total_cost;
 
-// Calculate admin fee (4%)
-$admin_fee = round($total_cost * 0.04, 2);
+// Admin fee (4%) — read the value complete_job.php already computed and stored,
+// instead of recomputing it here independently (the two calculations used to use
+// different bases: labor-only vs. total, causing the actual amount charged to
+// diverge from what complete_job.php showed/stored). Fallback only covers the
+// edge case of reaching this page without going through complete_job.php first.
+$admin_fee = floatval($booking['admin_fee_amount']);
+if ($admin_fee <= 0 && $total_cost > 0) {
+    $admin_fee = round($total_cost * 0.04, 2);
+}
 $worker_gets = $total_cost - $admin_fee;
 
 error_log("Mobilization paid: " . ($mobilization_paid ? 'YES' : 'NO'));
@@ -158,10 +165,13 @@ if ($remaining_balance > 0 && $booking['final_payment_status'] != 'paid') {
     }
 }
 
-// If remaining balance is 0, mark as completed automatically
-if ($remaining_balance == 0) {
+// If remaining balance is 0, mark as completed automatically.
+// Guarded by booking status so reloading this page never re-credits wallets twice.
+if ($remaining_balance == 0 && $booking['status'] === 'Completed') {
+    $zero_balance = true;
+} elseif ($remaining_balance == 0) {
     error_log("Remaining balance is 0, auto-completing booking");
-    
+
     $conn->begin_transaction();
     
     try {
@@ -180,7 +190,7 @@ if ($remaining_balance == 0) {
                           jobs_completed = jobs_completed + 1
                       WHERE user_id = $worker_id");
         
-        // Add to admin wallet (2% fee)
+        // Add to admin wallet (4% fee)
         $conn->query("UPDATE admin_wallet 
                       SET balance = balance + $admin_fee,
                           total_earned = total_earned + $admin_fee
