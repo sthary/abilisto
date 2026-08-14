@@ -59,11 +59,11 @@ $topups = $conn->query($topups_sql);
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
     
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     
     <!-- Font Awesome (for backward compatibility) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
     
     <script>
         tailwind.config = {
@@ -76,11 +76,11 @@ $topups = $conn->query($topups_sql);
                         "background-dark": "#0F172A",
                         brand: {
                             purple: "#6366F1",
-                            blue: "#3B82F6",
+                            blue: "#146af5",
                         }
                     },
                     fontFamily: {
-                        display: ["Inter", "sans-serif"],
+                        display: ["Plus Jakarta Sans", "sans-serif"],
                     },
                     borderRadius: {
                         DEFAULT: "12px",
@@ -94,7 +94,7 @@ $topups = $conn->query($topups_sql);
     
     <style type="text/tailwindcss">
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             -webkit-font-smoothing: antialiased;
         }
         .glass {
@@ -107,7 +107,7 @@ $topups = $conn->query($topups_sql);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         .gradient-header {
-            background: linear-gradient(135deg, #6366F1 0%, #3B82F6 100%);
+            background: linear-gradient(135deg, #6366F1 0%, #146af5 100%);
         }
         .gradient-green {
             background: linear-gradient(135deg, #10B981 0%, #059669 100%);

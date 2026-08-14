@@ -57,8 +57,8 @@ if (empty($destination_lat) || empty($destination_lng)) {
     <title>Navigate to Client | Abilisto</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
@@ -67,14 +67,14 @@ if (empty($destination_lat) || empty($destination_lng)) {
         :root {
             --glass-bg: rgba(28, 28, 30, 0.85);
             --glass-border: rgba(255, 255, 255, 0.1);
-            --accent: #3b82f6;
+            --accent: #146af5;
             --success: #22c55e;
             --danger: #ef4444;
             --text: #ffffff;
             --text-muted: #9ca3af;
         }
 
-        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; overflow: hidden; background: #000; }
+        body { margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; overflow: hidden; background: #000; }
         
         #map { 
             position: absolute; 
@@ -101,7 +101,7 @@ if (empty($destination_lat) || empty($destination_lng)) {
         }
 
         .location-badge i {
-            color: #3b82f6;
+            color: #146af5;
             margin-right: 5px;
         }
 
@@ -199,7 +199,7 @@ if (empty($destination_lat) || empty($destination_lng)) {
             display: flex;
             align-items: center;
             gap: 8px;
-            background: rgba(59, 130, 246, 0.2);
+            background: rgba(20, 106, 245, 0.2);
             color: var(--accent);
             padding: 6px 12px;
             border-radius: 20px;
@@ -214,14 +214,14 @@ if (empty($destination_lat) || empty($destination_lng)) {
             height: 8px;
             background-color: var(--accent);
             border-radius: 50%;
-            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+            box-shadow: 0 0 0 0 rgba(20, 106, 245, 0.7);
             animation: pulse 1.5s infinite;
         }
 
         @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+            0% { box-shadow: 0 0 0 0 rgba(20, 106, 245, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(20, 106, 245, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(20, 106, 245, 0); }
         }
 
         /* Client Info */
@@ -332,7 +332,7 @@ if (empty($destination_lat) || empty($destination_lng)) {
             background: var(--accent);
             color: white;
         }
-        .btn-navigate:hover { background: #2563eb; }
+        .btn-navigate:hover { background: #0f52c2; }
 
         /* Hide Routing Instructions */
         .leaflet-routing-container { display: none !important; }
@@ -491,7 +491,7 @@ if (empty($destination_lat) || empty($destination_lng)) {
                             L.latLng(destinationLat, destinationLng)
                         ],
                         lineOptions: {
-                            styles: [{color: '#3b82f6', opacity: 0.8, weight: 6}]
+                            styles: [{color: '#146af5', opacity: 0.8, weight: 6}]
                         },
                         createMarker: function() { return null; }, // Don't create markers (we already have them)
                         show: false, // Hide instructions

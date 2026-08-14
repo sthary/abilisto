@@ -115,7 +115,7 @@ $mobilization_paid = ($booking['payment_method'] == 'Xendit' && $booking['paymen
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
     
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
     
     <script>
         tailwind.config = {
@@ -123,13 +123,13 @@ $mobilization_paid = ($booking['payment_method'] == 'Xendit' && $booking['paymen
             theme: {
                 extend: {
                     colors: {
-                        primary: "#2563EB",
+                        primary: "#146af5",
                         "background-light": "#F8FAFC",
                         "background-dark": "#0F172A",
                     },
                     fontFamily: {
                         display: ["Plus Jakarta Sans", "sans-serif"],
-                        sans: ["Inter", "sans-serif"],
+                        sans: ["Plus Jakarta Sans", "sans-serif"],
                     },
                     borderRadius: {
                         DEFAULT: "12px",

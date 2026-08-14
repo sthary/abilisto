@@ -177,7 +177,7 @@ $stats = $stats_stmt->get_result()->fetch_assoc();
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
     
     <script>
@@ -186,10 +186,10 @@ $stats = $stats_stmt->get_result()->fetch_assoc();
             theme: {
                 extend: {
                     colors: {
-                        primary: "#1d4ed8",
+                        primary: "#146af5",
                     },
                     fontFamily: {
-                        sans: ["Inter", "sans-serif"],
+                        sans: ["Plus Jakarta Sans", "sans-serif"],
                     }
                 }
             }

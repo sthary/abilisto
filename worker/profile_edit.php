@@ -191,12 +191,12 @@ function shouldShowVerifyNow($badge) {
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
     <script>
         tailwind.config = {
             darkMode: "class",
             theme: { extend: {
-                colors: { primary: "#0ea5e9", "background-light": "#F8FAFC", "background-dark": "#0F172A",
+                colors: { primary: "#146af5", "background-light": "#F8FAFC", "background-dark": "#0F172A",
                           accent: { blue: "#3B82F6", green: "#10B981", red: "#EF4444" } },
                 fontFamily: { display: ["Manrope","sans-serif"], sans: ["Manrope","sans-serif"] },
                 borderRadius: { DEFAULT: "12px", '2xl': '24px' },
@@ -206,7 +206,7 @@ function shouldShowVerifyNow($badge) {
     <style type="text/tailwindcss">
         .glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.3) }
         .dark .glass { background: rgba(30,41,59,0.7); border: 1px solid rgba(255,255,255,0.1) }
-        .vibrant-gradient { background: linear-gradient(135deg,#0ea5e9 0%,#0284c7 100%); }
+        .vibrant-gradient { background: linear-gradient(135deg,#146af5 0%,#0f52c2 100%); }
         #map { height: 300px; width: 100%; z-index: 1; border-radius: 16px; }
         @media (min-width: 768px) { #map { height: 400px; } }
 
@@ -219,9 +219,9 @@ function shouldShowVerifyNow($badge) {
             border: none; background: transparent;
         }
         .dark .tab-btn { color: #94a3b8; }
-        .tab-btn:hover { background: #f1f5f9; color: #0ea5e9; }
-        .dark .tab-btn:hover { background: rgba(14,165,233,0.08); color: #0ea5e9; }
-        .tab-btn.active { background: #0ea5e9; color: white; box-shadow: 0 4px 12px rgba(14,165,233,0.3); }
+        .tab-btn:hover { background: #f1f5f9; color: #146af5; }
+        .dark .tab-btn:hover { background: rgba(20,106,245,0.08); color: #146af5; }
+        .tab-btn.active { background: #146af5; color: white; box-shadow: 0 4px 12px rgba(20,106,245,0.3); }
         /* Tab container: no overflow scroll, full width flex */
         .tab-container { display: flex; gap: 4px; width: 100%; }
 
@@ -235,21 +235,21 @@ function shouldShowVerifyNow($badge) {
         }
         .dark .skill-bubble { background: rgba(30,41,59,0.5); border-color: #334155; color: #94a3b8; }
         .skill-bubble .bubble-icon { font-size: 20px; line-height: 1; transition: transform 0.18s ease; }
-        .skill-bubble:hover { border-color: #0ea5e980; transform: translateY(-1px); }
+        .skill-bubble:hover { border-color: #146af580; transform: translateY(-1px); }
         .skill-bubble:hover .bubble-icon { transform: scale(1.1); }
-        .skill-bubble.on { border-color: #0ea5e9; background: rgba(14,165,233,0.08); color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14,165,233,0.15); }
-        .dark .skill-bubble.on { background: rgba(14,165,233,0.15); }
+        .skill-bubble.on { border-color: #146af5; background: rgba(20,106,245,0.08); color: #146af5; box-shadow: 0 0 0 3px rgba(20,106,245,0.15); }
+        .dark .skill-bubble.on { background: rgba(20,106,245,0.15); }
         input[type=range].rate-slider {
             -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px; outline: none; cursor: pointer;
-            background: linear-gradient(to right, #0ea5e9 0%, #0ea5e9 var(--pct, 4%), #e2e8f0 var(--pct, 4%), #e2e8f0 100%);
+            background: linear-gradient(to right, #146af5 0%, #146af5 var(--pct, 4%), #e2e8f0 var(--pct, 4%), #e2e8f0 100%);
         }
         .dark input[type=range].rate-slider {
-            background: linear-gradient(to right, #0ea5e9 0%, #0ea5e9 var(--pct, 4%), #334155 var(--pct, 4%), #334155 100%);
+            background: linear-gradient(to right, #146af5 0%, #146af5 var(--pct, 4%), #334155 var(--pct, 4%), #334155 100%);
         }
         input[type=range].rate-slider::-webkit-slider-thumb {
             -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
-            background: white; border: 3px solid #0ea5e9; cursor: pointer;
-            box-shadow: 0 2px 8px rgba(14,165,233,0.4); transition: transform 0.15s;
+            background: white; border: 3px solid #146af5; cursor: pointer;
+            box-shadow: 0 2px 8px rgba(20,106,245,0.4); transition: transform 0.15s;
         }
         input[type=range].rate-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
         @keyframes slideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
@@ -284,10 +284,10 @@ function shouldShowVerifyNow($badge) {
         .edit-skills-toggle { 
             display: flex; align-items: center; gap: 6px;
             padding: 8px 14px; border-radius: 10px; font-size: 11px; font-weight: 700;
-            color: #0ea5e9; border: 1.5px solid #0ea5e930; background: rgba(14,165,233,0.05);
+            color: #146af5; border: 1.5px solid #146af530; background: rgba(20,106,245,0.05);
             cursor: pointer; transition: all 0.18s; user-select: none; width: fit-content;
         }
-        .edit-skills-toggle:hover { background: rgba(14,165,233,0.12); border-color: #0ea5e960; }
+        .edit-skills-toggle:hover { background: rgba(20,106,245,0.12); border-color: #146af560; }
         .collapsible-skills { overflow: hidden; transition: max-height 0.35s cubic-bezier(.22,1,.36,1), opacity 0.25s; max-height: 0; opacity: 0; }
         .collapsible-skills.open { max-height: 1200px; opacity: 1; }
 
@@ -295,7 +295,7 @@ function shouldShowVerifyNow($badge) {
         .nc-level-tag {
             font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 99px;
             letter-spacing: 0.06em; text-transform: uppercase;
-            background: rgba(14,165,233,0.1); color: #0284c7; border: 1px solid rgba(14,165,233,0.2);
+            background: rgba(20,106,245,0.1); color: #0f52c2; border: 1px solid rgba(20,106,245,0.2);
         }
 
         /* ── CHANGE 1: Verify Now button on skill cards ─────────────────── */
@@ -303,12 +303,12 @@ function shouldShowVerifyNow($badge) {
             display: inline-flex; align-items: center; gap: 4px;
             padding: 5px 11px; border-radius: 8px; font-size: 10px; font-weight: 800;
             letter-spacing: 0.03em; text-decoration: none; transition: all 0.18s;
-            background: rgba(14,165,233,0.1); color: #0284c7;
-            border: 1.5px solid rgba(14,165,233,0.3);
+            background: rgba(20,106,245,0.1); color: #0f52c2;
+            border: 1.5px solid rgba(20,106,245,0.3);
             white-space: nowrap; flex-shrink: 0;
         }
-        .verify-now-btn:hover { background: #0ea5e9; color: white; border-color: #0ea5e9; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(14,165,233,0.3); }
-        .skill-card.verified-community .verify-now-btn { background: rgba(56,189,248,0.1); color: #0284c7; border-color: rgba(56,189,248,0.35); }
+        .verify-now-btn:hover { background: #146af5; color: white; border-color: #146af5; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(20,106,245,0.3); }
+        .skill-card.verified-community .verify-now-btn { background: rgba(56,189,248,0.1); color: #0f52c2; border-color: rgba(56,189,248,0.35); }
     </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark font-sans transition-colors duration-300 min-h-screen pb-20 md:pb-10">
@@ -909,8 +909,8 @@ function toggleEditSkills(btn) {
     const open = col.classList.toggle('open');
     lbl.textContent = open ? 'Collapse' : 'Edit / Add Skills';
     chv.textContent = open ? 'expand_less' : 'expand_more';
-    btn.style.borderColor = open ? 'rgba(14,165,233,0.5)' : '';
-    btn.style.background  = open ? 'rgba(14,165,233,0.1)' : '';
+    btn.style.borderColor = open ? 'rgba(20,106,245,0.5)' : '';
+    btn.style.background  = open ? 'rgba(20,106,245,0.1)' : '';
 }
 
 // ── SKILL BUBBLES ─────────────────────────────────────────────────────────────

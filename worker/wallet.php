@@ -136,7 +136,7 @@ $statusStyle = getStatusBadge($profile['verification_status'] ?? 'None');
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
 
     <script>
         tailwind.config = {
@@ -144,12 +144,12 @@ $statusStyle = getStatusBadge($profile['verification_status'] ?? 'None');
             theme: {
                 extend: {
                     colors: {
-                        primary: "#3B82F6",
+                        primary: "#146af5",
                         "background-light": "#F8FAFC",
                         "background-dark": "#0F172A",
                         "card-light": "#FFFFFF",
                         "card-dark": "#1E293B",
-                        brand: { purple: "#6366F1", blue: "#3B82F6", green: "#10B981" }
+                        brand: { purple: "#6366F1", blue: "#146af5", green: "#10B981" }
                     },
                     fontFamily: { display: ["Plus Jakarta Sans", "sans-serif"] },
                     borderRadius: { DEFAULT: "12px", '2xl': '24px' },
@@ -166,7 +166,7 @@ $statusStyle = getStatusBadge($profile['verification_status'] ?? 'None');
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255,255,255,0.2);
         }
-        .gradient-bg  { background: linear-gradient(135deg, #3B82F6 0%, #2DD4BF 100%); }
+        .gradient-bg  { background: linear-gradient(135deg, #146af5 0%, #2DD4BF 100%); }
         .gradient-green{ background: linear-gradient(135deg, #10B981 0%, #059669 100%); }
         .gradient-amber{ background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); }
         .gradient-points{ background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%); }
@@ -185,7 +185,7 @@ $statusStyle = getStatusBadge($profile['verification_status'] ?? 'None');
         }
         /* Tab styles */
         .tab-btn { transition: all .2s; }
-        .tab-btn.active { background: white; color: #3B82F6; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        .tab-btn.active { background: white; color: #146af5; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
         .dark .tab-btn.active { background: #1e293b; color: #60a5fa; }
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }

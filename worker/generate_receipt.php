@@ -239,7 +239,7 @@ if ($remaining_balance == 0 && $booking['status'] === 'Completed') {
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     
     <script>
@@ -248,13 +248,13 @@ if ($remaining_balance == 0 && $booking['status'] === 'Completed') {
             theme: {
                 extend: {
                     colors: {
-                        primary: "#3B82F6",
+                        primary: "#146af5",
                         "background-light": "#F8FAFC",
                         "background-dark": "#0F172A",
                     },
                     fontFamily: {
                         display: ["Space Grotesk", "sans-serif"],
-                        body: ["Inter", "sans-serif"],
+                        body: ["Plus Jakarta Sans", "sans-serif"],
                     },
                     borderRadius: {
                         DEFAULT: "1rem",

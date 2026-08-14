@@ -60,7 +60,7 @@ while ($row = $result->fetch_assoc()) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quick Match Jobs | Abilisto</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
         body { 
@@ -88,7 +88,7 @@ while ($row = $result->fetch_assoc()) {
             padding: 20px;
             margin-bottom: 15px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            border-left: 5px solid #3b82f6;
+            border-left: 5px solid #146af5;
             animation: slideIn 0.3s ease;
             position: relative;
             transition: all 0.3s;
@@ -99,7 +99,7 @@ while ($row = $result->fetch_assoc()) {
         }
         .job-card.emergency { border-left-color: #dc3545; background: #fff5f5; }
         .job-card.high { border-left-color: #f59e0b; background: #fff9e6; }
-        .job-card.normal { border-left-color: #3b82f6; }
+        .job-card.normal { border-left-color: #146af5; }
         
         .urgency-badge {
             position: absolute;
@@ -136,7 +136,7 @@ while ($row = $result->fetch_assoc()) {
         }
         
         .accept-btn {
-            background: #3b82f6;
+            background: #146af5;
             color: white;
             border: none;
             padding: 12px 20px;
@@ -146,7 +146,7 @@ while ($row = $result->fetch_assoc()) {
             transition: all 0.2s;
             font-size: 1.1rem;
         }
-        .accept-btn:hover { background: #2563eb; transform: translateY(-2px); }
+        .accept-btn:hover { background: #0f52c2; transform: translateY(-2px); }
         .accept-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
         .accept-btn.emergency { background: #dc3545; }
         .accept-btn.emergency:hover { background: #c82333; }

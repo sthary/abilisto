@@ -197,7 +197,7 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
 
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
 
     <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -248,10 +248,10 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
               "on-error-container": "#510017",
               "on-surface-variant": "#585c62",
               "secondary-dim": "#560ce6",
-              "surface-tint": "#4317ff",
+              "surface-tint": "#146af5",
               "on-primary-fixed": "#000000",
               "on-error": "#ffefef",
-              "primary": "#4317ff",
+              "primary": "#146af5",
               "surface-bright": "#f3f6fd",
               "error": "#b41340",
               "background": "#f3f6fd",
@@ -296,7 +296,7 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         }
         .job-card-hover:hover {
             transform: translateY(-4px);
-            box-shadow: 0 30px 60px -15px rgba(67,23,255,0.10);
+            box-shadow: 0 30px 60px -15px rgba(20,106,245,0.10);
         }
 
         /* ── Status badge/card states (kept from original) ── */
@@ -344,16 +344,16 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             animation: notificationPulse 2s infinite;
         }
         @keyframes notificationPulse {
-            0%   { box-shadow: 0 0 0 0   rgba(67,23,255,0.4); }
-            70%  { box-shadow: 0 0 0 6px rgba(67,23,255,0); }
-            100% { box-shadow: 0 0 0 0   rgba(67,23,255,0); }
+            0%   { box-shadow: 0 0 0 0   rgba(20,106,245,0.4); }
+            70%  { box-shadow: 0 0 0 6px rgba(20,106,245,0); }
+            100% { box-shadow: 0 0 0 0   rgba(20,106,245,0); }
         }
 
         /* ── In-app notification / toast ── */
         #in-app-notification {
             position: fixed; top: 20px; right: 20px;
             background: white;
-            border-left: 4px solid #4317ff;
+            border-left: 4px solid #146af5;
             border-radius: 4px;
             padding: 15px 20px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -372,7 +372,7 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         .toast-message {
             position: fixed; bottom: 20px; left: 50%;
             transform: translateX(-50%);
-            background: #4317ff; color: white;
+            background: #146af5; color: white;
             padding: 10px 20px; border-radius: 4px;
             z-index: 10000;
             animation: fadeInUp 0.3s ease;
@@ -450,10 +450,10 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             user-select: none;
         }
         .day-pill input:checked + label {
-            background: #4317ff;
-            border-color: #4317ff;
+            background: #146af5;
+            border-color: #146af5;
             color: white;
-            box-shadow: 0 4px 12px rgba(67,23,255,0.3);
+            box-shadow: 0 4px 12px rgba(20,106,245,0.3);
         }
 
         /* ── Section/card chrome ── */
@@ -510,11 +510,11 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             background: white;
         }
         .ai-chip:hover {
-            border-color: #4317ff; color: #4317ff;
+            border-color: #146af5; color: #146af5;
             background: #f0edff;
         }
         .ai-chip.active {
-            border-color: #4317ff; color: #4317ff;
+            border-color: #146af5; color: #146af5;
             background: #f0edff;
         }
 
@@ -545,7 +545,7 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             border-radius: 24px;
             padding: 28px 28px 22px;
             width: min(360px, calc(100vw - 32px));
-            box-shadow: 0 32px 80px -12px rgba(43,47,52,0.22), 0 0 0 1px rgba(67,23,255,0.08);
+            box-shadow: 0 32px 80px -12px rgba(43,47,52,0.22), 0 0 0 1px rgba(20,106,245,0.08);
             pointer-events: all;
             font-family: 'Plus Jakarta Sans', sans-serif;
             animation: abiTourPop 0.32s cubic-bezier(.4,0,.2,1) forwards;
@@ -588,7 +588,7 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             background: #d8dde7; transition: all 0.2s;
         }
         .abi-tour-dot.abi-active {
-            width: 20px; border-radius: 3px; background: #4317ff;
+            width: 20px; border-radius: 3px; background: #146af5;
         }
         .abi-tour-dot.abi-done { background: #aaadb4; }
         .abi-tour-actions { display: flex; gap: 10px; align-items: center; }
@@ -596,15 +596,15 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             flex: 1; padding: 12px 20px; border-radius: 14px;
             font-size: 14px; font-weight: 700; color: #fff;
             border: none; cursor: pointer;
-            background: linear-gradient(135deg, #4317ff, #6229f1);
-            box-shadow: 0 8px 20px -4px rgba(67,23,255,0.4);
+            background: linear-gradient(135deg, #146af5, #6229f1);
+            box-shadow: 0 8px 20px -4px rgba(20,106,245,0.4);
             transition: transform 0.15s, box-shadow 0.15s;
             display: flex; align-items: center; justify-content: center; gap: 6px;
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
         .abi-tour-btn-next:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 28px -4px rgba(67,23,255,0.45);
+            box-shadow: 0 12px 28px -4px rgba(20,106,245,0.45);
         }
         .abi-tour-btn-skip {
             font-size: 13px; font-weight: 600; color: #aaadb4;
@@ -616,15 +616,15 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         .abi-tour-btn-skip:hover { color: #585c62; }
         #abi-tour-ring {
             position: fixed; border-radius: 20px;
-            border: 2.5px solid rgba(67,23,255,0.7);
-            box-shadow: 0 0 0 4px rgba(67,23,255,0.12), 0 0 0 8px rgba(67,23,255,0.05);
+            border: 2.5px solid rgba(20,106,245,0.7);
+            box-shadow: 0 0 0 4px rgba(20,106,245,0.12), 0 0 0 8px rgba(20,106,245,0.05);
             pointer-events: none; z-index: 99995;
             transition: all 0.35s cubic-bezier(.4,0,.2,1);
             animation: abiRingPulse 2.2s ease infinite;
         }
         @keyframes abiRingPulse {
-            0%,100% { box-shadow: 0 0 0 4px rgba(67,23,255,0.12), 0 0 0 8px  rgba(67,23,255,0.05); }
-            50%     { box-shadow: 0 0 0 6px rgba(67,23,255,0.18), 0 0 0 14px rgba(67,23,255,0.06); }
+            0%,100% { box-shadow: 0 0 0 4px rgba(20,106,245,0.12), 0 0 0 8px  rgba(20,106,245,0.05); }
+            50%     { box-shadow: 0 0 0 6px rgba(20,106,245,0.18), 0 0 0 14px rgba(20,106,245,0.06); }
         }
     </style>
 </head>
@@ -829,7 +829,7 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             <div class="flex gap-3">
                 <button type="submit"
                         class="flex-1 py-3.5 rounded-[18px] font-bold text-white text-sm flex items-center justify-center gap-2 transition-all hover:-translate-y-0.5"
-                        style="background:linear-gradient(135deg,#4317ff,#6229f1);box-shadow:0 8px 20px -4px rgba(67,23,255,0.4)">
+                        style="background:linear-gradient(135deg,#146af5,#6229f1);box-shadow:0 8px 20px -4px rgba(20,106,245,0.4)">
                     <span class="material-symbols-outlined" style="font-size:18px;font-variation-settings:'FILL' 1">save</span>
                     Save Schedule
                 </button>
@@ -939,7 +939,7 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         </div>
 
         <!-- Wallet Balance -->
-        <div class="group relative overflow-hidden bg-primary p-4 md:p-8 rounded-xl shadow-[0_20px_40px_rgba(67,23,255,0.15)] transition-all hover:translate-y-[-4px]">
+        <div class="group relative overflow-hidden bg-primary p-4 md:p-8 rounded-xl shadow-[0_20px_40px_rgba(20,106,245,0.15)] transition-all hover:translate-y-[-4px]">
             <div class="flex justify-between items-start mb-3 md:mb-6">
                 <div class="w-8 h-8 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-white/20 flex items-center justify-center text-white">
                     <span class="material-symbols-outlined text-lg md:text-2xl">payments</span>
@@ -1493,7 +1493,7 @@ document.addEventListener('DOMContentLoaded', function() {
         badge.classList.toggle('hidden', next === 0);
     }
 
-    const COLOR_MAP = { blue:'#4317ff', red:'#b41340', green:'#00694c', gray:'#585c62', orange:'#ea580c' };
+    const COLOR_MAP = { blue:'#146af5', red:'#b41340', green:'#00694c', gray:'#585c62', orange:'#ea580c' };
 
     function showToastPoll(title, message, color = 'blue') {
         const bg = COLOR_MAP[color] || COLOR_MAP.blue;
@@ -1555,7 +1555,7 @@ setTimeout(function() {
             target   : null,
             position : 'center',
             icon     : 'waving_hand',
-            iconColor: '#4317ff',
+            iconColor: '#146af5',
             title    : 'Welcome to Your Dashboard! 👋',
             body     : 'This quick tour highlights the key areas of your workspace. It only takes a minute — let\'s go!',
         },
@@ -1563,7 +1563,7 @@ setTimeout(function() {
             target   : '#tour-stats',
             position : 'bottom',
             icon     : 'bar_chart',
-            iconColor: '#4317ff',
+            iconColor: '#146af5',
             title    : 'Your Stats at a Glance',
             body     : 'See your completed jobs, earned Listo Points, and current wallet balance all in one place.',
         },
@@ -1587,7 +1587,7 @@ setTimeout(function() {
             target   : null,
             position : 'center',
             icon     : 'rocket_launch',
-            iconColor: '#4317ff',
+            iconColor: '#146af5',
             title    : 'You\'re All Set! 🚀',
             body     : 'Your dashboard updates in real time. New booking requests will pop up automatically — go get those jobs!',
         },
