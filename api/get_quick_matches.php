@@ -25,7 +25,7 @@
 // ─────────────────────────────────────────────────────────────
 
 // ── Bootstrap ──────────────────────────────────────────────
-require_once __DIR__ . '/../db.php';   // starts session, gives $pdo / $conn
+require_once __DIR__ . '/../db_connect.php';   // starts session, gives $pdo / $conn
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate');
@@ -65,7 +65,7 @@ if ($debug_mode) {
             jb.id           AS broadcast_id,
             jb.status       AS broadcast_status,
             jb.expires_at,
-            TIMESTAMPDIFF(SECOND, NOW(), jb.expires_at) AS secs_left,
+            EXTRACT(EPOCH FROM (jb.expires_at - NOW())) AS secs_left,
             NOW()           AS server_now
         FROM bookings b
         LEFT JOIN job_broadcasts jb ON b.broadcast_id = jb.id
@@ -73,16 +73,9 @@ if ($debug_mode) {
         ORDER BY b.id DESC
         LIMIT 20
     ";
-    if (isset($pdo) && $pdo instanceof PDO) {
-        $ds = $pdo->prepare($debug_sql);
-        $ds->execute([$worker_id]);
-        $debug_rows = $ds->fetchAll(PDO::FETCH_ASSOC);
-    } else {
-        $ds = $conn->prepare($debug_sql);
-        $ds->bind_param('i', $worker_id);
-        $ds->execute();
-        $debug_rows = $ds->get_result()->fetch_all(MYSQLI_ASSOC);
-    }
+    $ds = $pdo->prepare($debug_sql);
+    $ds->execute([$worker_id]);
+    $debug_rows = $ds->fetchAll();
     echo json_encode(['debug' => true, 'rows' => $debug_rows], JSON_PRETTY_PRINT);
     exit;
 }
@@ -98,11 +91,11 @@ $sql = "
         jb.id                                                       AS broadcast_id,
         jb.status                                                   AS broadcast_status,
         b.status                                                    AS booking_status,
-        TIMESTAMPDIFF(SECOND, NOW(), jb.expires_at)                 AS seconds_remaining,
+        EXTRACT(EPOCH FROM (jb.expires_at - NOW()))                 AS seconds_remaining,
         u.full_name                                                  AS client_name,
         b.service_type,
         u.address,
-        DATE_FORMAT(b.booking_date, '%M %d, %Y')                    AS booking_date,
+        TO_CHAR(b.booking_date, 'FMMonth DD, YYYY')                 AS booking_date,
         b.calculated_fee
     FROM bookings b
     JOIN users          u  ON b.client_id   = u.id
@@ -116,25 +109,9 @@ $sql = "
 ";
 
 try {
-    // Prefer PDO if available (matches secured verification.php style),
-    // fall back to mysqli if that's what db.php exposes.
-    if (isset($pdo) && $pdo instanceof PDO) {
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$worker_id]);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } elseif (isset($conn) && $conn instanceof mysqli) {
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param('i', $worker_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $rows = [];
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
-        }
-        $stmt->close();
-    } else {
-        throw new RuntimeException('No valid DB connection available.');
-    }
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$worker_id]);
+    $rows = $stmt->fetchAll();
 } catch (Throwable $e) {
     error_log('[get_quick_matches] DB error: ' . $e->getMessage());
     http_response_code(500);

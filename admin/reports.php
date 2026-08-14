@@ -1,6 +1,6 @@
 <?php
 // admin/reports.php  — Support Admin (Trust & Safety)
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
@@ -8,7 +8,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 }
 
 $admin_id   = $_SESSION['user_id'];
-$admin_name = $conn->query("SELECT full_name FROM users WHERE id=$admin_id")->fetch_assoc()['full_name'] ?? 'Support';
+$admin_name_stmt = $conn->prepare("SELECT full_name FROM users WHERE id=?");
+$admin_name_stmt->execute([$admin_id]);
+$admin_name = $admin_name_stmt->fetch()['full_name'] ?? 'Support';
 
 // ============================================================
 // HELPERS
@@ -43,22 +45,24 @@ function violationLabel($n) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'send_reply') {
     header('Content-Type: application/json');
     $rid   = intval($_POST['report_id']   ?? 0);
-    $rtype = $conn->real_escape_string($_POST['report_type'] ?? 'client');
-    $msg   = $conn->real_escape_string(trim($_POST['message'] ?? ''));
+    $rtype = $_POST['report_type'] ?? 'client';
+    $msg   = trim($_POST['message'] ?? '');
     $target= intval($_POST['target_user_id'] ?? 0); // who receives notif
 
     if (!$msg || !$rid) { echo json_encode(['success'=>false]); exit(); }
 
-    $conn->query("INSERT INTO report_replies (report_id,report_type,sender_id,sender_role,message)
-                  VALUES ($rid,'$rtype',$admin_id,'support','{$msg}')");
+    $reply_stmt = $conn->prepare("INSERT INTO report_replies (report_id,report_type,sender_id,sender_role,message)
+                  VALUES (?,?,?,'support',?)");
+    $reply_stmt->execute([$rid, $rtype, $admin_id, $msg]);
 
     // Notify both parties (reporter + reported)
     $reporter_id = intval($_POST['reporter_id'] ?? 0);
     $reported_id = intval($_POST['reported_id'] ?? 0);
     $type_label  = $rtype === 'worker' ? 'worker' : 'client';
-    $notif       = $conn->real_escape_string("📩 Support replied to your Report #$rid: ".mb_substr(strip_tags($msg),0,80)."…");
+    $notif       = "📩 Support replied to your Report #$rid: ".mb_substr(strip_tags($msg),0,80)."…";
+    $notif_stmt  = $conn->prepare("INSERT INTO notifications (user_id,message,link) VALUES (?,?,'#')");
     foreach ([$reporter_id, $reported_id] as $uid) {
-        if ($uid > 0) $conn->query("INSERT INTO notifications (user_id,message,link) VALUES ($uid,'$notif','#')");
+        if ($uid > 0) $notif_stmt->execute([$uid, $notif]);
     }
 
     echo json_encode(['success'=>true,'ts'=>date('M d, Y h:i A'),'admin_name'=>htmlspecialchars($admin_name)]);
@@ -72,14 +76,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'confi
     header('Content-Type: application/json');
 
     $rid         = intval($_POST['report_id']     ?? 0);
-    $rtype       = $conn->real_escape_string($_POST['report_type'] ?? 'client');
+    $rtype       = $_POST['report_type'] ?? 'client';
     $reported_id = intval($_POST['reported_id']   ?? 0);
-    $user_role   = $conn->real_escape_string($_POST['user_role']   ?? 'worker'); // 'worker'|'client'
+    $user_role   = $_POST['user_role']   ?? 'worker'; // 'worker'|'client'
     $notes_raw   = trim($_POST['admin_notes']     ?? '');
-    $notes       = $conn->real_escape_string($notes_raw);
+    $notes       = $notes_raw;
 
     // ── Get reported user's current violation count ───────
-    $u = $conn->query("SELECT violation_count, has_prior_violation, appeal_eligible FROM users WHERE id=$reported_id")->fetch_assoc();
+    $u_stmt = $conn->prepare("SELECT violation_count, has_prior_violation, appeal_eligible FROM users WHERE id=?");
+    $u_stmt->execute([$reported_id]);
+    $u = $u_stmt->fetch();
     $current_violations = (int)($u['violation_count'] ?? 0);
     $new_violations     = $current_violations + 1;
     $prior              = (int)($u['has_prior_violation'] ?? 0);
@@ -96,13 +102,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'confi
         } elseif ($new_violations === 2) {
             // 2nd: disable bookings
             $action_taken = 'booking_blocked';
-            $conn->query("UPDATE worker_profiles SET can_accept_bookings=0 WHERE user_id=$reported_id");
+            $stmt = $conn->prepare("UPDATE worker_profiles SET can_accept_bookings=false WHERE user_id=?");
+            $stmt->execute([$reported_id]);
             $penalty_msg  = "🚫 Booking Suspended: Due to a second confirmed report, your ability to accept new bookings has been disabled. Contact support to appeal.";
         } elseif ($new_violations >= 3) {
             // 3rd: permanent deletion
             $action_taken = 'account_deleted';
-            $conn->query("UPDATE worker_profiles SET deletion_pending=1, is_active=0 WHERE user_id=$reported_id");
-            $conn->query("UPDATE users SET is_flagged=1 WHERE id=$reported_id");
+            $stmt = $conn->prepare("UPDATE worker_profiles SET deletion_pending=true, is_active=false WHERE user_id=?");
+            $stmt->execute([$reported_id]);
+            $stmt = $conn->prepare("UPDATE users SET is_flagged=true WHERE id=?");
+            $stmt->execute([$reported_id]);
             // Soft-delete: mark inactive; hard delete can be done manually
             $penalty_msg  = "❌ Account Terminated: Your account has been permanently disabled due to three confirmed violations of platform rules.";
         }
@@ -111,43 +120,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'confi
         // ── CLIENT ESCALATION ─────────────────────────────
         // Confirmed report → restrict cash payment
         $action_taken = 'cash_restricted';
-        $conn->query("UPDATE users SET cash_enabled=0, cash_restriction_at=NOW() WHERE id=$reported_id");
+        $stmt = $conn->prepare("UPDATE users SET cash_enabled=false, cash_restriction_at=NOW() WHERE id=?");
+        $stmt->execute([$reported_id]);
 
         if ($prior == 0) {
             // First-time: 48-hour appeal window
             $deadline = date('Y-m-d H:i:s', strtotime('+48 hours'));
-            $conn->query("UPDATE users SET appeal_eligible=1, appeal_deadline='$deadline' WHERE id=$reported_id");
+            $stmt = $conn->prepare("UPDATE users SET appeal_eligible=true, appeal_deadline=? WHERE id=?");
+            $stmt->execute([$deadline, $reported_id]);
             $penalty_msg = "💳 Cash Payment Restricted: Due to a confirmed report, your cash payment option has been restricted. You have a 48-hour window to appeal this decision.";
         } else {
             // Prior violation: immediate, no appeal
-            $conn->query("UPDATE users SET appeal_eligible=0, appeal_deadline=NULL WHERE id=$reported_id");
+            $stmt = $conn->prepare("UPDATE users SET appeal_eligible=false, appeal_deadline=NULL WHERE id=?");
+            $stmt->execute([$reported_id]);
             $penalty_msg = "💳 Cash Payment Restricted (No Appeal): Due to a prior confirmed violation, your cash payment option has been permanently restricted. No appeal is available.";
         }
     }
 
     // ── Update user violation counters ────────────────────
-    $conn->query("UPDATE users SET
-        is_flagged=1,
-        violation_count=$new_violations,
+    $stmt = $conn->prepare("UPDATE users SET
+        is_flagged=true,
+        violation_count=?,
         last_violation_at=NOW(),
-        has_prior_violation=1
-        WHERE id=$reported_id");
+        has_prior_violation=true
+        WHERE id=?");
+    $stmt->execute([$new_violations, $reported_id]);
 
     // ── Mark report resolved ──────────────────────────────
     $table = ($rtype === 'worker') ? 'reports_worker' : 'reports';
     $ts    = date('Y-m-d H:i:s');
-    $conn->query("UPDATE $table SET status='resolved',
-        admin_notes=CONCAT(COALESCE(admin_notes,''),'\\n[Support ".date('M d Y H:i')."] $notes'),
-        updated_at='$ts'
-        WHERE id=$rid");
+    $log_entry = "\n[Support ".date('M d Y H:i')."] $notes";
+    $stmt = $conn->prepare("UPDATE $table SET status='resolved',
+        admin_notes=CONCAT(COALESCE(admin_notes,''),?),
+        updated_at=?
+        WHERE id=?");
+    $stmt->execute([$log_entry, $ts, $rid]);
 
     // ── Log to violation_logs ─────────────────────────────
-    $conn->query("INSERT INTO violation_logs (user_id,user_role,report_id,report_type,violation_num,action_taken,notes,actioned_by)
-                  VALUES ($reported_id,'$user_role',$rid,'$rtype',$new_violations,'$action_taken','$notes',$admin_id)");
+    $stmt = $conn->prepare("INSERT INTO violation_logs (user_id,user_role,report_id,report_type,violation_num,action_taken,notes,actioned_by)
+                  VALUES (?,?,?,?,?,?,?,?)");
+    $stmt->execute([$reported_id, $user_role, $rid, $rtype, $new_violations, $action_taken, $notes, $admin_id]);
 
     // ── Send notification to reported user ────────────────
-    $safe_msg = $conn->real_escape_string($penalty_msg);
-    $conn->query("INSERT INTO notifications (user_id,message,link) VALUES ($reported_id,'$safe_msg','#')");
+    $safe_msg = $penalty_msg;
+    $stmt = $conn->prepare("INSERT INTO notifications (user_id,message,link) VALUES (?,?,'#')");
+    $stmt->execute([$reported_id, $safe_msg]);
 
     echo json_encode([
         'success'           => true,
@@ -164,19 +181,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'confi
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'dismiss_report') {
     header('Content-Type: application/json');
     $rid   = intval($_POST['report_id']   ?? 0);
-    $rtype = $conn->real_escape_string($_POST['report_type'] ?? 'client');
-    $notes = $conn->real_escape_string(trim($_POST['notes']  ?? ''));
+    $rtype = $_POST['report_type'] ?? 'client';
+    $notes = trim($_POST['notes']  ?? '');
     $table = ($rtype === 'worker') ? 'reports_worker' : 'reports';
     $ts    = date('Y-m-d H:i:s');
-    $conn->query("UPDATE $table SET status='dismissed',
-        admin_notes=CONCAT(COALESCE(admin_notes,''),'\\n[Dismissed ".date('M d Y H:i')."] $notes'),
-        updated_at='$ts' WHERE id=$rid");
+    $log_entry = "\n[Dismissed ".date('M d Y H:i')."] $notes";
+    $stmt = $conn->prepare("UPDATE $table SET status='dismissed',
+        admin_notes=CONCAT(COALESCE(admin_notes,''),?),
+        updated_at=? WHERE id=?");
+    $stmt->execute([$log_entry, $ts, $rid]);
 
     // Notify reporter
     $reporter_id = intval($_POST['reporter_id'] ?? 0);
     if ($reporter_id) {
-        $notif = $conn->real_escape_string("Your Report #$rid has been reviewed and dismissed after investigation. ".($notes?"Reason: $notes":""));
-        $conn->query("INSERT INTO notifications (user_id,message,link) VALUES ($reporter_id,'$notif','#')");
+        $notif = "Your Report #$rid has been reviewed and dismissed after investigation. ".($notes?"Reason: $notes":"");
+        $stmt = $conn->prepare("INSERT INTO notifications (user_id,message,link) VALUES (?,?,'#')");
+        $stmt->execute([$reporter_id, $notif]);
     }
     echo json_encode(['success'=>true]); exit();
 }
@@ -187,11 +207,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'dismi
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'lift_restriction') {
     header('Content-Type: application/json');
     $client_id = intval($_POST['client_id'] ?? 0);
-    $conn->query("UPDATE users SET cash_enabled=1, cash_restriction_at=NULL, appeal_deadline=NULL WHERE id=$client_id");
-    $conn->query("INSERT INTO violation_logs (user_id,user_role,report_id,report_type,violation_num,action_taken,notes,actioned_by)
-                  VALUES ($client_id,'client',0,'client',0,'cash_restriction_lifted','Appeal granted by support',$admin_id)");
-    $notif = $conn->real_escape_string("✅ Appeal Granted: Your cash payment option has been restored following your successful appeal.");
-    $conn->query("INSERT INTO notifications (user_id,message,link) VALUES ($client_id,'$notif','#')");
+    $stmt = $conn->prepare("UPDATE users SET cash_enabled=true, cash_restriction_at=NULL, appeal_deadline=NULL WHERE id=?");
+    $stmt->execute([$client_id]);
+    $stmt = $conn->prepare("INSERT INTO violation_logs (user_id,user_role,report_id,report_type,violation_num,action_taken,notes,actioned_by)
+                  VALUES (?,?,?,?,?,?,?,?)");
+    $stmt->execute([$client_id, 'client', 0, 'client', 0, 'cash_restriction_lifted', 'Appeal granted by support', $admin_id]);
+    $notif = "✅ Appeal Granted: Your cash payment option has been restored following your successful appeal.";
+    $stmt = $conn->prepare("INSERT INTO notifications (user_id,message,link) VALUES (?,?,'#')");
+    $stmt->execute([$client_id, $notif]);
     echo json_encode(['success'=>true]); exit();
 }
 
@@ -199,9 +222,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'lift_
 // FILTERS & DATA
 // ============================================================
 $type_f   = $_GET['type']   ?? 'all';
-$status_f = $conn->real_escape_string($_GET['status'] ?? 'all');
+$status_f = $_GET['status'] ?? 'all';
 $sort     = $_GET['sort']   ?? 'newest';
-$search   = $conn->real_escape_string($_GET['search'] ?? '');
+$search   = $_GET['search'] ?? '';
 
 // ── Base queries ──────────────────────────────────────────
 $client_sql = "SELECT
@@ -243,20 +266,25 @@ JOIN users u ON r.reported_user_id = u.id
 LEFT JOIN bookings b ON r.booking_id = b.id";
 
 // ── Apply filters ─────────────────────────────────────────
-$status_where = $status_f !== 'all' ? " WHERE r.status='$status_f'" : '';
-$search_where = $search ? " AND (c.full_name LIKE '%$search%' OR w.full_name LIKE '%$search%')" : '';
+$params = [];
 
 if ($type_f === 'client') {
-    $sql = $client_sql . ($status_f !== 'all' ? " WHERE r.status='$status_f'" : '');
-    if ($search) $sql .= ($status_f !== 'all' ? ' AND' : ' WHERE') . " (c.full_name LIKE '%$search%' OR w.full_name LIKE '%$search%')";
+    $sql = $client_sql;
+    $conds = [];
+    if ($status_f !== 'all') { $conds[] = "r.status=?"; $params[] = $status_f; }
+    if ($search)  { $conds[] = "(c.full_name LIKE ? OR w.full_name LIKE ?)"; $params[] = "%$search%"; $params[] = "%$search%"; }
+    if ($conds) $sql .= ' WHERE ' . implode(' AND ', $conds);
 } elseif ($type_f === 'worker') {
-    $sql = $worker_sql . ($status_f !== 'all' ? " WHERE r.status='$status_f'" : '');
-    if ($search) $sql .= ($status_f !== 'all' ? ' AND' : ' WHERE') . " (w.full_name LIKE '%$search%' OR u.full_name LIKE '%$search%')";
+    $sql = $worker_sql;
+    $conds = [];
+    if ($status_f !== 'all') { $conds[] = "r.status=?"; $params[] = $status_f; }
+    if ($search)  { $conds[] = "(w.full_name LIKE ? OR u.full_name LIKE ?)"; $params[] = "%$search%"; $params[] = "%$search%"; }
+    if ($conds) $sql .= ' WHERE ' . implode(' AND ', $conds);
 } else {
     $combined = "SELECT * FROM (($client_sql) UNION ALL ($worker_sql)) AS all_reports";
     $conds = [];
-    if ($status_f !== 'all') $conds[] = "status='$status_f'";
-    if ($search)             $conds[] = "(reporter_name LIKE '%$search%' OR reported_name LIKE '%$search%')";
+    if ($status_f !== 'all') { $conds[] = "status=?"; $params[] = $status_f; }
+    if ($search)             { $conds[] = "(reporter_name LIKE ? OR reported_name LIKE ?)"; $params[] = "%$search%"; $params[] = "%$search%"; }
     $sql = $combined . (count($conds) ? ' WHERE '.implode(' AND ',$conds) : '');
 }
 
@@ -269,13 +297,23 @@ $sql .= match($sort) {
     default         => ' ORDER BY created_at DESC',
 };
 
-$result = $conn->query($sql);
+$stmt = $conn->prepare($sql);
+$stmt->execute($params);
+$report_rows = $stmt->fetchAll();
 
 // ── Stats ─────────────────────────────────────────────────
-$cs = $conn->query("SELECT COUNT(*) as t, SUM(status='pending') as p, SUM(status='reviewed') as rv,
-    SUM(status='resolved') as rs, SUM(status='dismissed') as d FROM reports")->fetch_assoc();
-$ws = $conn->query("SELECT COUNT(*) as t, SUM(status='pending') as p, SUM(status='reviewed') as rv,
-    SUM(status='resolved') as rs, SUM(status='dismissed') as d FROM reports_worker")->fetch_assoc();
+$cs = $conn->query("SELECT COUNT(*) as t,
+    SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) as p,
+    SUM(CASE WHEN status='reviewed' THEN 1 ELSE 0 END) as rv,
+    SUM(CASE WHEN status='resolved' THEN 1 ELSE 0 END) as rs,
+    SUM(CASE WHEN status='dismissed' THEN 1 ELSE 0 END) as d
+    FROM reports")->fetch();
+$ws = $conn->query("SELECT COUNT(*) as t,
+    SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) as p,
+    SUM(CASE WHEN status='reviewed' THEN 1 ELSE 0 END) as rv,
+    SUM(CASE WHEN status='resolved' THEN 1 ELSE 0 END) as rs,
+    SUM(CASE WHEN status='dismissed' THEN 1 ELSE 0 END) as d
+    FROM reports_worker")->fetch();
 $stats = [
     'total'     => ($cs['t']??0)  + ($ws['t']??0),
     'pending'   => ($cs['p']??0)  + ($ws['p']??0),
@@ -285,9 +323,9 @@ $stats = [
 ];
 
 // ── Flagged workers (3+ confirmed reports) ────────────────
-$flagged_res = $conn->query("SELECT u.id, u.full_name, u.profile_pic, u.violation_count
-    FROM users u WHERE u.is_flagged=1 AND u.role='worker'
-    ORDER BY u.violation_count DESC LIMIT 8");
+$flagged_rows = $conn->query("SELECT u.id, u.full_name, u.profile_pic, u.violation_count
+    FROM users u WHERE u.is_flagged = TRUE AND u.role='worker'
+    ORDER BY u.violation_count DESC LIMIT 8")->fetchAll();
 
 $current_date = date('M d, Y');
 ?>
@@ -374,15 +412,15 @@ $current_date = date('M d, Y');
     </div>
 
     <!-- Flagged workers strip -->
-    <?php if ($flagged_res && $flagged_res->num_rows > 0): ?>
+    <?php if (count($flagged_rows) > 0): ?>
     <div class="card border-l-4 border-red-500 p-5 mb-8">
         <div class="flex items-center gap-2 mb-4">
             <span class="material-icons-round text-red-500">warning</span>
             <h3 class="font-bold text-red-700 dark:text-red-400">Flagged Accounts</h3>
-            <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 border border-red-200 dark:border-red-800"><?php echo $flagged_res->num_rows; ?></span>
+            <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 border border-red-200 dark:border-red-800"><?php echo count($flagged_rows); ?></span>
         </div>
         <div class="flex flex-wrap gap-3">
-        <?php while($fw=$flagged_res->fetch_assoc()):
+        <?php foreach($flagged_rows as $fw):
             $av=getUserAvatar($fw['profile_pic'],$fw['full_name']);
             $vc=(int)$fw['violation_count'];
             $pc=$vc>=3?'pen-3':($vc>=2?'pen-2':'pen-1');
@@ -392,7 +430,7 @@ $current_date = date('M d, Y');
             <span class="text-sm font-semibold"><?php echo htmlspecialchars($fw['full_name']); ?></span>
             <span class="badge <?php echo $pc; ?>"><?php echo $vc; ?> violation<?php echo $vc!==1?'s':''; ?></span>
         </div>
-        <?php endwhile; ?>
+        <?php endforeach; ?>
         </div>
     </div>
     <?php endif; ?>
@@ -434,8 +472,8 @@ $current_date = date('M d, Y');
 
     <!-- Reports list -->
     <div class="space-y-8" id="reports-list">
-    <?php if ($result && $result->num_rows > 0):
-        while($rp=$result->fetch_assoc()):
+    <?php if (count($report_rows) > 0):
+        foreach($report_rows as $rp):
             $is_flagged    = (int)($rp['reported_violations']??0) >= 1;
             $rtype         = $rp['report_type'];
             $reporter_av   = getUserAvatar($rp['reporter_pic'],$rp['reporter_name']);
@@ -450,10 +488,12 @@ $current_date = date('M d, Y');
             $has_appeal    = $is_client_rep && (int)($rp['appeal_eligible']??1)===1 && !empty($rp['appeal_deadline']);
 
             // Fetch replies for this report
-            $replies_res = $conn->query("SELECT rr.*, u.full_name, u.profile_pic, u.role
+            $replies_stmt = $conn->prepare("SELECT rr.*, u.full_name, u.profile_pic, u.role
                 FROM report_replies rr JOIN users u ON u.id=rr.sender_id
-                WHERE rr.report_id={$rp['id']} AND rr.report_type='$rtype'
+                WHERE rr.report_id=? AND rr.report_type=?
                 ORDER BY rr.created_at ASC");
+            $replies_stmt->execute([$rp['id'], $rtype]);
+            $replies_rows = $replies_stmt->fetchAll();
     ?>
     <div class="card <?php echo $is_flagged?'flagged-border':''; ?> overflow-hidden" id="report-<?php echo $rp['id']; ?>-<?php echo $rtype; ?>">
 
@@ -556,8 +596,8 @@ $current_date = date('M d, Y');
                 Communication Thread
             </p>
             <div class="space-y-3 max-h-48 overflow-y-auto slim-scroll mb-3" id="thread-<?php echo $rp['id']; ?>-<?php echo $rtype; ?>">
-            <?php if ($replies_res && $replies_res->num_rows > 0):
-                while($reply=$replies_res->fetch_assoc()):
+            <?php if (count($replies_rows) > 0):
+                foreach($replies_rows as $reply):
                     $is_support=$reply['sender_role']==='support';
             ?>
             <div class="p-3 rounded-xl text-sm <?php echo $is_support?'reply-support':'reply-user'; ?>">
@@ -569,7 +609,7 @@ $current_date = date('M d, Y');
                 </div>
                 <p class="text-slate-700 dark:text-slate-300"><?php echo nl2br(htmlspecialchars($reply['message'])); ?></p>
             </div>
-            <?php endwhile; else: ?>
+            <?php endforeach; else: ?>
             <p class="text-[11px] text-slate-400 italic text-center py-2">No messages yet.</p>
             <?php endif; ?>
             </div>
@@ -633,7 +673,7 @@ $current_date = date('M d, Y');
         <?php endif; ?>
 
     </div><!-- end report card -->
-    <?php endwhile; else: ?>
+    <?php endforeach; else: ?>
     <div class="card p-16 text-center">
         <span class="material-icons-round text-4xl text-slate-300 dark:text-slate-600 block mb-3">inbox</span>
         <h3 class="font-bold text-lg mb-1">No Reports Found</h3>

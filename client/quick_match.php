@@ -1,7 +1,7 @@
 <?php
 // client/quick_match.php
 session_start();
-include '../db.php';
+include '../db_connect.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
     header("Location: ../auth/login.php");
@@ -12,7 +12,9 @@ $client_id = $_SESSION['user_id'];
 $step = isset($_GET['step']) ? intval($_GET['step']) : 1;
 
 // Get client location
-$client = $conn->query("SELECT latitude, longitude, municipality FROM users WHERE id = '$client_id'")->fetch_assoc();
+$client_stmt = $conn->prepare("SELECT latitude, longitude, municipality FROM users WHERE id = ?");
+$client_stmt->execute([$client_id]);
+$client = $client_stmt->fetch();
 $clientLat = floatval($client['latitude']);
 $clientLng = floatval($client['longitude']);
 $clientMunicipality = $client['municipality'];
@@ -66,11 +68,11 @@ function scoreWorker($worker, $clientLat, $clientLng, $clientMunicipality, $urge
 // Admin saves keys like: service_electrical, service_aircon_ref, service_arts_crafts
 // We match by normalizing sub_category: lowercase + spaces→underscores
 $enabled_settings_res = $conn->query(
-    "SELECT setting_key FROM settings 
+    "SELECT setting_key FROM settings
      WHERE setting_key LIKE 'service_%' AND setting_value = '1'"
 );
 $enabled_keys = [];
-while ($s_row = $enabled_settings_res->fetch_assoc()) {
+while ($s_row = $enabled_settings_res->fetch()) {
     // Strip 'service_' prefix → e.g. 'aircon_ref', 'arts_crafts'
     $enabled_keys[] = str_replace('service_', '', $s_row['setting_key']);
 }
@@ -81,40 +83,39 @@ if (empty($enabled_keys)) {
 
 // --- Build sub-category list (filtered by admin-enabled keys) ---
 // Normalize sub_category to match: LOWER(REPLACE(sub_category, ' ', '_'))
-$placeholders = implode("','", array_map([$conn, 'real_escape_string'], $enabled_keys));
+$in_placeholders = implode(',', array_fill(0, count($enabled_keys), '?'));
 
 $sub_sql = "
-    SELECT 
+    SELECT
         ws.sub_category,
         ws.main_category,
         COUNT(DISTINCT ws.worker_id) AS worker_count,
-        SUBSTRING_INDEX(
-            GROUP_CONCAT(ws.badge_level ORDER BY 
-                CASE ws.badge_level 
-                    WHEN 'Gold'      THEN 5 
-                    WHEN 'Silver'    THEN 4 
-                    WHEN 'Bronze'    THEN 3 
-                    WHEN 'Community' THEN 2 
-                    ELSE 1 
+        (ARRAY_AGG(ws.badge_level ORDER BY
+                CASE ws.badge_level
+                    WHEN 'Gold'      THEN 5
+                    WHEN 'Silver'    THEN 4
+                    WHEN 'Bronze'    THEN 3
+                    WHEN 'Community' THEN 2
+                    ELSE 1
                 END DESC
-            ), ',', 1
-        ) AS top_badge
+            ))[1] AS top_badge
     FROM worker_skills ws
     JOIN users u ON u.id = ws.worker_id AND u.role = 'worker'
-    JOIN worker_profiles wp ON wp.user_id = ws.worker_id AND wp.is_active = 1
-    WHERE LOWER(REPLACE(ws.sub_category,   ' ', '_')) IN ('$placeholders')
-       OR LOWER(REPLACE(ws.main_category,  ' ', '_')) IN ('$placeholders')
+    JOIN worker_profiles wp ON wp.user_id = ws.worker_id AND wp.is_active = TRUE
+    WHERE LOWER(REPLACE(ws.sub_category,   ' ', '_')) IN ($in_placeholders)
+       OR LOWER(REPLACE(ws.main_category,  ' ', '_')) IN ($in_placeholders)
     GROUP BY ws.sub_category, ws.main_category
     ORDER BY ws.main_category, ws.sub_category
 ";
 
-$sub_result = $conn->query($sub_sql);
+$sub_stmt = $conn->prepare($sub_sql);
+$sub_stmt->execute(array_merge($enabled_keys, $enabled_keys));
 
 // --- Collect results into arrays ONCE ---
 $subs_by_main = [];
 $enabled_categories = [];
 
-while ($row = $sub_result->fetch_assoc()) {
+while ($row = $sub_stmt->fetch()) {
     // Group by main category
     if (!isset($subs_by_main[$row['main_category']])) {
         $subs_by_main[$row['main_category']] = [];
@@ -178,7 +179,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($_POST['geo_lat']) && !empty($_POST['geo_lng'])) {
             $gLat = floatval($_POST['geo_lat']);
             $gLng = floatval($_POST['geo_lng']);
-            $conn->query("UPDATE users SET latitude='{$gLat}', longitude='{$gLng}' WHERE id='{$client_id}'");
+            $geo_stmt = $conn->prepare("UPDATE users SET latitude=?, longitude=? WHERE id=?");
+            $geo_stmt->execute([$gLat, $gLng, $client_id]);
             $clientLat = $gLat;
             $clientLng = $gLng;
         }
@@ -218,7 +220,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fee = $urgency_surcharge;
 
         // [CHANGED] New query that joins worker_skills on sub_category
-        $safe_sub = $conn->real_escape_string($sub_category);
         $sql = "
             SELECT
                 u.id,
@@ -236,19 +237,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ws.nc_level AS skill_nc_level,
                 ws.is_verified AS skill_verified
             FROM users u
-            JOIN worker_profiles wp ON wp.user_id = u.id AND wp.is_active = 1
+            JOIN worker_profiles wp ON wp.user_id = u.id AND wp.is_active = TRUE
             JOIN worker_skills ws ON ws.worker_id = u.id
-                AND ws.sub_category = '$safe_sub'
+                AND ws.sub_category = ?
             WHERE u.role = 'worker'
                 AND u.latitude IS NOT NULL
                 AND u.latitude != 0
         ";
 
-        $result  = $conn->query($sql);
+        $stmt = $conn->prepare($sql);
+        $stmt->execute([$sub_category]);
         $available_workers   = [];
         $unavailable_workers = [];
 
-        while ($worker = $result->fetch_assoc()) {
+        while ($worker = $stmt->fetch()) {
             $dist = getDistance($clientLat, $clientLng, $worker['latitude'], $worker['longitude']);
             if ($dist > 10) continue;
 

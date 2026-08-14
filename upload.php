@@ -2,7 +2,7 @@
 // upload.php — Handles media uploads for chat
 // Saves file to /uploads/chat/, records to DB, returns JSON with URL
 
-include 'db.php';
+include 'db_connect.php';
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
 header('Content-Type: application/json');
@@ -23,9 +23,8 @@ if (!$booking_id) {
 
 // Verify the user belongs to this booking
 $check = $conn->prepare("SELECT id FROM bookings WHERE id = ? AND (client_id = ? OR worker_id = ?)");
-$check->bind_param("iii", $booking_id, $sender_id, $sender_id);
-$check->execute();
-if ($check->get_result()->num_rows === 0) {
+$check->execute([$booking_id, $sender_id, $sender_id]);
+if (!$check->fetch()) {
     echo json_encode(['success' => false, 'error' => 'Access denied']);
     exit;
 }
@@ -71,12 +70,11 @@ if (!move_uploaded_file($file['tmp_name'], $dest)) {
 // Save to messages table
 // message = empty string for media, attachment_path = file URL, message_type = image|video
 $stmt = $conn->prepare(
-    "INSERT INTO messages (booking_id, sender_id, message, attachment_path, message_type, timestamp) 
+    "INSERT INTO messages (booking_id, sender_id, message, attachment_path, message_type, \"timestamp\")
      VALUES (?, ?, '', ?, ?, NOW())"
 );
-$stmt->bind_param("iiss", $booking_id, $sender_id, $file_url, $msg_type);
-$stmt->execute();
-$message_id = $stmt->insert_id;
+$stmt->execute([$booking_id, $sender_id, $file_url, $msg_type]);
+$message_id = $conn->lastInsertId('messages_id_seq');
 
 echo json_encode([
     'success'    => true,

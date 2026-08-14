@@ -2,7 +2,7 @@
 // includes/fcm_sender.php
 // Upgraded to OneSignal API, but keeping the FCMv1 class name so your other files don't break!
 
-require_once __DIR__ . '/../config/env.php';
+require_once __DIR__ . '/../config/dotenv.php';
 
 class FCMv1 {
     private $appId;

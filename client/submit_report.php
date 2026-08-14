@@ -3,7 +3,7 @@
 // Handles report submissions from clients with beautiful UI
 
 session_start();
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 // Security Check - Only clients can submit reports
@@ -58,27 +58,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       WHERE b.id = ? AND b.client_id = ?";
         
         $stmt = $conn->prepare($check_sql);
-        $stmt->bind_param("ii", $booking_id, $client_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        
-        if ($result->num_rows === 0) {
+        $stmt->execute([$booking_id, $client_id]);
+        $booking = $stmt->fetch();
+
+        if (!$booking) {
             $error_message = 'Booking not found or does not belong to you';
         } else {
-            $booking = $result->fetch_assoc();
             $worker_id = $booking['worker_id'];
             $worker_name = $booking['worker_name'];
-            
+
             // Check if a report already exists for this booking BY THIS CLIENT
             // FIX: Checking the `reports` table instead of `reports_worker`
-            $check_report_sql = "SELECT id FROM reports 
+            $check_report_sql = "SELECT id FROM reports
                                  WHERE booking_id = ? AND client_id = ?";
             $stmt_check = $conn->prepare($check_report_sql);
-            $stmt_check->bind_param("ii", $booking_id, $client_id);
-            $stmt_check->execute();
-            $report_result = $stmt_check->get_result();
-            
-            if ($report_result->num_rows > 0) {
+            $stmt_check->execute([$booking_id, $client_id]);
+            $report_result = $stmt_check->fetch();
+
+            if ($report_result) {
                 $error_message = 'You have already reported this booking. Our team will review it shortly.';
             } else {
                 // Map report reasons to display text
@@ -95,29 +92,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 // Insert report into reports table
                 // FIX: Using the correct Client Reports table
-                $insert_sql = "INSERT INTO reports 
+                $insert_sql = "INSERT INTO reports
                                (booking_id, client_id, worker_id, report_reason, report_details, status, created_at)
                                VALUES (?, ?, ?, ?, ?, 'pending', NOW())";
-                
+
                 $stmt_insert = $conn->prepare($insert_sql);
-                // Bind: iiiss (int, int, int, string, string)
-                $stmt_insert->bind_param("iiiss", $booking_id, $client_id, $worker_id, 
-                                         $report_reason_display, $report_details);
-                
-                if ($stmt_insert->execute()) {
-                    $report_id = $stmt_insert->insert_id;
-                    
+                $inserted = $stmt_insert->execute([$booking_id, $client_id, $worker_id,
+                                         $report_reason_display, $report_details]);
+
+                if ($inserted) {
+                    $report_id = $conn->lastInsertId('reports_id_seq');
+
                     // Log the report in system_logs
                     $log_sql = "INSERT INTO system_logs (user_id, action, details, ip_address, created_at)
                                 VALUES (?, 'submit_report', ?, ?, NOW())";
-                    
+
                     $client_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
                     $log_details = "Client ID: $client_id reported Worker ID: $worker_id for Booking ID: $booking_id. Reason: $report_reason_display";
-                    
+
                     $stmt_log = $conn->prepare($log_sql);
-                    $stmt_log->bind_param("iss", $client_id, $log_details, $client_ip);
-                    $stmt_log->execute();
-                    
+                    $stmt_log->execute([$client_id, $log_details, $client_ip]);
+
                     $success = true;
                     $report_data = [
                         'report_id' => $report_id,
@@ -128,12 +123,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $error_message = 'Failed to submit report. Please try again later.';
                 }
-                $stmt_insert->close();
-                if (isset($stmt_log)) $stmt_log->close();
             }
-            $stmt_check->close();
         }
-        $stmt->close();
     } else {
         $error_message = implode(', ', $errors);
     }

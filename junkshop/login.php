@@ -3,7 +3,7 @@
 // junkshop/login.php  —  Standalone Junk Shop Login
 // Uses junkshops table (separate from users)
 // ============================================================
-include __DIR__ . '/../db.php';   // $conn (mysqli)
+include __DIR__ . '/../db_connect.php';   // $conn (PDO)
 
 // Already logged in → go to dashboard
 if (!empty($_SESSION['junkshop_id'])) {
@@ -21,10 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Please enter your email and password.';
     } else {
         $stmt = $conn->prepare("SELECT id, shop_name, owner_name, password, is_active FROM junkshops WHERE email = ? LIMIT 1");
-        $stmt->bind_param('s', $email);
-        $stmt->execute();
-        $shop = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
+        $stmt->execute([$email]);
+        $shop = $stmt->fetch();
 
         if (!$shop || !password_verify($password, $shop['password'])) {
             $error = 'Invalid email or password.';
@@ -38,7 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Update last login
             $id = (int)$shop['id'];
-            $conn->query("UPDATE junkshops SET last_login_at = NOW() WHERE id = $id");
+            $stmt = $conn->prepare("UPDATE junkshops SET last_login_at = NOW() WHERE id = ?");
+            $stmt->execute([$id]);
 
             header('Location: dashboard.php');
             exit;

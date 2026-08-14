@@ -1,8 +1,8 @@
 <?php
 // worker/wallet.php — Merged Wallet + Top Up page with Listo Points
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
-include '../includes/functions/wallet_functions.php';
+include '../includes/functions/wallet_manager.php';
 include '../config/constants.php';
 
 // Security Check
@@ -18,12 +18,13 @@ $wallet = new WalletManager($conn);
 $sql = "SELECT wallet_balance, free_credits, free_bookings_used, jobs_completed,
                average_rating, verification_status,
                COALESCE(listo_points, 0) AS listo_points
-        FROM worker_profiles WHERE user_id = $worker_id";
-$res = $conn->query($sql);
-$profile = $res->fetch_assoc();
+        FROM worker_profiles WHERE user_id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->execute([$worker_id]);
+$profile = $stmt->fetch();
 $balance = $profile['wallet_balance'] ?? 0;
 
-// Listo Points constants are now defined in wallet_functions.php
+// Listo Points constants are now defined in wallet_manager.php
 // No need to redefine them here
 
 $listo_points      = intval($profile['listo_points'] ?? 0);
@@ -32,40 +33,44 @@ $points_percentage = round(($points_progress / LISTO_POINTS_FOR_FREE) * 100);
 $points_to_next    = LISTO_POINTS_FOR_FREE - $points_progress;
 
 // Fetch pending earnings
-$pending_sql = "SELECT COUNT(*) as count, SUM(calculated_fee) as total 
-                FROM bookings 
-                WHERE worker_id = $worker_id 
-                AND payment_method = 'Xendit' 
-                AND payment_status = 'Paid' 
+$pending_sql = "SELECT COUNT(*) as count, SUM(calculated_fee) as total
+                FROM bookings
+                WHERE worker_id = ?
+                AND payment_method = 'Xendit'
+                AND payment_status = 'Paid'
                 AND status = 'Pending'";
-$pending = $conn->query($pending_sql)->fetch_assoc();
+$pending_stmt = $conn->prepare($pending_sql);
+$pending_stmt->execute([$worker_id]);
+$pending = $pending_stmt->fetch();
 
 // Handle Withdrawal Request
 if (isset($_POST['withdraw_btn'])) {
     $amount = floatval($_POST['amount']);
-    $gcash  = $conn->real_escape_string($_POST['gcash_number']);
+    $gcash  = $_POST['gcash_number'];
 
     if ($amount > $balance) {
         $error = "Insufficient balance!";
     } elseif ($amount < 100) {
         $error = "Minimum withdrawal is ₱100.";
     } else {
-        $conn->begin_transaction();
+        $conn->beginTransaction();
         try {
             $new_balance = $balance - $amount;
-            $conn->query("UPDATE worker_profiles SET wallet_balance = $new_balance WHERE user_id = $worker_id");
-            $conn->query("INSERT INTO withdrawals (worker_id, amount, gcash_number, status, request_date) 
-                         VALUES ('$worker_id', '$amount', '$gcash', 'Pending', NOW())");
-            $withdrawal_id = $conn->insert_id;
-            $conn->query("INSERT INTO wallet_transactions 
-                         (user_id, user_type, transaction_type, amount, reference_id, reference_type, description, balance_after) 
-                         VALUES ($worker_id, 'worker', 'withdrawal', $amount, $withdrawal_id, 'withdrawal', 
-                                 'Withdrawal request to GCash $gcash', $new_balance)");
+            $upd_stmt = $conn->prepare("UPDATE worker_profiles SET wallet_balance = ? WHERE user_id = ?");
+            $upd_stmt->execute([$new_balance, $worker_id]);
+            $wd_stmt = $conn->prepare("INSERT INTO withdrawals (worker_id, amount, gcash_number, status, request_date)
+                         VALUES (?, ?, ?, 'Pending', NOW())");
+            $wd_stmt->execute([$worker_id, $amount, $gcash]);
+            $withdrawal_id = $conn->lastInsertId('withdrawals_id_seq');
+            $wt_stmt = $conn->prepare("INSERT INTO wallet_transactions
+                         (user_id, user_type, transaction_type, amount, reference_id, reference_type, description, balance_after)
+                         VALUES (?, 'worker', 'withdrawal', ?, ?, 'withdrawal', ?, ?)");
+            $wt_stmt->execute([$worker_id, $amount, $withdrawal_id, "Withdrawal request to GCash $gcash", $new_balance]);
             $conn->commit();
             $balance = $new_balance;
             $success = "Withdrawal requested! Admin will process it shortly.";
         } catch (Exception $e) {
-            $conn->rollback();
+            $conn->rollBack();
             $error = "Transaction failed: " . $e->getMessage();
         }
     }
@@ -92,8 +97,10 @@ if (isset($_POST['topup_btn'])) {
 $wallet_info = $wallet->getWorkerWallet($worker_id);
 
 // Fetch recent top-ups (last 5, shown in top-up tab)
-$topups_sql = "SELECT * FROM top_ups WHERE worker_id = $worker_id ORDER BY created_at DESC LIMIT 5";
-$topups = $conn->query($topups_sql);
+$topups_sql = "SELECT * FROM top_ups WHERE worker_id = ? ORDER BY created_at DESC LIMIT 5";
+$topups_stmt = $conn->prepare($topups_sql);
+$topups_stmt->execute([$worker_id]);
+$topups = $topups_stmt->fetchAll();
 
 // Active tab logic
 $active_tab = $_GET['tab'] ?? 'overview';
@@ -107,13 +114,15 @@ if ($filter === 'withdrawals') $filter_where = "AND wt.transaction_type = 'withd
 if ($filter === 'refunds')     $filter_where = "AND wt.transaction_type = 'refund'";
 if ($filter === 'points')      $filter_where = "AND (wt.reference_type = 'listo_points' OR wt.reference_type = 'listo_reward')";
 
-$transactions_sql = "SELECT wt.*, b.id as booking_ref, b.status as booking_status 
+$transactions_sql = "SELECT wt.*, b.id as booking_ref, b.status as booking_status
                      FROM wallet_transactions wt
                      LEFT JOIN bookings b ON wt.reference_id = b.id AND wt.reference_type = 'booking'
-                     WHERE wt.user_id = $worker_id AND wt.user_type = 'worker' $filter_where
+                     WHERE wt.user_id = ? AND wt.user_type = 'worker' $filter_where
                      ORDER BY wt.created_at DESC
                      LIMIT 50";
-$transactions = $conn->query($transactions_sql);
+$transactions_stmt = $conn->prepare($transactions_sql);
+$transactions_stmt->execute([$worker_id]);
+$transactions = $transactions_stmt->fetchAll();
 
 function getStatusBadge($status) {
     switch($status) {
@@ -385,9 +394,9 @@ $statusStyle = getStatusBadge($profile['verification_status'] ?? 'None');
                 </div>
             </div>
 
-            <?php if ($transactions && $transactions->num_rows > 0): ?>
+            <?php if ($transactions && count($transactions) > 0): ?>
             <div class="space-y-3">
-                <?php while ($tx = $transactions->fetch_assoc()):
+                <?php foreach ($transactions as $tx):
                     $is_listo_points = ($tx['reference_type'] === 'listo_points');
                     $is_listo_reward = ($tx['reference_type'] === 'listo_reward');
                     $is_listo = $is_listo_points || $is_listo_reward;
@@ -470,7 +479,7 @@ $statusStyle = getStatusBadge($profile['verification_status'] ?? 'None');
                         </div>
                     </div>
                 </div>
-                <?php endwhile; ?>
+                <?php endforeach; ?>
             </div>
             <?php else: ?>
             <div class="py-12 flex flex-col items-center text-center">
@@ -559,7 +568,7 @@ $statusStyle = getStatusBadge($profile['verification_status'] ?? 'None');
         </div>
 
         <!-- Recent Top-Ups -->
-        <?php if ($topups && $topups->num_rows > 0): ?>
+        <?php if ($topups && count($topups) > 0): ?>
         <div class="bg-card-light dark:bg-card-dark rounded-2xl p-6 custom-shadow border border-slate-200/50 dark:border-slate-800">
             <div class="flex items-center gap-2 mb-4">
                 <span class="material-symbols-rounded text-primary">history</span>
@@ -577,8 +586,7 @@ $statusStyle = getStatusBadge($profile['verification_status'] ?? 'None');
                     </thead>
                     <tbody class="divide-y divide-slate-50 dark:divide-slate-800">
                         <?php
-                        $topups->data_seek(0);
-                        while ($topup = $topups->fetch_assoc()):
+                        foreach ($topups as $topup):
                             $s = $topup['status'];
                             $sc = $s==='completed' ? 'bg-emerald-500/10 text-emerald-600' : ($s==='pending' ? 'bg-amber-500/10 text-amber-600' : 'bg-red-500/10 text-red-600');
                             $si = $s==='completed' ? 'check_circle' : ($s==='pending' ? 'pending' : 'error');
@@ -594,7 +602,7 @@ $statusStyle = getStatusBadge($profile['verification_status'] ?? 'None');
                                 </span>
                             </td>
                         </tr>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>

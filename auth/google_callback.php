@@ -1,7 +1,7 @@
 <?php
 // auth/google_callback.php
 session_start();
-include '../db.php';
+include '../db_connect.php';
 include 'google_config.php';
 
 if (isset($_GET['code'])) {
@@ -58,32 +58,26 @@ if (isset($_GET['code'])) {
 
     // --- PART D: Check if email already exists ---
     $stmt_check = $conn->prepare("SELECT * FROM users WHERE email = ?");
-    $stmt_check->bind_param("s", $g_email);
-    $stmt_check->execute();
-    $existing = $stmt_check->get_result()->fetch_assoc();
-    $stmt_check->close();
+    $stmt_check->execute([$g_email]);
+    $existing = $stmt_check->fetch();
 
     if ($existing) {
         // --- EXISTING USER: Link Google account if not already linked ---
         // FIX ISSUE 1: Mark only email as verified; leave is_phone_verified untouched
         if (empty($existing['google_id'])) {
             $stmt_link = $conn->prepare(
-                "UPDATE users SET google_id = ?, avatar = ?, is_email_verified = 1 WHERE id = ?"
+                "UPDATE users SET google_id = ?, avatar = ?, is_email_verified = TRUE WHERE id = ?"
             );
-            $stmt_link->bind_param("ssi", $g_id, $g_picture, $existing['id']);
-            $stmt_link->execute();
-            $stmt_link->close();
+            $stmt_link->execute([$g_id, $g_picture, $existing['id']]);
         }
 
         // FIX ISSUE 3: Do NOT create a login session here.
         // Store a temporary token so login.php can auto-fill / confirm identity.
         $temp_token = bin2hex(random_bytes(32));
         $stmt_token = $conn->prepare(
-            "UPDATE users SET google_temp_token = ?, google_temp_token_expires = DATE_ADD(NOW(), INTERVAL 10 MINUTE) WHERE id = ?"
+            "UPDATE users SET google_temp_token = ?, google_temp_token_expires = NOW() + INTERVAL '10 minutes' WHERE id = ?"
         );
-        $stmt_token->bind_param("si", $temp_token, $existing['id']);
-        $stmt_token->execute();
-        $stmt_token->close();
+        $stmt_token->execute([$temp_token, $existing['id']]);
 
         // Redirect to login with the token — login.php will verify and create the real session
         $_SESSION['flash_info'] = "✅ Google account verified! Please confirm your login below.";
@@ -98,27 +92,21 @@ if (isset($_GET['code'])) {
             "INSERT INTO users (full_name, email, google_id, avatar, role, password, is_email_verified, is_phone_verified)
              VALUES (?, ?, ?, ?, ?, NULL, 1, 0)"
         );
-        $stmt_insert->bind_param("sssss", $g_name, $g_email, $g_id, $g_picture, $role);
 
-        if ($stmt_insert->execute()) {
-            $new_id = $stmt_insert->insert_id;
-            $stmt_insert->close();
+        if ($stmt_insert->execute([$g_name, $g_email, $g_id, $g_picture, $role])) {
+            $new_id = $conn->lastInsertId('users_id_seq');
 
             // FIX ISSUE 3: Do NOT log them in yet. Store a temp token for login.php.
             $temp_token = bin2hex(random_bytes(32));
             $stmt_token = $conn->prepare(
-                "UPDATE users SET google_temp_token = ?, google_temp_token_expires = DATE_ADD(NOW(), INTERVAL 10 MINUTE) WHERE id = ?"
+                "UPDATE users SET google_temp_token = ?, google_temp_token_expires = NOW() + INTERVAL '10 minutes' WHERE id = ?"
             );
-            $stmt_token->bind_param("si", $temp_token, $new_id);
-            $stmt_token->execute();
-            $stmt_token->close();
+            $stmt_token->execute([$temp_token, $new_id]);
 
             $_SESSION['flash_success'] = "🎉 Account created with Google! Please log in to continue.";
             header("Location: login.php?google_token=" . urlencode($temp_token));
             exit();
 
-        } else {
-            die("Database Error: " . $conn->error);
         }
     }
 }

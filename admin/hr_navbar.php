@@ -53,7 +53,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             // Show pending badge
             global $conn;
             if(isset($conn)){
-                $pnd = $conn->query("SELECT COUNT(*) as c FROM withdrawals WHERE status='Pending'")->fetch_assoc()['c']??0;
+                $pnd = $conn->query("SELECT COUNT(*) as c FROM withdrawals WHERE status='Pending'")->fetch()['c']??0;
                 if($pnd>0) echo '<span class="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-500">'.$pnd.'</span>';
             }
             ?>
@@ -63,7 +63,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <span class="material-icons-round text-[18px]">verified_user</span>Verifications
             <?php
             if(isset($conn)){
-                $vnd = $conn->query("SELECT COUNT(*) as c FROM verification WHERE verification_status='pending'")->fetch_assoc()['c']??0;
+                $vnd = $conn->query("SELECT COUNT(*) as c FROM verification WHERE verification_status='pending'")->fetch()['c']??0;
                 if($vnd>0) echo '<span class="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600">'.$vnd.'</span>';
             }
             ?>

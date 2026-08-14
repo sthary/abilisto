@@ -55,7 +55,7 @@ if ($booking_id) {
 
 // Get unit/coins from item catalog if item_id provided
 if ($item_id) {
-    $stmt = $pdo->prepare("SELECT unit, green_coins_per_unit FROM greenloop_accepted_items WHERE id = ? AND is_active = 1");
+    $stmt = $pdo->prepare("SELECT unit, green_coins_per_unit FROM greenloop_accepted_items WHERE id = ? AND is_active = TRUE");
     $stmt->execute([$item_id]);
     $catalog = $stmt->fetch();
     if ($catalog) {

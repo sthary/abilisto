@@ -1,7 +1,7 @@
 <?php
 // api/update_location.php
 session_start();
-require_once '../db.php';
+require_once '../db_connect.php';
 
 header('Content-Type: application/json');
 
@@ -38,28 +38,33 @@ if (!$lat || !$lng) {
 }
 
 // Get current values before update
-$before = $conn->query("SELECT t_latitude, t_longitude, latitude, longitude FROM users WHERE id = $worker_id")->fetch_assoc();
+$before_stmt = $conn->prepare("SELECT t_latitude, t_longitude, latitude, longitude FROM users WHERE id = ?");
+$before_stmt->execute([$worker_id]);
+$before = $before_stmt->fetch();
 writeLog("BEFORE - tracking: ({$before['t_latitude']}, {$before['t_longitude']}), home: ({$before['latitude']}, {$before['longitude']})");
 
 // Update ONLY tracking location
-$sql = "UPDATE users SET t_latitude = $lat, t_longitude = $lng WHERE id = $worker_id";
+$sql = "UPDATE users SET t_latitude = ?, t_longitude = ? WHERE id = ?";
 writeLog("SQL: $sql");
+$update_stmt = $conn->prepare($sql);
 
-if ($conn->query($sql)) {
+if ($update_stmt->execute([$lat, $lng, $worker_id])) {
     // Get values after update
-    $after = $conn->query("SELECT t_latitude, t_longitude, latitude, longitude FROM users WHERE id = $worker_id")->fetch_assoc();
+    $after_stmt = $conn->prepare("SELECT t_latitude, t_longitude, latitude, longitude FROM users WHERE id = ?");
+    $after_stmt->execute([$worker_id]);
+    $after = $after_stmt->fetch();
     writeLog("AFTER - tracking: ({$after['t_latitude']}, {$after['t_longitude']}), home: ({$after['latitude']}, {$after['longitude']})");
-    
+
     // Check if they match what we set
     if ($after['t_latitude'] == $lat && $after['t_longitude'] == $lng) {
         writeLog("✅ Update successful - tracking coordinates match");
     } else {
         writeLog("⚠️ Update may have been overwritten - tracking doesn't match what we set");
     }
-    
+
     echo json_encode(['success' => true, 'message' => 'Tracking location updated']);
 } else {
-    writeLog("❌ Database error: " . $conn->error);
+    writeLog("❌ Database error");
     echo json_encode(['success' => false, 'message' => 'Database error']);
 }
 ?>

@@ -1,7 +1,7 @@
 <?php
 // worker/generate_receipt.php
 session_start();
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 include '../config/constants.php';
 require_once '../includes/fcm_sender.php';
@@ -34,9 +34,8 @@ $sql = "SELECT b.*,
         JOIN users w ON b.worker_id = w.id
         WHERE b.id = ? AND b.worker_id = ?";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("ii", $booking_id, $worker_id);
-$stmt->execute();
-$booking = $stmt->get_result()->fetch_assoc();
+$stmt->execute([$booking_id, $worker_id]);
+$booking = $stmt->fetch();
 
 if (!$booking) {
     error_log("Booking not found for ID: $booking_id");
@@ -148,8 +147,7 @@ if ($remaining_balance > 0 && $booking['final_payment_status'] != 'paid') {
                           final_payment_xendit_id = ?
                           WHERE id = ?";
             $update_stmt = $conn->prepare($update_sql);
-            $update_stmt->bind_param("ssi", $qr_code_url, $xendit_id, $booking_id);
-            $update_stmt->execute();
+            $update_stmt->execute([$qr_code_url, $xendit_id, $booking_id]);
             
             error_log("✅ QR Code URL saved: $qr_code_url");
         } else {
@@ -172,29 +170,30 @@ if ($remaining_balance == 0 && $booking['status'] === 'Completed') {
 } elseif ($remaining_balance == 0) {
     error_log("Remaining balance is 0, auto-completing booking");
 
-    $conn->begin_transaction();
-    
+    $conn->beginTransaction();
+
     try {
         // Update booking to completed
-        $update = "UPDATE bookings SET 
+        $update = "UPDATE bookings SET
                   status = 'Completed',
                   updated_at = NOW()
                   WHERE id = ?";
         $stmt = $conn->prepare($update);
-        $stmt->bind_param("i", $booking_id);
-        $stmt->execute();
-        
+        $stmt->execute([$booking_id]);
+
         // Credit worker's wallet
-        $conn->query("UPDATE worker_profiles 
-                      SET wallet_balance = wallet_balance + $worker_gets,
+        $conn->prepare("UPDATE worker_profiles
+                      SET wallet_balance = wallet_balance + ?,
                           jobs_completed = jobs_completed + 1
-                      WHERE user_id = $worker_id");
-        
+                      WHERE user_id = ?")
+             ->execute([$worker_gets, $worker_id]);
+
         // Add to admin wallet (4% fee)
-        $conn->query("UPDATE admin_wallet 
-                      SET balance = balance + $admin_fee,
-                          total_earned = total_earned + $admin_fee
-                      WHERE id = 1");
+        $conn->prepare("UPDATE admin_wallet
+                      SET balance = balance + ?,
+                          total_earned = total_earned + ?
+                      WHERE id = 1")
+             ->execute([$admin_fee, $admin_fee]);
         
         // Notify client
         // 1. Notify client (In-App Bell Notification)
@@ -220,7 +219,7 @@ if ($remaining_balance == 0 && $booking['status'] === 'Completed') {
         $zero_balance = true;
         
     } catch (Exception $e) {
-        $conn->rollback();
+        $conn->rollBack();
         error_log("❌ Auto-complete failed: " . $e->getMessage());
     }
 }

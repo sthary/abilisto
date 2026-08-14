@@ -1,7 +1,7 @@
 <?php
 // worker/api/accept_quick_match.php
 session_start();
-include '../../db.php';
+include '../../db_connect.php';
 
 header('Content-Type: application/json');
 
@@ -25,58 +25,65 @@ if (!$booking_id || !$broadcast_id) {
 }
 
 // Start transaction
-$conn->begin_transaction();
+$conn->beginTransaction();
 
 try {
     // Check if broadcast is still available and not expired
-    $check = $conn->query("SELECT * FROM job_broadcasts 
-                           WHERE id = '$broadcast_id' 
-                           AND status = 'searching' 
-                           AND expires_at > NOW() 
-                           AND (JSON_CONTAINS(candidate_workers, '\"$worker_id\"') OR candidate_workers LIKE '%$worker_id%')
+    // (original MySQL condition was JSON_CONTAINS(candidate_workers, '"id"') OR candidate_workers LIKE '%id%' —
+    //  the LIKE clause is a strict superset of the JSON_CONTAINS match, so it alone is equivalent here)
+    $check_stmt = $conn->prepare("SELECT * FROM job_broadcasts
+                           WHERE id = ?
+                           AND status = 'searching'
+                           AND expires_at > NOW()
+                           AND candidate_workers LIKE ?
                            FOR UPDATE");
-    
-    if ($check->num_rows === 0) {
+    $check_stmt->execute([$broadcast_id, '%' . $worker_id . '%']);
+    $broadcast = $check_stmt->fetch();
+
+    if (!$broadcast) {
         throw new Exception('This job is no longer available or has expired');
     }
-    
-    $broadcast = $check->fetch_assoc();
-    
+
     // Update broadcast to accepted
-    $conn->query("UPDATE job_broadcasts 
-                  SET status = 'accepted', 
-                      accepted_worker_id = '$worker_id',
-                      accepted_booking_id = '$booking_id'
-                  WHERE id = '$broadcast_id'");
-    
+    $conn->prepare("UPDATE job_broadcasts
+                  SET status = 'accepted',
+                      accepted_worker_id = ?,
+                      accepted_booking_id = ?
+                  WHERE id = ?")
+         ->execute([$worker_id, $booking_id, $broadcast_id]);
+
     // Update the specific booking to Accepted
-    $conn->query("UPDATE bookings 
-                  SET status = 'Accepted', 
-                      updated_at = NOW() 
-                  WHERE id = '$booking_id' AND worker_id = '$worker_id'");
-    
+    $conn->prepare("UPDATE bookings
+                  SET status = 'Accepted',
+                      updated_at = NOW()
+                  WHERE id = ? AND worker_id = ?")
+         ->execute([$booking_id, $worker_id]);
+
     // Cancel all other pending bookings for this broadcast
-    $conn->query("UPDATE bookings 
-                  SET status = 'Cancelled', 
-                      updated_at = NOW() 
-                  WHERE broadcast_id = '$broadcast_id' 
-                  AND id != '$booking_id'");
-    
+    $conn->prepare("UPDATE bookings
+                  SET status = 'Cancelled',
+                      updated_at = NOW()
+                  WHERE broadcast_id = ?
+                  AND id != ?")
+         ->execute([$broadcast_id, $booking_id]);
+
     // Get worker name and client ID for notification
-    $worker = $conn->query("SELECT full_name FROM users WHERE id = '$worker_id'")->fetch_assoc();
+    $worker_name_stmt = $conn->prepare("SELECT full_name FROM users WHERE id = ?");
+    $worker_name_stmt->execute([$worker_id]);
+    $worker = $worker_name_stmt->fetch();
     $client_id = $broadcast['client_id'];
-    
+
     $conn->commit();
-    
+
     echo json_encode([
         'success' => true,
         'booking_id' => $booking_id,
         'client_id' => $client_id,
         'worker_name' => $worker['full_name']
     ]);
-    
+
 } catch (Exception $e) {
-    $conn->rollback();
+    $conn->rollBack();
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 ?>

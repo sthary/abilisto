@@ -6,7 +6,7 @@
 // Both in one transaction so they're always in sync.
 
 session_start();
-require_once '../db.php';
+require_once '../db_connect.php';
 
 header('Content-Type: application/json');
 
@@ -31,9 +31,8 @@ if (!$broadcast_id) {
 $stmt = $conn->prepare(
     "SELECT id, status FROM job_broadcasts WHERE id = ? AND client_id = ?"
 );
-$stmt->bind_param("ii", $broadcast_id, $client_id);
-$stmt->execute();
-$broadcast = $stmt->get_result()->fetch_assoc();
+$stmt->execute([$broadcast_id, $client_id]);
+$broadcast = $stmt->fetch();
 
 if (!$broadcast) {
     echo json_encode(['success' => false, 'message' => 'Broadcast not found']);
@@ -52,25 +51,23 @@ if ($broadcast['status'] === 'cancelled') {
 }
 
 // ── Transaction: cancel broadcast + all its pending ghost bookings ──
-$conn->begin_transaction();
+$conn->beginTransaction();
 
 try {
     // 1. Cancel/expire the broadcast
     $stmt = $conn->prepare(
         "UPDATE job_broadcasts SET status = ? WHERE id = ? AND client_id = ?"
     );
-    $stmt->bind_param("sii", $new_status, $broadcast_id, $client_id);
-    $stmt->execute();
+    $stmt->execute([$new_status, $broadcast_id, $client_id]);
 
     // 2. Cancel all Pending bookings tied to this broadcast
     //    (these were created upfront in confirm_quick_match.php, one per candidate worker)
     $stmt = $conn->prepare(
         "UPDATE bookings SET status = 'Cancelled' WHERE broadcast_id = ? AND status = 'Pending'"
     );
-    $stmt->bind_param("i", $broadcast_id);
-    $stmt->execute();
+    $stmt->execute([$broadcast_id]);
 
-    $cancelled_bookings = $conn->affected_rows;
+    $cancelled_bookings = $stmt->rowCount();
 
     $conn->commit();
 
@@ -83,7 +80,7 @@ try {
     ]);
 
 } catch (Exception $e) {
-    $conn->rollback();
+    $conn->rollBack();
     error_log("❌ cancel_broadcast error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Database error — please try again']);
 }

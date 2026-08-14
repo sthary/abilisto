@@ -13,7 +13,7 @@ $client_name = htmlspecialchars($_SESSION['full_name'] ?? 'there');
 $redeem_msg = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['redeem_reward_id'])) {
     $reward_id = (int)$_POST['redeem_reward_id'];
-    $stmt = $pdo->prepare("SELECT * FROM greenloop_rewards WHERE id = ? AND is_active = 1");
+    $stmt = $pdo->prepare("SELECT * FROM greenloop_rewards WHERE id = ? AND is_active = TRUE");
     $stmt->execute([$reward_id]);
     $reward = $stmt->fetch();
 
@@ -46,7 +46,7 @@ $stmt = $pdo->prepare("SELECT * FROM green_coin_transactions WHERE user_id = ? O
 $stmt->execute([$client_id]);
 $transactions = $stmt->fetchAll();
 
-$stmt = $pdo->query("SELECT * FROM greenloop_rewards WHERE is_active = 1 ORDER BY green_coins_cost ASC");
+$stmt = $pdo->query("SELECT * FROM greenloop_rewards WHERE is_active = TRUE ORDER BY green_coins_cost ASC");
 $rewards = $stmt->fetchAll();
 
 $stmt = $pdo->prepare("SELECT r.*, i.item_name as catalog_name FROM greenloop_reports r LEFT JOIN greenloop_accepted_items i ON r.item_id = i.id WHERE r.client_id = ? ORDER BY r.created_at DESC LIMIT 10");

@@ -6,7 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-include '../db.php'; 
+include '../db_connect.php'; 
 
 // 2. Security Check
 if(!isset($_SESSION['user_id'])) { 
@@ -18,16 +18,20 @@ $uid = $_SESSION['user_id'];
 
 // 3. FETCH FIRST (So we can show "Unread" state before clearing it)
 // We fetch only the latest 50 to keep it fast.
-$sql = "SELECT * FROM notifications WHERE user_id = '$uid' ORDER BY created_at DESC LIMIT 50";
-$notifs = $conn->query($sql);
+$sql = "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50";
+$notifs_stmt = $conn->prepare($sql);
+$notifs_stmt->execute([$uid]);
+$notifs_rows = $notifs_stmt->fetchAll();
 
 // 4. MARK AS READ (Runs in background so next refresh they are clear)
-$conn->query("UPDATE notifications SET is_read = 1 WHERE user_id = '$uid' AND is_read = 0");
+$mark_read_stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0");
+$mark_read_stmt->execute([$uid]);
 
 // Get unread count for display
-$unread_count_sql = "SELECT COUNT(*) as count FROM notifications WHERE user_id = '$uid' AND is_read = 0";
-$unread_count_res = $conn->query($unread_count_sql);
-$unread_count = $unread_count_res->fetch_assoc()['count'] ?? 0;
+$unread_count_sql = "SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0";
+$unread_count_stmt = $conn->prepare($unread_count_sql);
+$unread_count_stmt->execute([$uid]);
+$unread_count = $unread_count_stmt->fetch()['count'] ?? 0;
 ?>
 
 <!DOCTYPE html>
@@ -139,8 +143,8 @@ $unread_count = $unread_count_res->fetch_assoc()['count'] ?? 0;
     <!-- Notifications List -->
     <div class="bg-card-light dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-none overflow-hidden">
         
-        <?php if($notifs && $notifs->num_rows > 0): ?>
-            <?php while($n = $notifs->fetch_assoc()): ?>
+        <?php if(count($notifs_rows) > 0): ?>
+            <?php foreach($notifs_rows as $n): ?>
                 
                 <?php 
                     // --- LOGIC: Icon & Color based on message content ---
@@ -230,7 +234,7 @@ $unread_count = $unread_count_res->fetch_assoc()['count'] ?? 0;
                     </div>
                 </a>
 
-            <?php endwhile; ?>
+            <?php endforeach; ?>
         <?php else: ?>
             <!-- Empty State -->
             <div class="text-center py-16 px-4">
@@ -245,7 +249,7 @@ $unread_count = $unread_count_res->fetch_assoc()['count'] ?? 0;
     </div>
     
     <!-- View Older Button (only shows if there are notifications) -->
-    <?php if($notifs && $notifs->num_rows > 0): ?>
+    <?php if(count($notifs_rows) > 0): ?>
     <div class="mt-8 text-center">
         <button class="px-8 py-3 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold text-sm hover:border-primary hover:text-primary transition-all shadow-sm">
             View Older Notifications

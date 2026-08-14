@@ -1,6 +1,6 @@
 <?php
 // admin/hr_payroll.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'hr') {
@@ -8,7 +8,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'hr') {
 }
 
 $hr_user_id = $_SESSION['user_id'];
-$hr_name    = $conn->query("SELECT full_name FROM users WHERE id=$hr_user_id")->fetch_assoc()['full_name'] ?? 'HR';
+$hr_stmt = $conn->prepare("SELECT full_name FROM users WHERE id=?");
+$hr_stmt->execute([$hr_user_id]);
+$hr_name = $hr_stmt->fetch()['full_name'] ?? 'HR';
 
 // ── Philippine statutory deduction helpers ──────────────────
 function computeSSS(float $salary): array {
@@ -45,22 +47,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // ── Create new payroll run ──────────────────────────────
     if ($action === 'create_run') {
-        $title     = $conn->real_escape_string(trim($_POST['title']??''));
-        $p_start   = $conn->real_escape_string($_POST['period_start']??'');
-        $p_end     = $conn->real_escape_string($_POST['period_end']??'');
-        $pay_date  = $conn->real_escape_string($_POST['pay_date']??'');
-        $pay_freq  = $conn->real_escape_string($_POST['pay_frequency']??'Monthly');
-        $notes     = $conn->real_escape_string(trim($_POST['notes']??''));
+        $title     = trim($_POST['title']??'');
+        $p_start   = $_POST['period_start']??'';
+        $p_end     = $_POST['period_end']??'';
+        $pay_date  = $_POST['pay_date']??'';
+        $pay_freq  = $_POST['pay_frequency']??'Monthly';
+        $notes     = trim($_POST['notes']??'');
 
         // Get active employees matching frequency
-        $emps = $conn->query("SELECT * FROM employees WHERE employment_status='Active' AND pay_frequency='$pay_freq'");
-        if (!$emps || $emps->num_rows === 0) {
+        $emps_stmt = $conn->prepare("SELECT * FROM employees WHERE employment_status='Active' AND pay_frequency=?");
+        $emps_stmt->execute([$pay_freq]);
+        $emps = $emps_stmt->fetchAll();
+        if (count($emps) === 0) {
             header("Location: hr_payroll.php?error=no_employees"); exit();
         }
 
-        $conn->query("INSERT INTO payroll_runs (title,period_start,period_end,pay_date,pay_frequency,status,notes,generated_by)
-                      VALUES ('$title','$p_start','$p_end','$pay_date','$pay_freq','Draft','$notes',$hr_user_id)");
-        $run_id = $conn->insert_id;
+        $ins_run = $conn->prepare("INSERT INTO payroll_runs (title,period_start,period_end,pay_date,pay_frequency,status,notes,generated_by)
+                      VALUES (?,?,?,?,?,'Draft',?,?)");
+        $ins_run->execute([$title,$p_start,$p_end,$pay_date,$pay_freq,$notes,$hr_user_id]);
+        $run_id = $conn->lastInsertId('payroll_runs_id_seq');
 
         $total_gross = $total_ded = $total_net = $emp_count = 0;
 
@@ -73,7 +78,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($dow <= 6) $working_days++;
         }
 
-        while ($emp = $emps->fetch_assoc()) {
+        $ins_item = $conn->prepare("INSERT INTO payroll_items
+                (payroll_run_id,employee_id,basic_pay,gross_pay,
+                 sss_ee,sss_er,philhealth_ee,philhealth_er,pagibig_ee,pagibig_er,
+                 withholding_tax,total_deductions,net_pay,days_worked)
+                VALUES
+                (?,?,?,?,
+                 ?,?,?,?,?,?,
+                 ?,?,?,?)");
+
+        foreach ($emps as $emp) {
             $basic = (float)$emp['basic_salary'];
             // Pro-rate if semi-monthly / weekly
             $period_basic = match($pay_freq) {
@@ -94,14 +108,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $gross  = $period_basic;
             $net    = $gross - $total_deductions;
 
-            $conn->query("INSERT INTO payroll_items
-                (payroll_run_id,employee_id,basic_pay,gross_pay,
-                 sss_ee,sss_er,philhealth_ee,philhealth_er,pagibig_ee,pagibig_er,
-                 withholding_tax,total_deductions,net_pay,days_worked)
-                VALUES
-                ($run_id,{$emp['id']},$period_basic,$gross,
-                 {$sss['ee']},{$sss['er']},{$ph['ee']},{$ph['er']},{$pib['ee']},{$pib['er']},
-                 $withholding,$total_deductions,$net,$working_days)");
+            $ins_item->execute([
+                $run_id,$emp['id'],$period_basic,$gross,
+                $sss['ee'],$sss['er'],$ph['ee'],$ph['er'],$pib['ee'],$pib['er'],
+                $withholding,$total_deductions,$net,$working_days
+            ]);
 
             $total_gross += $gross;
             $total_ded   += $total_deductions;
@@ -109,10 +120,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $emp_count++;
         }
 
-        $conn->query("UPDATE payroll_runs SET
-            total_gross=$total_gross, total_deductions=$total_ded,
-            total_net=$total_net, employee_count=$emp_count
-            WHERE id=$run_id");
+        $upd_run = $conn->prepare("UPDATE payroll_runs SET
+            total_gross=?, total_deductions=?,
+            total_net=?, employee_count=?
+            WHERE id=?");
+        $upd_run->execute([$total_gross,$total_ded,$total_net,$emp_count,$run_id]);
 
         header("Location: hr_payroll.php?msg=created&run=$run_id"); exit();
     }
@@ -120,21 +132,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ── Update run status ───────────────────────────────────
     if ($action === 'update_status') {
         $run_id    = intval($_POST['run_id']??0);
-        $new_status= $conn->real_escape_string($_POST['new_status']??'');
+        $new_status= $_POST['new_status']??'';
         $allowed   = ['Draft','For Approval','Approved','Released','Cancelled'];
         if (!in_array($new_status,$allowed)) { header("Location: hr_payroll.php"); exit(); }
 
-        $conn->query("UPDATE payroll_runs SET status='$new_status' WHERE id=$run_id");
+        $stmt = $conn->prepare("UPDATE payroll_runs SET status=? WHERE id=?");
+        $stmt->execute([$new_status,$run_id]);
 
         // ── When Released → auto-log to admin_expenses as PS ──
         if ($new_status === 'Released') {
-            $run = $conn->query("SELECT * FROM payroll_runs WHERE id=$run_id")->fetch_assoc();
-            $desc = $conn->real_escape_string("Payroll: ".($run['title']??'')." — ".($run['employee_count']??0)." employees");
-            $conn->query("INSERT INTO admin_expenses
+            $run_stmt = $conn->prepare("SELECT * FROM payroll_runs WHERE id=?");
+            $run_stmt->execute([$run_id]);
+            $run = $run_stmt->fetch();
+            $desc = "Payroll: ".($run['title']??'')." — ".($run['employee_count']??0)." employees";
+            $ins_exp = $conn->prepare("INSERT INTO admin_expenses
                 (expense_type,category,description,amount,expense_date,logged_by)
-                VALUES ('PS','Staff Salary','$desc',{$run['total_net']},'{$run['pay_date']}',$hr_user_id)");
-            $exp_id = $conn->insert_id;
-            $conn->query("UPDATE payroll_runs SET expense_id=$exp_id, released_at=NOW(), approved_by=$hr_user_id, approved_at=NOW() WHERE id=$run_id");
+                VALUES ('PS','Staff Salary',?,?,?,?)");
+            $ins_exp->execute([$desc,$run['total_net'],$run['pay_date'],$hr_user_id]);
+            $exp_id = $conn->lastInsertId('admin_expenses_id_seq');
+            $upd_stmt = $conn->prepare("UPDATE payroll_runs SET expense_id=?, released_at=NOW(), approved_by=?, approved_at=NOW() WHERE id=?");
+            $upd_stmt->execute([$exp_id,$hr_user_id,$run_id]);
         }
 
         header("Location: hr_payroll.php?msg=status_updated"); exit();
@@ -150,24 +167,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $late_ded   = floatval($_POST['late_deduction']??0);
         $other_ded  = floatval($_POST['other_deductions']??0);
         $days_absent= floatval($_POST['days_absent']??0);
-        $item_notes = $conn->real_escape_string(trim($_POST['notes']??''));
+        $item_notes = trim($_POST['notes']??'');
 
-        $item = $conn->query("SELECT * FROM payroll_items WHERE id=$item_id")->fetch_assoc();
+        $item_stmt = $conn->prepare("SELECT * FROM payroll_items WHERE id=?");
+        $item_stmt->execute([$item_id]);
+        $item = $item_stmt->fetch();
         $gross = (float)$item['basic_pay'] + $allowances + $bonuses + $overtime;
         $total_ded = (float)$item['sss_ee'] + (float)$item['philhealth_ee'] + (float)$item['pagibig_ee'] + (float)$item['withholding_tax'] + $absent_ded + $late_ded + $other_ded;
         $net = $gross - $total_ded;
 
-        $conn->query("UPDATE payroll_items SET
-            allowances=$allowances, bonuses=$bonuses, overtime_pay=$overtime,
-            absent_deduction=$absent_ded, late_deduction=$late_ded, other_deductions=$other_ded,
-            gross_pay=$gross, total_deductions=$total_ded, net_pay=$net,
-            days_absent=$days_absent, notes='$item_notes'
-            WHERE id=$item_id");
+        $upd_item = $conn->prepare("UPDATE payroll_items SET
+            allowances=?, bonuses=?, overtime_pay=?,
+            absent_deduction=?, late_deduction=?, other_deductions=?,
+            gross_pay=?, total_deductions=?, net_pay=?,
+            days_absent=?, notes=?
+            WHERE id=?");
+        $upd_item->execute([$allowances,$bonuses,$overtime,$absent_ded,$late_ded,$other_ded,$gross,$total_ded,$net,$days_absent,$item_notes,$item_id]);
 
         // Recalculate run totals
         $run_id = intval($item['payroll_run_id']);
-        $totals = $conn->query("SELECT SUM(gross_pay) as tg, SUM(total_deductions) as td, SUM(net_pay) as tn FROM payroll_items WHERE payroll_run_id=$run_id")->fetch_assoc();
-        $conn->query("UPDATE payroll_runs SET total_gross={$totals['tg']}, total_deductions={$totals['td']}, total_net={$totals['tn']} WHERE id=$run_id");
+        $totals_stmt = $conn->prepare("SELECT SUM(gross_pay) as tg, SUM(total_deductions) as td, SUM(net_pay) as tn FROM payroll_items WHERE payroll_run_id=?");
+        $totals_stmt->execute([$run_id]);
+        $totals = $totals_stmt->fetch();
+        $upd_totals = $conn->prepare("UPDATE payroll_runs SET total_gross=?, total_deductions=?, total_net=? WHERE id=?");
+        $upd_totals->execute([$totals['tg'],$totals['td'],$totals['tn'],$run_id]);
 
         echo json_encode(['success'=>true,'net'=>$net,'gross'=>$gross,'total_ded'=>$total_ded]);
         exit();
@@ -179,20 +202,23 @@ $runs_res = $conn->query("SELECT pr.*, u.full_name as gen_by_name
     FROM payroll_runs pr LEFT JOIN users u ON u.id=pr.generated_by
     ORDER BY pr.created_at DESC");
 $runs = [];
-while($r=$runs_res->fetch_assoc()) $runs[]=$r;
+while($r=$runs_res->fetch()) $runs[]=$r;
 
 // ── Selected run detail ─────────────────────────────────────
 $selected_run = null;
 $run_items    = [];
 if (isset($_GET['run'])) {
     $rid = intval($_GET['run']);
-    $selected_run = $conn->query("SELECT pr.*, u.full_name as gen_by_name
-        FROM payroll_runs pr LEFT JOIN users u ON u.id=pr.generated_by WHERE pr.id=$rid")->fetch_assoc();
+    $sel_stmt = $conn->prepare("SELECT pr.*, u.full_name as gen_by_name
+        FROM payroll_runs pr LEFT JOIN users u ON u.id=pr.generated_by WHERE pr.id=?");
+    $sel_stmt->execute([$rid]);
+    $selected_run = $sel_stmt->fetch();
     if ($selected_run) {
-        $items_res = $conn->query("SELECT pi.*, e.full_name, e.employee_code, e.position, e.department, e.gcash_number
+        $items_stmt = $conn->prepare("SELECT pi.*, e.full_name, e.employee_code, e.\"position\", e.department, e.gcash_number
             FROM payroll_items pi JOIN employees e ON e.id=pi.employee_id
-            WHERE pi.payroll_run_id=$rid ORDER BY e.full_name ASC");
-        while($it=$items_res->fetch_assoc()) $run_items[]=$it;
+            WHERE pi.payroll_run_id=? ORDER BY e.full_name ASC");
+        $items_stmt->execute([$rid]);
+        $run_items = $items_stmt->fetchAll();
     }
 }
 

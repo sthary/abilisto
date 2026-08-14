@@ -2,7 +2,7 @@
 // client/process_payment_xendit.php
 // UPDATED: Now uses amount from database instead of URL parameter
 
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 include '../includes/functions/booking_functions.php';
 include '../config/constants.php';
@@ -26,20 +26,20 @@ if (isset($_GET['booking_id'])) {
     error_log("Booking ID from URL: $booking_id");
     
     // Get booking details from database
-    $booking_sql = "SELECT b.*, u.full_name, u.email 
+    $booking_sql = "SELECT b.*, u.full_name, u.email
                     FROM bookings b
                     JOIN users u ON b.client_id = u.id
-                    WHERE b.id = $booking_id AND b.client_id = $client_id";
-    $booking_res = $conn->query($booking_sql);
-    
-    if ($booking_res->num_rows === 0) {
+                    WHERE b.id = ? AND b.client_id = ?";
+    $booking_stmt = $conn->prepare($booking_sql);
+    $booking_stmt->execute([$booking_id, $client_id]);
+    $booking = $booking_stmt->fetch();
+
+    if (!$booking) {
         error_log("Booking not found: $booking_id");
         $_SESSION['error'] = "Booking not found.";
         header("Location: dashboard.php");
         exit();
     }
-    
-    $booking = $booking_res->fetch_assoc();
     $worker_id = $booking['worker_id'];
     $full_name = $booking['full_name'];
     $email = $booking['email'];
@@ -110,18 +110,19 @@ if (isset($_GET['booking_id'])) {
     
     if ($http_code == 200 && isset($result['invoice_url'])) {
         // Update booking with Xendit details
-        $update_sql = "UPDATE bookings 
-                       SET transaction_id = '{$result['id']}', 
-                           checkout_url = '{$result['invoice_url']}'
-                       WHERE id = $booking_id";
-        
-        if ($conn->query($update_sql)) {
+        $update_sql = "UPDATE bookings
+                       SET transaction_id = ?,
+                           checkout_url = ?
+                       WHERE id = ?";
+        $update_stmt = $conn->prepare($update_sql);
+
+        if ($update_stmt->execute([$result['id'], $result['invoice_url'], $booking_id])) {
             error_log("✅ Redirecting to Xendit: " . $result['invoice_url']);
             // Redirect to Xendit checkout
             header("Location: " . $result['invoice_url']);
             exit();
         } else {
-            error_log("❌ Failed to update booking with Xendit data: " . $conn->error);
+            error_log("❌ Failed to update booking with Xendit data");
             $_SESSION['error'] = "Payment processing error. Please contact support.";
             header("Location: booking.php?worker_id=$worker_id");
         }
@@ -155,8 +156,8 @@ if (isset($_POST['book_btn'])) {
         $worker_id = intval($_POST['worker_id']);
         $booking_date = $_POST['service_date'];
         $urgency = $_POST['urgency'];
-        $problem_desc = $conn->real_escape_string($_POST['problem_desc']);
-        
+        $problem_desc = $_POST['problem_desc'];
+
         // Calculate fee
         $distance = floatval($_SESSION['last_distance'] ?? 0);
         $fee_calc = $bookingMgr->calculateFee($distance, $urgency, 'Cash');
@@ -179,7 +180,9 @@ if (isset($_POST['book_btn'])) {
         
         if ($booking_id) {
             // Get worker info
-            $worker = $conn->query("SELECT full_name FROM users WHERE id = $worker_id")->fetch_assoc();
+            $worker_stmt = $conn->prepare("SELECT full_name FROM users WHERE id = ?");
+            $worker_stmt->execute([$worker_id]);
+            $worker = $worker_stmt->fetch();
             
             // Send notification to worker
             $notif_msg = "📋 New Cash Booking Request!\n\n" .
@@ -210,8 +213,8 @@ if (isset($_POST['book_btn'])) {
         $worker_id = intval($_POST['worker_id']);
         $booking_date = $_POST['service_date'];
         $urgency = $_POST['urgency'];
-        $problem_desc = $conn->real_escape_string($_POST['problem_desc']);
-        
+        $problem_desc = $_POST['problem_desc'];
+
         // Calculate fee with discount
         $distance = floatval($_SESSION['last_distance'] ?? 0);
         $fee_calc = $bookingMgr->calculateFee($distance, $urgency, 'Xendit');
@@ -237,18 +240,19 @@ if (isset($_POST['book_btn'])) {
         $booking_id = $bookingMgr->createBooking($booking_data);
         
         if (!$booking_id) {
-            error_log("❌ Failed to create booking. Last SQL error: " . $conn->error);
+            error_log("❌ Failed to create booking.");
             $_SESSION['error'] = "Failed to create booking. Please try again.";
             header("Location: booking.php?worker_id=$worker_id");
             exit();
         }
-        
+
         error_log("✅ Booking created successfully with ID: $booking_id");
-        
+
         // Verify the amount was saved correctly
-        $check_sql = "SELECT calculated_fee FROM bookings WHERE id = $booking_id";
-        $check_res = $conn->query($check_sql);
-        $check_row = $check_res->fetch_assoc();
+        $check_sql = "SELECT calculated_fee FROM bookings WHERE id = ?";
+        $check_stmt = $conn->prepare($check_sql);
+        $check_stmt->execute([$booking_id]);
+        $check_row = $check_stmt->fetch();
         error_log("✅ Amount in database: " . $check_row['calculated_fee']);
         
         // Now redirect to self with just the booking_id (amount will be fetched from DB)

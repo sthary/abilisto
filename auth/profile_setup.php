@@ -1,6 +1,6 @@
 <?php
 // profile_setup.php  — v2 (Rule of Three + worker_skills table)
-include '../db.php';
+include '../db_connect.php';
 
 // ── Auth guard ──────────────────────────────────────────────
 if (!isset($_SESSION['user_id'])) {
@@ -148,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 
     if ($action === 'finish') {
-        $pdo->prepare("UPDATE users SET is_new = 0 WHERE id = ?")->execute([$user_id]);
+        $pdo->prepare("UPDATE users SET is_new = FALSE WHERE id = ?")->execute([$user_id]);
         $_SESSION['is_new'] = 0;
         echo json_encode(['success' => true]); exit;
     }

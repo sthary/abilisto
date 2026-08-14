@@ -1,7 +1,7 @@
 <?php
 // auth/forgot_pass.php
 session_start();
-include '../db.php';
+include '../db_connect.php';
 include '../includes/mailer.php';
 
 // ─────────────────────────────────────────────────────────────
@@ -17,9 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fp_email'])) {
     $email = trim($_POST['fp_email']);
 
     $stmt = $conn->prepare("SELECT id, full_name, email, role, is_email_verified FROM users WHERE email = ?");
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $user = $stmt->get_result()->fetch_assoc();
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
 
     if (!$user) {
         $error = "No account found with that email address.";
@@ -137,8 +136,7 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fp_newpass'])) {
         } else {
             $hashed = password_hash($new_pass, PASSWORD_DEFAULT);
             $stmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
-            $stmt->bind_param("si", $hashed, $_SESSION['fp_user_id']);
-            $stmt->execute();
+            $stmt->execute([$hashed, $_SESSION['fp_user_id']]);
 
             // Set session so they're logged in
             $uid = $_SESSION['fp_user_id'];
@@ -156,9 +154,8 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fp_newpass'])) {
 
             // Log them in
             $user_stmt = $conn->prepare("SELECT id, full_name, email, phone, role, municipality, latitude, longitude, is_email_verified FROM users WHERE id = ?");
-            $user_stmt->bind_param("i", $uid);
-            $user_stmt->execute();
-            $logged_user = $user_stmt->get_result()->fetch_assoc();
+            $user_stmt->execute([$uid]);
+            $logged_user = $user_stmt->fetch();
 
             $_SESSION['user_id']           = $logged_user['id'];
             $_SESSION['full_name']         = $logged_user['full_name'];

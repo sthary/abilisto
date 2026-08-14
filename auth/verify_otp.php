@@ -1,6 +1,6 @@
 <?php
 // auth/verify_otp.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/sms_sender.php';
 
 function formatPhoneForDisplay($phone) {
@@ -23,11 +23,8 @@ if (empty($email)) {
 
 $sql = "SELECT phone, is_phone_verified FROM users WHERE email = ?";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("s", $email);
-$stmt->execute();
-$result = $stmt->get_result();
-$user = $result->fetch_assoc();
-$stmt->close();
+$stmt->execute([$email]);
+$user = $stmt->fetch();
 
 if (empty($user['phone'])) {
     header("Location: manage_phone.php?email=" . urlencode($email));
@@ -79,7 +76,7 @@ if (isset($_POST['verify_btn'])) {
     $api_result = verifyOTP($phone, $otp_input);
 
     if (isset($api_result['status']) && $api_result['status'] == 'success') {
-        $conn->query("UPDATE users SET is_phone_verified = 1 WHERE email = '" . $conn->real_escape_string($email) . "'");
+        $conn->prepare("UPDATE users SET is_phone_verified = TRUE WHERE email = ?")->execute([$email]);
         unset($_SESSION['otp_sent']);
         unset($_SESSION['pending_verify_email']);
         unset($_SESSION['pending_verify_role']);

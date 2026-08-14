@@ -1,6 +1,6 @@
 <?php
 // auth/verify.php
-include '../db.php';
+include '../db_connect.php';
 
 $redirect_url = "login.php";
 $btn_text = "Go to Login";
@@ -16,13 +16,10 @@ $user_name = '';
 if (isset($_GET['token'])) {
     $token = $_GET['token'];
 
-    $stmt = $conn->prepare("SELECT id, full_name, role FROM users WHERE verification_token = ? AND is_email_verified = 0");
-    $stmt->bind_param("s", $token);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $stmt = $conn->prepare("SELECT id, full_name, role FROM users WHERE verification_token = ? AND is_email_verified = FALSE");
+    $stmt->execute([$token]);
 
-    if ($result->num_rows > 0) {
-        $user = $result->fetch_assoc();
+    if ($user = $stmt->fetch()) {
         $user_name = explode(' ', trim($user['full_name']))[0];
 
         if (!isset($_SESSION['user_id'])) {
@@ -30,10 +27,9 @@ if (isset($_GET['token'])) {
             $btn_text = "Continue to Dashboard";
         }
 
-        $update = $conn->prepare("UPDATE users SET is_email_verified = 1, verification_token = NULL WHERE id = ?");
-        $update->bind_param("i", $user['id']);
+        $update = $conn->prepare("UPDATE users SET is_email_verified = TRUE, verification_token = NULL WHERE id = ?");
 
-        if ($update->execute()) {
+        if ($update->execute([$user['id']])) {
             $state = 'success';
         }
     } else {

@@ -1,6 +1,6 @@
 <?php
 // client/we_map.php
-include '../db.php';
+include '../db_connect.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
     header("Location: ../auth/login.php");
@@ -10,9 +10,10 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
 $client_id = intval($_SESSION['user_id']);
 
 // ── Get client lat/lng ──────────────────────────────────────────────────────
-$client_sql = "SELECT latitude, longitude, full_name FROM users WHERE id = $client_id";
-$client_res = $conn->query($client_sql);
-$client_data = $client_res ? $client_res->fetch_assoc() : [];
+$client_sql = "SELECT latitude, longitude, full_name FROM users WHERE id = ?";
+$client_stmt = $conn->prepare($client_sql);
+$client_stmt->execute([$client_id]);
+$client_data = $client_stmt->fetch() ?: [];
 $clientLat  = floatval($client_data['latitude']  ?? 9.33796201);
 $clientLng  = floatval($client_data['longitude'] ?? 125.97473145);
 $clientName = $client_data['full_name'] ?? 'there';
@@ -77,28 +78,30 @@ $workers_sql = "
     LEFT JOIN (
         SELECT worker_id, sub_category, badge_level, nc_level
         FROM worker_skills ws1
-        WHERE is_verified = 1
+        WHERE is_verified = TRUE
         AND NOT EXISTS (
-            SELECT 1 FROM worker_skills ws2 
-            WHERE ws2.worker_id = ws1.worker_id 
-            AND ws2.is_verified = 1 
-            AND FIELD(ws2.badge_level, 'Gold', 'Silver', 'Bronze', 'Community') < FIELD(ws1.badge_level, 'Gold', 'Silver', 'Bronze', 'Community')
+            SELECT 1 FROM worker_skills ws2
+            WHERE ws2.worker_id = ws1.worker_id
+            AND ws2.is_verified = TRUE
+            AND (CASE ws2.badge_level WHEN 'Gold' THEN 1 WHEN 'Silver' THEN 2 WHEN 'Bronze' THEN 3 WHEN 'Community' THEN 4 ELSE 0 END)
+                < (CASE ws1.badge_level WHEN 'Gold' THEN 1 WHEN 'Silver' THEN 2 WHEN 'Bronze' THEN 3 WHEN 'Community' THEN 4 ELSE 0 END)
         )
     ) ws ON u.id = ws.worker_id
     WHERE u.role = 'worker'
-      AND wp.is_active = 1
+      AND wp.is_active = TRUE
       AND u.latitude IS NOT NULL
       AND u.longitude IS NOT NULL
       AND u.latitude != 0
       AND u.longitude != 0
-      AND u.location_sharing_enabled = 1  -- Only workers who have consented
+      AND u.location_sharing_enabled = TRUE  -- Only workers who have consented
     ORDER BY wp.average_rating DESC
 ";
-$workers_res = $conn->query($workers_sql);
+$workers_stmt = $conn->prepare($workers_sql);
+$workers_stmt->execute();
 $workers = [];
 $workers_with_offset = [];
 
-while ($row = $workers_res->fetch_assoc()) {
+while ($row = $workers_stmt->fetch()) {
     $workers[] = $row;
     
     // Apply offset to each worker's coordinates
@@ -135,14 +138,15 @@ while ($row = $workers_res->fetch_assoc()) {
 
 // ── Collect unique categories from worker_skills ───────────────────────────
 $categories_sql = "
-    SELECT DISTINCT sub_category 
-    FROM worker_skills 
-    WHERE is_verified = 1 
+    SELECT DISTINCT sub_category
+    FROM worker_skills
+    WHERE is_verified = TRUE
     ORDER BY sub_category
 ";
-$categories_res = $conn->query($categories_sql);
+$categories_stmt = $conn->prepare($categories_sql);
+$categories_stmt->execute();
 $categories = [];
-while ($cat_row = $categories_res->fetch_assoc()) {
+while ($cat_row = $categories_stmt->fetch()) {
     $categories[] = $cat_row['sub_category'];
 }
 

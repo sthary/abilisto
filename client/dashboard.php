@@ -1,6 +1,6 @@
 <?php
 // client/dashboard.php — v2 (Dynamic Categorization & Contextual Badging with Tour)
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 include '../auth/enforce_phone.php';
 
@@ -11,7 +11,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
 $uid = $_SESSION['user_id'];
 
 // Tour / Welcome logic
-$tour_check = $conn->query("SELECT has_seen_tour FROM users WHERE id = '$uid'")->fetch_assoc();
+$tour_check_stmt = $conn->prepare("SELECT has_seen_tour FROM users WHERE id = ?");
+$tour_check_stmt->execute([$uid]);
+$tour_check = $tour_check_stmt->fetch();
 $has_seen_tour = ($tour_check && $tour_check['has_seen_tour'] == 1);
 $show_tour_modal = !$has_seen_tour; // Show tour modal if they haven't seen it
 $show_welcome = !isset($_SESSION['has_seen_welcome']);
@@ -81,12 +83,12 @@ $sql = "
         wp.jobs_completed,
         wp.minimum_standard_rate,
         ws.main_category,
-        GROUP_CONCAT(
-            DISTINCT CONCAT_WS('||', ws.sub_category, ws.badge_level, IFNULL(ws.nc_level,''), ws.is_verified)
+        STRING_AGG(
+            CONCAT_WS('||', ws.sub_category, ws.badge_level, COALESCE(ws.nc_level,''), CASE WHEN ws.is_verified THEN '1' ELSE '0' END),
+            ';;'
             ORDER BY
-                FIELD(ws.badge_level,'Gold','Silver','Bronze','Community','Unverified'),
+                CASE ws.badge_level WHEN 'Gold' THEN 1 WHEN 'Silver' THEN 2 WHEN 'Bronze' THEN 3 WHEN 'Community' THEN 4 WHEN 'Unverified' THEN 5 ELSE 6 END,
                 ws.sub_category
-            SEPARATOR ';;'
         ) AS skill_badge_data
     FROM users u
     JOIN worker_profiles wp ON wp.user_id = u.id
@@ -94,42 +96,47 @@ $sql = "
     WHERE u.role = 'worker'
 ";
 
+$params = [];
+
 // Quick Match filter
 if ($filter_sub !== '') {
-    $fs = $conn->real_escape_string($filter_sub);
-    $sql .= " AND ws.sub_category = '$fs'";
+    $sql .= " AND ws.sub_category = ?";
+    $params[] = $filter_sub;
 } elseif ($filter_main !== '') {
-    $fm = $conn->real_escape_string($filter_main);
-    $sql .= " AND ws.main_category = '$fm'";
+    $sql .= " AND ws.main_category = ?";
+    $params[] = $filter_main;
 }
 
 // Search
 if ($search_q !== '') {
-    $sq = $conn->real_escape_string($search_q);
     $sql .= " AND (
-        u.full_name      LIKE '%$sq%' OR
-        ws.sub_category  LIKE '%$sq%' OR
-        ws.main_category LIKE '%$sq%' OR
-        u.municipality   LIKE '%$sq%'
+        u.full_name      LIKE ? OR
+        ws.sub_category  LIKE ? OR
+        ws.main_category LIKE ? OR
+        u.municipality   LIKE ?
     )";
+    $like_q = '%' . $search_q . '%';
+    $params[] = $like_q;
+    $params[] = $like_q;
+    $params[] = $like_q;
+    $params[] = $like_q;
 }
 
 $sql .= "
-    GROUP BY u.id, ws.main_category
+    GROUP BY u.id, wp.user_id, ws.main_category
     ORDER BY wp.average_rating DESC, wp.jobs_completed DESC
 ";
 
-$result = $conn->query($sql);
+$stmt = $conn->prepare($sql);
+$stmt->execute($params);
 
 // Organise rows
 $workers_by_main = [];
 $all_workers     = [];
 
-if ($result && $result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $all_workers[] = $row;
-        $workers_by_main[$row['main_category']][] = $row;
-    }
+while ($row = $stmt->fetch()) {
+    $all_workers[] = $row;
+    $workers_by_main[$row['main_category']][] = $row;
 }
 
 // Available main categories
@@ -401,7 +408,9 @@ function getInitials(string $name): string {
 
 <?php
 // Email verification banner
-$chk = $conn->query("SELECT is_email_verified FROM users WHERE id = '$uid'")->fetch_assoc();
+$chk_stmt = $conn->prepare("SELECT is_email_verified FROM users WHERE id = ?");
+$chk_stmt->execute([$uid]);
+$chk = $chk_stmt->fetch();
 if ($chk && $chk['is_email_verified'] == 0): ?>
 <div class="bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800 py-3">
     <div class="max-w-7xl mx-auto px-4 md:px-6 flex items-center justify-between">
@@ -951,7 +960,7 @@ document.head.appendChild(style);
 if (!file_exists('../includes/mark_tour_complete.php')) {
     $markTourContent = '<?php
 session_start();
-include "../db.php";
+include "../db_connect.php";
 
 if (!isset($_SESSION["user_id"])) {
     http_response_code(401);
@@ -959,7 +968,8 @@ if (!isset($_SESSION["user_id"])) {
 }
 
 $uid = intval($_SESSION["user_id"]);
-$conn->query("UPDATE users SET has_seen_tour = 1 WHERE id = $uid");
+$stmt = $conn->prepare("UPDATE users SET has_seen_tour = TRUE WHERE id = ?");
+$stmt->execute([$uid]);
 
 echo json_encode(["success" => true]);
 ?>';

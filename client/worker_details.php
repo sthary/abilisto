@@ -1,6 +1,6 @@
 <?php
 // client/worker_details.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 if (!isset($_GET['id'])) {
@@ -11,53 +11,58 @@ if (!isset($_GET['id'])) {
 $worker_id = intval($_GET['id']);
 
 // 1. Fetch Worker Profile with skills
-$sql = "SELECT 
+$sql = "SELECT
             u.id,
-            u.full_name, 
-            u.municipality, 
-            u.address, 
-            u.latitude, 
-            u.longitude, 
-            u.phone, 
-            u.email, 
+            u.full_name,
+            u.municipality,
+            u.address,
+            u.latitude,
+            u.longitude,
+            u.phone,
+            u.email,
             u.profile_pic,
-            wp.service_category, 
-            wp.bio, 
-            wp.verification_status, 
-            wp.availability_status, 
-            wp.average_rating, 
-            wp.rating_count, 
-            wp.jobs_completed, 
+            wp.service_category,
+            wp.bio,
+            wp.verification_status,
+            wp.availability_status,
+            wp.average_rating,
+            wp.rating_count,
+            wp.jobs_completed,
             wp.minimum_standard_rate,
-            GROUP_CONCAT(
-                DISTINCT CONCAT_WS('||', ws.sub_category, ws.badge_level, IFNULL(ws.nc_level,''), ws.is_verified)
+            STRING_AGG(
+                CONCAT_WS('||', ws.sub_category, ws.badge_level, COALESCE(ws.nc_level,''), CASE WHEN ws.is_verified THEN '1' ELSE '0' END),
+                ';;'
                 ORDER BY
-                    FIELD(ws.badge_level,'Gold','Silver','Bronze','Community','Unverified'),
+                    CASE ws.badge_level WHEN 'Gold' THEN 1 WHEN 'Silver' THEN 2 WHEN 'Bronze' THEN 3 WHEN 'Community' THEN 4 WHEN 'Unverified' THEN 5 ELSE 6 END,
                     ws.sub_category
-                SEPARATOR ';;'
             ) AS skill_badge_data
-        FROM users u 
-        JOIN worker_profiles wp ON u.id = wp.user_id 
+        FROM users u
+        JOIN worker_profiles wp ON u.id = wp.user_id
         LEFT JOIN worker_skills ws ON ws.worker_id = u.id
-        WHERE u.id = $worker_id
-        GROUP BY u.id";
+        WHERE u.id = ?
+        GROUP BY u.id, wp.user_id";
 
-$result = $conn->query($sql);
+$stmt = $conn->prepare($sql);
+$stmt->execute([$worker_id]);
+$worker = $stmt->fetch();
 
-if ($result->num_rows == 0) die("Worker not found.");
-$worker = $result->fetch_assoc();
+if (!$worker) die("Worker not found.");
 
 // 2. Fetch Reviews
 $rev_sql = "SELECT reviews.*, COALESCE(users.full_name, 'Unknown User') as reviewer_name, users.profile_pic as reviewer_pic
-            FROM reviews 
-            LEFT JOIN users ON reviews.client_id = users.id 
-            WHERE reviews.worker_id = $worker_id 
+            FROM reviews
+            LEFT JOIN users ON reviews.client_id = users.id
+            WHERE reviews.worker_id = ?
             ORDER BY reviews.created_at DESC";
-$reviews = $conn->query($rev_sql);
+$rev_stmt = $conn->prepare($rev_sql);
+$rev_stmt->execute([$worker_id]);
+$reviews = $rev_stmt->fetchAll();
 
 // 3. Fetch Portfolio
-$port_sql = "SELECT image_path FROM portfolio_images WHERE user_id = $worker_id ORDER BY uploaded_at DESC";
-$portfolio = $conn->query($port_sql);
+$port_sql = "SELECT image_path FROM portfolio_images WHERE user_id = ? ORDER BY uploaded_at DESC";
+$port_stmt = $conn->prepare($port_sql);
+$port_stmt->execute([$worker_id]);
+$portfolio = $port_stmt->fetchAll();
 
 // Badge configuration (same as dashboard)
 $BADGE_CONFIG = [
@@ -566,7 +571,7 @@ $minRate = number_format($worker['minimum_standard_rate'], 2);
             </section>
             
             <!-- Portfolio Section -->
-            <?php if($portfolio->num_rows > 0): ?>
+            <?php if(count($portfolio) > 0): ?>
             <section class="bg-white dark:bg-slate-900 rounded-3xl p-6 lg:p-8 shadow-ambient border border-slate-200/50 dark:border-slate-800/50">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="w-9 h-9 lg:w-10 lg:h-10 rounded-full bg-green-50 dark:bg-green-900/20 text-green-600 flex items-center justify-center">
@@ -576,9 +581,9 @@ $minRate = number_format($worker['minimum_standard_rate'], 2);
                 </div>
                 
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-3 lg:gap-4">
-                    <?php while($img = $portfolio->fetch_assoc()): ?>
-                        <?php 
-                            $imagePath = "../uploads/portfolios/" . htmlspecialchars($img['image_path']); 
+                    <?php foreach ($portfolio as $img): ?>
+                        <?php
+                            $imagePath = "../uploads/portfolios/" . htmlspecialchars($img['image_path']);
                             if (file_exists($imagePath)):
                         ?>
                         <a href="<?php echo $imagePath; ?>" target="_blank" class="group relative aspect-square rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
@@ -588,7 +593,7 @@ $minRate = number_format($worker['minimum_standard_rate'], 2);
                             </div>
                         </a>
                         <?php endif; ?>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 </div>
             </section>
             <?php endif; ?>
@@ -601,16 +606,16 @@ $minRate = number_format($worker['minimum_standard_rate'], 2);
                             <span class="material-icons-round text-lg lg:text-xl">star_outline</span>
                         </div>
                         <h2 class="text-lg lg:text-xl font-bold text-slate-900 dark:text-white">
-                            Client Reviews (<?php echo $reviews->num_rows; ?>)
+                            Client Reviews (<?php echo count($reviews); ?>)
                         </h2>
                     </div>
-                    <?php if ($reviews->num_rows > 3): ?>
+                    <?php if (count($reviews) > 3): ?>
                     <button class="text-primary text-xs lg:text-sm font-bold hover:underline">View All</button>
                     <?php endif; ?>
                 </div>
-                
-                <?php if($reviews->num_rows > 0): ?>
-                    <?php while($rev = $reviews->fetch_assoc()): ?>
+
+                <?php if(count($reviews) > 0): ?>
+                    <?php foreach ($reviews as $rev): ?>
                         <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 lg:p-8 shadow-ambient border border-slate-200/50 dark:border-slate-800/50 transition-transform hover:translate-y-[-4px]">
                             <div class="flex items-start justify-between mb-6">
                                 <div class="flex items-center gap-3 lg:gap-4">
@@ -644,7 +649,7 @@ $minRate = number_format($worker['minimum_standard_rate'], 2);
                                 <?php echo htmlspecialchars($rev['comment']); ?>
                             </div>
                         </div>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 <?php else: ?>
                     <div class="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border border-slate-200/50 dark:border-slate-800/50">
                         <div class="w-16 h-16 mx-auto mb-4 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">

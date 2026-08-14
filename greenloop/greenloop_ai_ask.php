@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'test_mo
 }
 
 // ── CONFIGURATION ────────────────────────────────────────────
-require_once __DIR__ . '/../config/env.php';
+require_once __DIR__ . '/../config/dotenv.php';
 
 final class Config {
     // OpenRouter API key — see .env (class constants can't call getenv(), hence static property)

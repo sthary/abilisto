@@ -1,6 +1,6 @@
 <?php
 // admin/finance_topups.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'finance') {
@@ -9,24 +9,27 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'finance') {
 }
 
 $fin_user_id = $_SESSION['user_id'];
-$fin_name = $conn->query("SELECT full_name FROM users WHERE id=$fin_user_id")->fetch_assoc()['full_name'] ?? 'Finance';
+$fin_stmt = $conn->prepare("SELECT full_name FROM users WHERE id=?");
+$fin_stmt->execute([$fin_user_id]);
+$fin_name = $fin_stmt->fetch()['full_name'] ?? 'Finance';
 
 // ── Filters ────────────────────────────────────────────────
-$search    = $conn->real_escape_string($_GET['search'] ?? '');
-$date_from = $conn->real_escape_string($_GET['date_from'] ?? '');
-$date_to   = $conn->real_escape_string($_GET['date_to'] ?? '');
-$status_f  = $conn->real_escape_string($_GET['status'] ?? '');
-$method_f  = $conn->real_escape_string($_GET['method'] ?? '');
+$search    = $_GET['search'] ?? '';
+$date_from = $_GET['date_from'] ?? '';
+$date_to   = $_GET['date_to'] ?? '';
+$status_f  = $_GET['status'] ?? '';
+$method_f  = $_GET['method'] ?? '';
 $page      = max(1, intval($_GET['page'] ?? 1));
 $per_page  = 25;
 $offset    = ($page - 1) * $per_page;
 
 $where = "WHERE 1=1";
-if ($search)    $where .= " AND (u.full_name LIKE '%$search%' OR u.email LIKE '%$search%' OR t.reference_number LIKE '%$search%')";
-if ($date_from) $where .= " AND DATE(t.created_at) >= '$date_from'";
-if ($date_to)   $where .= " AND DATE(t.created_at) <= '$date_to'";
-if ($status_f)  $where .= " AND t.status = '$status_f'";
-if ($method_f)  $where .= " AND t.payment_method = '$method_f'";
+$params = [];
+if ($search)    { $where .= " AND (u.full_name LIKE ? OR u.email LIKE ? OR t.reference_number LIKE ?)"; $params[] = "%$search%"; $params[] = "%$search%"; $params[] = "%$search%"; }
+if ($date_from) { $where .= " AND DATE(t.created_at) >= ?"; $params[] = $date_from; }
+if ($date_to)   { $where .= " AND DATE(t.created_at) <= ?"; $params[] = $date_to; }
+if ($status_f)  { $where .= " AND t.status = ?"; $params[] = $status_f; }
+if ($method_f)  { $where .= " AND t.payment_method = ?"; $params[] = $method_f; }
 
 // ── Stats ──────────────────────────────────────────────────
 $stats_sql = "SELECT
@@ -37,9 +40,13 @@ $stats_sql = "SELECT
     COUNT(CASE WHEN t.status='completed' THEN 1 END) as completed_cnt,
     COUNT(CASE WHEN t.status='pending'   THEN 1 END) as pending_cnt
 FROM top_ups t LEFT JOIN users u ON u.id = t.worker_id $where";
-$stats = $conn->query($stats_sql)->fetch_assoc();
+$stats_stmt = $conn->prepare($stats_sql);
+$stats_stmt->execute($params);
+$stats = $stats_stmt->fetch();
 
-$total_rows  = (int)$conn->query("SELECT COUNT(*) as c FROM top_ups t LEFT JOIN users u ON u.id=t.worker_id $where")->fetch_assoc()['c'];
+$total_rows_stmt = $conn->prepare("SELECT COUNT(*) as c FROM top_ups t LEFT JOIN users u ON u.id=t.worker_id $where");
+$total_rows_stmt->execute($params);
+$total_rows  = (int)$total_rows_stmt->fetch()['c'];
 $total_pages = ceil($total_rows / $per_page);
 
 $data_sql = "SELECT t.*, u.full_name, u.email, u.role
@@ -47,11 +54,15 @@ $data_sql = "SELECT t.*, u.full_name, u.email, u.role
              LEFT JOIN users u ON u.id = t.worker_id
              $where
              ORDER BY t.created_at DESC
-             LIMIT $per_page OFFSET $offset";
-$rows = $conn->query($data_sql);
+             LIMIT ? OFFSET ?";
+$data_stmt = $conn->prepare($data_sql);
+$data_stmt->execute(array_merge($params, [$per_page, $offset]));
+$rows = $data_stmt->fetchAll();
 
 $current_date = date('M d, Y');
-$notif_count  = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHERE user_id=$fin_user_id AND is_read=0")->fetch_assoc()['c'] ?? 0);
+$notif_stmt = $conn->prepare("SELECT COUNT(*) as c FROM notifications WHERE user_id=? AND is_read=0");
+$notif_stmt->execute([$fin_user_id]);
+$notif_count  = (int)($notif_stmt->fetch()['c'] ?? 0);
 ?>
 <!DOCTYPE html>
 <html class="light" lang="en">
@@ -215,8 +226,8 @@ $notif_count  = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHER
                     </tr>
                 </thead>
                 <tbody>
-                <?php if($rows && $rows->num_rows > 0):
-                    while($r = $rows->fetch_assoc()): ?>
+                <?php if(count($rows) > 0):
+                    foreach($rows as $r): ?>
                 <tr>
                     <td class="text-slate-400 text-[11px] font-mono">#<?php echo $r['id']; ?></td>
                     <td>
@@ -245,7 +256,7 @@ $notif_count  = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHER
                         <?php echo $r['completed_at'] ? date('M d, Y h:i A', strtotime($r['completed_at'])) : '<span class="text-slate-300 dark:text-slate-600">—</span>'; ?>
                     </td>
                 </tr>
-                <?php endwhile; else: ?>
+                <?php endforeach; else: ?>
                 <tr><td colspan="8" class="text-center py-16 text-slate-400">
                     <span class="material-icons-round text-3xl block mb-2 opacity-30">add_card</span>
                     No top-up records found.

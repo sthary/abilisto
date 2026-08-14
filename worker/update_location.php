@@ -2,7 +2,7 @@
 // api/update_location.php
 // Update worker's GPS location - NOW USES TRACKING COLUMNS
 
-require_once '../db.php';
+require_once '../db_connect.php';
 
 header('Content-Type: application/json');
 

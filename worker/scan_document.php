@@ -1,6 +1,6 @@
 <?php
 // worker/scan_document.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {

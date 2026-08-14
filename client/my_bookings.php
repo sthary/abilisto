@@ -1,6 +1,6 @@
 <?php
 // client/my_bookings.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php'; 
 
 // Security Check
@@ -27,16 +27,14 @@ $sql = "SELECT bookings.*,
         ORDER BY bookings.booking_date DESC";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $client_id);
-$stmt->execute();
-$result = $stmt->get_result();
+$stmt->execute([$client_id]);
 
 // UX SEGMENTATION: Separate Active vs Past bookings
 // FIX: Pre-sort newest to oldest (already done by ORDER BY DESC above)
 $active_bookings = [];
 $past_bookings = [];
 
-while ($row = $result->fetch_assoc()) {
+while ($row = $stmt->fetch()) {
     if (in_array($row['status'], ['Pending', 'Accepted', 'In Progress', 'On The Way', 'Pending Confirmation'])) {
         $active_bookings[] = $row;
     } else {

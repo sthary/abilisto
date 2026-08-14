@@ -2,7 +2,7 @@
 // worker/profile_edit.php
 
 include '../includes/init_lang.php';
-include '../db.php';
+include '../db_connect.php';
 include '../includes/sms_sender.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
@@ -19,7 +19,8 @@ if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] == 0) {
     if (!is_dir($target_dir)) mkdir($target_dir, 0777, true);
     $fname = "pfp_" . $worker_id . time() . ".jpg";
     if(move_uploaded_file($_FILES['profile_pic']['tmp_name'], $target_dir.$fname)) {
-        $conn->query("UPDATE users SET profile_pic='$fname' WHERE id='$worker_id'");
+        $pic_stmt = $conn->prepare("UPDATE users SET profile_pic=? WHERE id=?");
+        $pic_stmt->execute([$fname, $worker_id]);
         header("Location: profile_edit.php"); exit();
     }
 }
@@ -34,7 +35,7 @@ if (isset($_FILES['portfolio_imgs'])) {
             $ext = pathinfo($_FILES['portfolio_imgs']['name'][$i], PATHINFO_EXTENSION);
             $new_name = time() . "_port_" . $worker_id . "_$i." . $ext;
             if (move_uploaded_file($_FILES['portfolio_imgs']['tmp_name'][$i], $target_dir . $new_name)) {
-                $conn->query("INSERT INTO portfolio_images (user_id, image_path) VALUES ('$worker_id', '$new_name')");
+                $conn->prepare("INSERT INTO portfolio_images (user_id, image_path) VALUES (?, ?)")->execute([$worker_id, $new_name]);
             }
         }
     }
@@ -44,33 +45,38 @@ if (isset($_FILES['portfolio_imgs'])) {
 // C. Handle Portfolio Deletion
 if (isset($_GET['delete_portfolio'])) {
     $img_id = intval($_GET['delete_portfolio']);
-    $check = $conn->query("SELECT image_path FROM portfolio_images WHERE id='$img_id' AND user_id='$worker_id'");
-    if ($check->num_rows > 0) {
-        $img = $check->fetch_assoc();
+    $check_stmt = $conn->prepare("SELECT image_path FROM portfolio_images WHERE id=? AND user_id=?");
+    $check_stmt->execute([$img_id, $worker_id]);
+    $img = $check_stmt->fetch();
+    if ($img) {
         if (file_exists("../uploads/portfolios/" . $img['image_path'])) unlink("../uploads/portfolios/" . $img['image_path']);
-        $conn->query("DELETE FROM portfolio_images WHERE id='$img_id'");
+        $conn->prepare("DELETE FROM portfolio_images WHERE id=?")->execute([$img_id]);
     }
     header("Location: profile_edit.php"); exit();
 }
 
 // D. Handle Main Profile Update
 if (isset($_POST['update_profile'])) {
-    $full_name   = $conn->real_escape_string($_POST['full_name']);
-    $address     = $conn->real_escape_string($_POST['address']);
-    $municipality= $conn->real_escape_string($_POST['municipality']);
+    $full_name   = $_POST['full_name'];
+    $address     = $_POST['address'];
+    $municipality= $_POST['municipality'];
     $new_lat     = floatval($_POST['latitude']);
     $new_lng     = floatval($_POST['longitude']);
-    $new_phone   = $conn->real_escape_string($_POST['phone']);
-    $birthdate   = $conn->real_escape_string($_POST['birthdate']);
-    $category    = $conn->real_escape_string($_POST['service_category']);
-    $bio         = $conn->real_escape_string($_POST['bio']);
+    $new_phone   = $_POST['phone'];
+    $birthdate   = $_POST['birthdate'];
+    $category    = $_POST['service_category'];
+    $bio         = $_POST['bio'];
     $rate        = floatval($_POST['minimum_standard_rate'] ?? 0);
 
-    $curr_check        = $conn->query("SELECT phone FROM users WHERE id = '$worker_id'")->fetch_assoc();
+    $curr_check_stmt = $conn->prepare("SELECT phone FROM users WHERE id = ?");
+    $curr_check_stmt->execute([$worker_id]);
+    $curr_check        = $curr_check_stmt->fetch();
     $current_phone_db  = $curr_check['phone'];
 
-    $conn->query("UPDATE users SET full_name='$full_name', address='$address', municipality='$municipality', latitude='$new_lat', longitude='$new_lng', birthdate='$birthdate' WHERE id='$worker_id'");
-    $conn->query("UPDATE worker_profiles SET service_category='$category', bio='$bio', minimum_standard_rate='$rate' WHERE user_id='$worker_id'");
+    $conn->prepare("UPDATE users SET full_name=?, address=?, municipality=?, latitude=?, longitude=?, birthdate=? WHERE id=?")
+         ->execute([$full_name, $address, $municipality, $new_lat, $new_lng, $birthdate, $worker_id]);
+    $conn->prepare("UPDATE worker_profiles SET service_category=?, bio=?, minimum_standard_rate=? WHERE user_id=?")
+         ->execute([$category, $bio, $rate, $worker_id]);
 
     if ($new_phone != $current_phone_db) {
         $otp_response        = sendOTP($new_phone);
@@ -86,7 +92,7 @@ if (isset($_POST['update_profile'])) {
 if (isset($_POST['verify_otp'])) {
     if ($_POST['otp_code'] == $_SESSION['temp_otp']) {
         $new_p = $_SESSION['temp_new_phone'];
-        $conn->query("UPDATE users SET phone='$new_p', is_phone_verified=1 WHERE id='$worker_id'");
+        $conn->prepare("UPDATE users SET phone=?, is_phone_verified=TRUE WHERE id=?")->execute([$new_p, $worker_id]);
         unset($_SESSION['temp_new_phone']); unset($_SESSION['temp_otp']);
         echo "<script>alert('✅ Phone Number Verified & Updated!'); window.location.href='profile_edit.php';</script>";
         exit();
@@ -102,8 +108,10 @@ $sql = "SELECT u.full_name, u.phone, u.email, u.is_email_verified, u.birthdate, 
                w.average_rating, w.minimum_standard_rate
         FROM users u
         JOIN worker_profiles w ON u.id = w.user_id
-        WHERE u.id = '$worker_id'";
-$data = $conn->query($sql)->fetch_assoc();
+        WHERE u.id = ?";
+$data_stmt = $conn->prepare($sql);
+$data_stmt->execute([$worker_id]);
+$data = $data_stmt->fetch();
 
 $lat = $data['latitude'] ?: 12.8797;
 $lng = $data['longitude'] ?: 121.7740;
@@ -111,17 +119,15 @@ $current_phone = $data['phone'];
 
 // ── FETCH NC / SKILL DATA ────────────────────────────────────────────────────
 // All registered worker skills with their verification badge
-$worker_skills_res = $conn->query(
+$worker_skills_stmt = $conn->prepare(
     "SELECT ws.id, ws.sub_category, ws.main_category, ws.nc_level,
             ws.badge_level, ws.is_verified, ws.verified_at, ws.verification_notes
      FROM worker_skills ws
-     WHERE ws.worker_id = '$worker_id'
+     WHERE ws.worker_id = ?
      ORDER BY ws.is_verified DESC, ws.badge_level DESC, ws.sub_category ASC"
 );
-$worker_skills = [];
-while ($row = $worker_skills_res->fetch_assoc()) {
-    $worker_skills[] = $row;
-}
+$worker_skills_stmt->execute([$worker_id]);
+$worker_skills = $worker_skills_stmt->fetchAll();
 
 // Build quick lookup: sub_category → skill data
 $skill_map = [];
@@ -141,9 +147,17 @@ foreach ($worker_skills as $ws) {
     }
 }
 
-$reviews_featured = $conn->query("SELECT r.*, u.full_name FROM reviews r JOIN users u ON r.client_id = u.id WHERE r.worker_id = '$worker_id' ORDER BY r.created_at DESC LIMIT 3");
-$reviews_all      = $conn->query("SELECT r.*, u.full_name FROM reviews r JOIN users u ON r.client_id = u.id WHERE r.worker_id = '$worker_id' ORDER BY r.created_at DESC");
-$portfolio        = $conn->query("SELECT * FROM portfolio_images WHERE user_id = '$worker_id' ORDER BY uploaded_at DESC");
+$reviews_featured_stmt = $conn->prepare("SELECT r.*, u.full_name FROM reviews r JOIN users u ON r.client_id = u.id WHERE r.worker_id = ? ORDER BY r.created_at DESC LIMIT 3");
+$reviews_featured_stmt->execute([$worker_id]);
+$reviews_featured_rows = $reviews_featured_stmt->fetchAll();
+
+$reviews_all_stmt = $conn->prepare("SELECT r.*, u.full_name FROM reviews r JOIN users u ON r.client_id = u.id WHERE r.worker_id = ? ORDER BY r.created_at DESC");
+$reviews_all_stmt->execute([$worker_id]);
+$reviews_all_rows = $reviews_all_stmt->fetchAll();
+
+$portfolio_stmt = $conn->prepare("SELECT * FROM portfolio_images WHERE user_id = ? ORDER BY uploaded_at DESC");
+$portfolio_stmt->execute([$worker_id]);
+$portfolio_rows = $portfolio_stmt->fetchAll();
 
 function getInitials($name) {
     $words = explode(' ', $name); $initials = '';
@@ -736,7 +750,7 @@ function shouldShowVerifyNow($badge) {
                         <span class="material-symbols-outlined text-2xl text-primary/70">add_photo_alternate</span>
                         <span class="text-xs font-medium text-center text-slate-500">Add Photo</span>
                     </div>
-                    <?php while($img = $portfolio->fetch_assoc()): ?>
+                    <?php foreach ($portfolio_rows as $img): ?>
                     <div class="relative aspect-square rounded-xl overflow-hidden group border border-slate-200 dark:border-slate-700">
                         <img src="../uploads/portfolios/<?php echo $img['image_path']; ?>" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" alt="Portfolio">
                         <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -745,7 +759,7 @@ function shouldShowVerifyNow($badge) {
                             </a>
                         </div>
                     </div>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </section>
@@ -755,9 +769,9 @@ function shouldShowVerifyNow($badge) {
     <div class="tab-panel" id="panel-reviews">
         <section class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 overflow-hidden animate-slideUp">
             <div class="p-4 md:p-6">
-                <?php if($reviews_featured->num_rows > 0): ?>
+                <?php if(count($reviews_featured_rows) > 0): ?>
                 <div class="space-y-3">
-                    <?php while($rev = $reviews_featured->fetch_assoc()): ?>
+                    <?php foreach ($reviews_featured_rows as $rev): ?>
                     <div class="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
                         <div class="flex items-start justify-between mb-2">
                             <div class="flex items-center gap-2">
@@ -770,9 +784,9 @@ function shouldShowVerifyNow($badge) {
                         </div>
                         <p class="text-slate-600 dark:text-slate-400 italic text-sm">"<?php echo htmlspecialchars($rev['comment']); ?>"</p>
                     </div>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 </div>
-                <?php if($reviews_all->num_rows > 3): ?>
+                <?php if(count($reviews_all_rows) > 3): ?>
                 <div class="pt-4 text-center">
                     <button class="text-primary text-sm font-bold flex items-center gap-1 mx-auto hover:underline" onclick="document.getElementById('reviews-modal').style.display='flex'">
                         See All Reviews <span class="material-symbols-outlined text-sm">arrow_forward</span>
@@ -838,7 +852,7 @@ function shouldShowVerifyNow($badge) {
             <button onclick="document.getElementById('reviews-modal').classList.add('hidden')" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"><span class="material-symbols-outlined">close</span></button>
         </div>
         <div class="space-y-4">
-            <?php $reviews_all->data_seek(0); while($rev_all = $reviews_all->fetch_assoc()): ?>
+            <?php foreach ($reviews_all_rows as $rev_all): ?>
             <div class="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
                 <div class="flex items-start justify-between mb-3">
                     <div class="flex items-center gap-3">
@@ -851,7 +865,7 @@ function shouldShowVerifyNow($badge) {
                 </div>
                 <p class="text-slate-600 dark:text-slate-400 italic">"<?php echo htmlspecialchars($rev_all['comment']); ?>"</p>
             </div>
-            <?php endwhile; ?>
+            <?php endforeach; ?>
         </div>
     </div>
 </div>

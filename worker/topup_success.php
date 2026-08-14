@@ -2,9 +2,9 @@
 // worker/topup_success.php
 // Handle successful top-up callback
 
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
-include '../includes/functions/wallet_functions.php';
+include '../includes/functions/wallet_manager.php';
 
 // Security Check
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
@@ -23,16 +23,17 @@ if (!$topup_id) {
 }
 
 // Verify top-up belongs to this worker and is pending
-$check_sql = "SELECT * FROM top_ups 
-              WHERE id = $topup_id AND worker_id = $worker_id AND status = 'pending'";
-$check_res = $conn->query($check_sql);
+$check_sql = "SELECT * FROM top_ups
+              WHERE id = ? AND worker_id = ? AND status = 'pending'";
+$check_stmt = $conn->prepare($check_sql);
+$check_stmt->execute([$topup_id, $worker_id]);
+$topup = $check_stmt->fetch();
 
-if ($check_res->num_rows === 0) {
+if (!$topup) {
     header("Location: topup.php?error=invalid");
     exit();
 }
 
-$topup = $check_res->fetch_assoc();
 $amount = $topup['amount'];
 
 // Process the top-up

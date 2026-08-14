@@ -1,7 +1,7 @@
 <?php
 // client/profile.php
 
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 include '../includes/sms_sender.php';
 require_once '../greenloop/greenloop_db.php';
@@ -21,24 +21,26 @@ $msg = ""; $msg_type = ""; $otp_modal_open = false;
 
 // A. Handle Profile Update
 if (isset($_POST['update_profile'])) {
-    $full_name = $conn->real_escape_string($_POST['full_name']);
-    $address = $conn->real_escape_string($_POST['address']);
-    $municipality = $conn->real_escape_string($_POST['municipality']);
+    $full_name = $_POST['full_name'];
+    $address = $_POST['address'];
+    $municipality = $_POST['municipality'];
     $new_lat = floatval($_POST['latitude']);
     $new_lng = floatval($_POST['longitude']);
-    $new_phone = $conn->real_escape_string($_POST['phone']);
+    $new_phone = $_POST['phone'];
 
-    $curr_check = $conn->query("SELECT phone FROM users WHERE id = '$user_id'")->fetch_assoc();
+    $curr_check_stmt = $conn->prepare("SELECT phone FROM users WHERE id = ?");
+    $curr_check_stmt->execute([$user_id]);
+    $curr_check = $curr_check_stmt->fetch();
     $current_phone_db = $curr_check['phone'];
 
-    $update_sql = "UPDATE users SET 
-                   full_name='$full_name', 
-                   address='$address', 
-                   municipality='$municipality',
-                   latitude='$new_lat', 
-                   longitude='$new_lng' 
-                   WHERE id='$user_id'";
-    $conn->query($update_sql);
+    $update_stmt = $conn->prepare("UPDATE users SET
+                   full_name=?,
+                   address=?,
+                   municipality=?,
+                   latitude=?,
+                   longitude=?
+                   WHERE id=?");
+    $update_stmt->execute([$full_name, $address, $municipality, $new_lat, $new_lng, $user_id]);
 
     if ($new_phone != $current_phone_db) {
         // Send OTP Logic
@@ -61,7 +63,7 @@ if (isset($_POST['update_profile'])) {
 if (isset($_POST['verify_otp'])) {
     if ($_POST['otp_code'] == $_SESSION['temp_otp']) {
         $new_p = $_SESSION['temp_new_phone'];
-        $conn->query("UPDATE users SET phone='$new_p', is_phone_verified=1 WHERE id='$user_id'");
+        $conn->prepare("UPDATE users SET phone=?, is_phone_verified=TRUE WHERE id=?")->execute([$new_p, $user_id]);
         unset($_SESSION['temp_new_phone']); 
         unset($_SESSION['temp_otp']);
         echo "<script>alert('✅ Phone Number Verified & Updated!'); window.location.href='profile.php';</script>";
@@ -79,12 +81,14 @@ if (isset($_POST['change_password'])) {
     $new_pass = $_POST['new_password'];
     $confirm_pass = $_POST['confirm_password'];
     
-    $pass_check = $conn->query("SELECT password FROM users WHERE id = '$user_id'")->fetch_assoc();
+    $pass_check_stmt = $conn->prepare("SELECT password FROM users WHERE id = ?");
+    $pass_check_stmt->execute([$user_id]);
+    $pass_check = $pass_check_stmt->fetch();
 
     if (password_verify($current_pass, $pass_check['password'])) {
         if ($new_pass === $confirm_pass) {
             $hashed = password_hash($new_pass, PASSWORD_DEFAULT);
-            $conn->query("UPDATE users SET password='$hashed' WHERE id='$user_id'");
+            $conn->prepare("UPDATE users SET password=? WHERE id=?")->execute([$hashed, $user_id]);
             $msg = "Password changed successfully!";
             $msg_type = "success";
         } else {
@@ -98,8 +102,9 @@ if (isset($_POST['change_password'])) {
 }
 
 // --- 4. FETCH DATA ---
-$sql = "SELECT * FROM users WHERE id = '$user_id'";
-$user = $conn->query($sql)->fetch_assoc();
+$user_stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+$user_stmt->execute([$user_id]);
+$user = $user_stmt->fetch();
 
 $lat = $user['latitude'] ?: 12.8797;
 $lng = $user['longitude'] ?: 121.7740;

@@ -1,6 +1,6 @@
 <?php
 session_start();
-include "../db.php";
+include "../db_connect.php";
 
 if (!isset($_SESSION["user_id"])) {
     http_response_code(401);
@@ -8,7 +8,8 @@ if (!isset($_SESSION["user_id"])) {
 }
 
 $uid = intval($_SESSION["user_id"]);
-$conn->query("UPDATE users SET has_seen_tour = 1 WHERE id = $uid");
+$stmt = $conn->prepare("UPDATE users SET has_seen_tour = TRUE WHERE id = ?");
+$stmt->execute([$uid]);
 
 echo json_encode(["success" => true]);
 ?>

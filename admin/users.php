@@ -1,7 +1,7 @@
 <?php
 // admin/users.php  — Support Admin edition
 // Shows flagged status, violation count, enforcement actions
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
@@ -9,57 +9,78 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 }
 
 $admin_id   = $_SESSION['user_id'];
-$admin_name = $conn->query("SELECT full_name FROM users WHERE id=$admin_id")->fetch_assoc()['full_name'] ?? 'Support';
+$admin_stmt = $conn->prepare("SELECT full_name FROM users WHERE id=?");
+$admin_stmt->execute([$admin_id]);
+$admin_name = $admin_stmt->fetch()['full_name'] ?? 'Support';
 
 // ── Handle toggles ──────────────────────────────────────────
 if (isset($_GET['toggle_cash']) && isset($_GET['user_id'])) {
     $uid = intval($_GET['user_id']); $val = intval($_GET['toggle_cash']);
-    if ($val===0||$val===1) $conn->query("UPDATE users SET cash_enabled=$val WHERE id=$uid AND role='client'");
+    if ($val===0||$val===1) {
+        $stmt = $conn->prepare("UPDATE users SET cash_enabled=? WHERE id=? AND role='client'");
+        $stmt->execute([$val, $uid]);
+    }
     header("Location: users.php?".http_build_query(['search'=>$_GET['search']??'','role'=>$_GET['role']??'','msg'=>'cash_updated'])); exit();
 }
 if (isset($_GET['toggle_accept']) && isset($_GET['user_id'])) {
     $uid = intval($_GET['user_id']); $val = intval($_GET['toggle_accept']);
-    if ($val===0||$val===1) $conn->query("UPDATE worker_profiles SET can_accept_bookings=$val WHERE user_id=$uid");
+    if ($val===0||$val===1) {
+        $stmt = $conn->prepare("UPDATE worker_profiles SET can_accept_bookings=? WHERE user_id=?");
+        $stmt->execute([$val, $uid]);
+    }
     header("Location: users.php?".http_build_query(['search'=>$_GET['search']??'','role'=>$_GET['role']??'','msg'=>'accept_updated'])); exit();
 }
 if (isset($_GET['toggle_flag']) && isset($_GET['user_id'])) {
     $uid     = intval($_GET['user_id']);
     $new_flag= intval($_GET['toggle_flag']);
-    $conn->query("UPDATE users SET is_flagged=$new_flag WHERE id=$uid");
+    $stmt = $conn->prepare("UPDATE users SET is_flagged=? WHERE id=?");
+    $stmt->execute([$new_flag, $uid]);
     header("Location: users.php?".http_build_query(['search'=>$_GET['search']??'','role'=>$_GET['role']??'','msg'=>'flag_updated'])); exit();
 }
 if (isset($_GET['delete_id'])) {
     $del = intval($_GET['delete_id']);
     if ($del !== (int)$_SESSION['user_id']) {
-        $conn->query("DELETE FROM users WHERE id=$del");
+        $stmt = $conn->prepare("DELETE FROM users WHERE id=?");
+        $stmt->execute([$del]);
         header("Location: users.php?msg=deleted"); exit();
     }
 }
 
 // ── Filters ─────────────────────────────────────────────────
-$search      = $conn->real_escape_string($_GET['search']  ?? '');
-$role_filter = $conn->real_escape_string($_GET['role']    ?? '');
+$search      = $_GET['search']  ?? '';
+$role_filter = $_GET['role']    ?? '';
 $flag_filter = $_GET['flagged'] ?? ''; // 'yes' | ''
 
-$where = "WHERE u.role NOT IN ('admin','finance','hr')";
-if ($search)      $where .= " AND (u.full_name LIKE '%$search%' OR u.email LIKE '%$search%' OR u.id LIKE '%$search%')";
-if ($role_filter && in_array($role_filter,['client','worker','business'])) $where .= " AND u.role='$role_filter'";
-if ($flag_filter === 'yes') $where .= " AND u.is_flagged=1";
+$where  = "WHERE u.role NOT IN ('admin','finance','hr')";
+$params = [];
+if ($search) {
+    $where .= " AND (u.full_name LIKE ? OR u.email LIKE ? OR u.id::text LIKE ?)";
+    $params[] = "%$search%"; $params[] = "%$search%"; $params[] = "%$search%";
+}
+if ($role_filter && in_array($role_filter,['client','worker','business'])) {
+    $where .= " AND u.role=?";
+    $params[] = $role_filter;
+}
+if ($flag_filter === 'yes') $where .= " AND u.is_flagged=TRUE";
 
-$users = $conn->query("SELECT u.id, u.full_name, u.email, u.phone, u.role, u.created_at,
+$users_stmt = $conn->prepare("SELECT u.id, u.full_name, u.email, u.phone, u.role, u.created_at,
     u.municipality, u.profile_pic, u.is_flagged, u.violation_count, u.has_prior_violation,
     u.cash_enabled, u.cash_restriction_at, u.appeal_eligible, u.appeal_deadline,
-    COALESCE(wp.can_accept_bookings,1) AS can_accept_bookings,
+    COALESCE(wp.can_accept_bookings,TRUE) AS can_accept_bookings,
     wp.wallet_balance, wp.verification_status, wp.deletion_pending
     FROM users u
     LEFT JOIN worker_profiles wp ON wp.user_id=u.id AND u.role='worker'
     $where
     ORDER BY u.is_flagged DESC, u.violation_count DESC, u.id DESC");
-$total_users = $users ? $users->num_rows : 0;
+$users_stmt->execute($params);
+$users = $users_stmt->fetchAll();
+$total_users = count($users);
 
 // Summary counts
-$flagged_count  = (int)$conn->query("SELECT COUNT(*) as c FROM users WHERE is_flagged=1 AND role NOT IN ('admin','finance','hr')")->fetch_assoc()['c'];
-$pending_reports= (int)$conn->query("SELECT (SELECT COUNT(*) FROM reports WHERE status='pending')+(SELECT COUNT(*) FROM reports_worker WHERE status='pending') as c")->fetch_assoc()['c'];
+$flagged_stmt = $conn->query("SELECT COUNT(*) as c FROM users WHERE is_flagged=TRUE AND role NOT IN ('admin','finance','hr')");
+$flagged_count  = (int)$flagged_stmt->fetch()['c'];
+$pending_stmt = $conn->query("SELECT (SELECT COUNT(*) FROM reports WHERE status='pending')+(SELECT COUNT(*) FROM reports_worker WHERE status='pending') as c");
+$pending_reports= (int)$pending_stmt->fetch()['c'];
 
 function getUserAvatar($user) {
     if (!empty($user['profile_pic']) && file_exists("../uploads/profiles/".$user['profile_pic'])) return "../uploads/profiles/".$user['profile_pic'];
@@ -193,7 +214,7 @@ $current_date = date('M d, Y');
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-50 dark:divide-slate-800/50">
-                <?php if($users && $users->num_rows > 0): while($row=$users->fetch_assoc()):
+                <?php if(count($users) > 0): foreach($users as $row):
                     $av         = getUserAvatar($row);
                     $joined     = date("M d, Y",strtotime($row['created_at']));
                     $is_flagged = (int)$row['is_flagged'] === 1;
@@ -313,7 +334,7 @@ $current_date = date('M d, Y');
                         </div>
                     </td>
                 </tr>
-                <?php endwhile; else: ?>
+                <?php endforeach; else: ?>
                 <tr><td colspan="5" class="px-8 py-12 text-center text-slate-400">No users found.</td></tr>
                 <?php endif; ?>
                 </tbody>

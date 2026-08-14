@@ -1,6 +1,6 @@
 <?php
 // admin/wallet.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 // Security Check
@@ -11,38 +11,38 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 
 // Get admin info for navbar
 $admin_id = $_SESSION['user_id'];
-$admin_sql = "SELECT full_name, profile_pic FROM users WHERE id = $admin_id";
-$admin_res = $conn->query($admin_sql);
-$admin = $admin_res->fetch_assoc();
+$admin_stmt = $conn->prepare("SELECT full_name, profile_pic FROM users WHERE id = ?");
+$admin_stmt->execute([$admin_id]);
+$admin = $admin_stmt->fetch();
 $admin_name = $admin['full_name'] ?? 'Admin';
-$admin_avatar = !empty($admin['profile_pic']) && file_exists("../uploads/profiles/".$admin['profile_pic']) 
-    ? "../uploads/profiles/".$admin['profile_pic'] 
+$admin_avatar = !empty($admin['profile_pic']) && file_exists("../uploads/profiles/".$admin['profile_pic'])
+    ? "../uploads/profiles/".$admin['profile_pic']
     : "https://ui-avatars.com/api/?name=" . urlencode($admin_name) . "&background=6366F1&color=fff&size=128&bold=true";
 
 // Fetch admin wallet balance
 $wallet_sql = "SELECT * FROM admin_wallet WHERE id = 1";
 $wallet_res = $conn->query($wallet_sql);
-$wallet = $wallet_res->fetch_assoc();
+$wallet = $wallet_res->fetch();
 
 // Calculate escrow balance (total held in escrow from bookings)
-$escrow_sql = "SELECT SUM(calculated_fee) as escrow_total FROM bookings WHERE is_escrow = 1 AND escrow_status = 'held'";
+$escrow_sql = "SELECT SUM(calculated_fee) as escrow_total FROM bookings WHERE is_escrow = TRUE AND escrow_status = 'held'";
 $escrow_res = $conn->query($escrow_sql);
-$escrow_total = $escrow_res->fetch_assoc()['escrow_total'] ?? 0;
+$escrow_total = $escrow_res->fetch()['escrow_total'] ?? 0;
 
 // Calculate available for withdrawal (balance - pending payouts)
 $pending_payouts_sql = "SELECT SUM(amount) as pending_total FROM withdrawals WHERE status = 'Pending'";
 $pending_payouts_res = $conn->query($pending_payouts_sql);
-$pending_payouts = $pending_payouts_res->fetch_assoc()['pending_total'] ?? 0;
+$pending_payouts = $pending_payouts_res->fetch()['pending_total'] ?? 0;
 $available_for_withdrawal = $wallet['balance'] - $pending_payouts;
 
 // Fetch recent transactions
-$transactions_sql = "SELECT wt.*, u.full_name 
+$transactions_sql = "SELECT wt.*, u.full_name
                      FROM wallet_transactions wt
                      LEFT JOIN users u ON wt.user_id = u.id
                      WHERE wt.user_type = 'admin' OR wt.reference_type IS NOT NULL
-                     ORDER BY wt.created_at DESC 
+                     ORDER BY wt.created_at DESC
                      LIMIT 50";
-$transactions = $conn->query($transactions_sql);
+$transactions = $conn->query($transactions_sql)->fetchAll();
 
 // Fetch pending withdrawals
 $withdrawals_sql = "SELECT w.*, u.full_name, u.email, wp.wallet_balance,
@@ -52,7 +52,7 @@ $withdrawals_sql = "SELECT w.*, u.full_name, u.email, wp.wallet_balance,
                     JOIN worker_profiles wp ON w.worker_id = wp.user_id
                     WHERE w.status = 'Pending'
                     ORDER BY w.request_date ASC";
-$pending_withdrawals = $conn->query($withdrawals_sql);
+$pending_withdrawals = $conn->query($withdrawals_sql)->fetchAll();
 
 // Handle withdrawal approval/rejection
 if (isset($_POST['process_withdrawal'])) {
@@ -63,30 +63,35 @@ if (isset($_POST['process_withdrawal'])) {
     
     if ($action === 'approve') {
         // Update withdrawal status
-        $conn->query("UPDATE withdrawals SET status = 'Approved' WHERE id = $withdrawal_id");
-        
+        $conn->prepare("UPDATE withdrawals SET status = 'Approved' WHERE id = ?")->execute([$withdrawal_id]);
+
         // Update admin wallet - subtract the amount (since we're paying out)
         $new_balance = $wallet['balance'] - $amount;
         $new_withdrawn = $wallet['total_withdrawn'] + $amount;
-        $conn->query("UPDATE admin_wallet SET balance = $new_balance, total_withdrawn = $new_withdrawn WHERE id = 1");
-        
+        $conn->prepare("UPDATE admin_wallet SET balance = ?, total_withdrawn = ? WHERE id = 1")
+             ->execute([$new_balance, $new_withdrawn]);
+
         // Record transaction
-        $conn->query("INSERT INTO wallet_transactions (user_id, user_type, transaction_type, amount, reference_id, reference_type, description, balance_after) 
-                     VALUES (1, 'admin', 'debit', $amount, $withdrawal_id, 'withdrawal', 'Withdrawal payout to worker #$worker_id', $new_balance)");
-        
+        $conn->prepare("INSERT INTO wallet_transactions (user_id, user_type, transaction_type, amount, reference_id, reference_type, description, balance_after)
+                     VALUES (1, 'admin', 'debit', ?, ?, 'withdrawal', ?, ?)")
+             ->execute([$amount, $withdrawal_id, "Withdrawal payout to worker #$worker_id", $new_balance]);
+
         $message = "Withdrawal approved and payment processed.";
     } else {
         // Reject - refund the money back to worker
-        $conn->query("UPDATE withdrawals SET status = 'Rejected' WHERE id = $withdrawal_id");
-        $conn->query("UPDATE worker_profiles SET wallet_balance = wallet_balance + $amount WHERE user_id = $worker_id");
-        
+        $conn->prepare("UPDATE withdrawals SET status = 'Rejected' WHERE id = ?")->execute([$withdrawal_id]);
+        $conn->prepare("UPDATE worker_profiles SET wallet_balance = wallet_balance + ? WHERE user_id = ?")
+             ->execute([$amount, $worker_id]);
+
         // Record refund transaction for worker
-        $worker_balance_res = $conn->query("SELECT wallet_balance FROM worker_profiles WHERE user_id = $worker_id");
-        $worker_balance = $worker_balance_res->fetch_assoc()['wallet_balance'];
-        
-        $conn->query("INSERT INTO wallet_transactions (user_id, user_type, transaction_type, amount, reference_id, reference_type, description, balance_after) 
-                     VALUES ($worker_id, 'worker', 'credit', $amount, $withdrawal_id, 'withdrawal', 'Withdrawal rejected - funds returned', $worker_balance)");
-        
+        $worker_balance_stmt = $conn->prepare("SELECT wallet_balance FROM worker_profiles WHERE user_id = ?");
+        $worker_balance_stmt->execute([$worker_id]);
+        $worker_balance = $worker_balance_stmt->fetch()['wallet_balance'];
+
+        $conn->prepare("INSERT INTO wallet_transactions (user_id, user_type, transaction_type, amount, reference_id, reference_type, description, balance_after)
+                     VALUES (?, 'worker', 'credit', ?, ?, 'withdrawal', 'Withdrawal rejected - funds returned', ?)")
+             ->execute([$worker_id, $amount, $withdrawal_id, $worker_balance]);
+
         $message = "Withdrawal rejected and funds returned to worker.";
     }
     
@@ -99,14 +104,14 @@ if (isset($_POST['process_withdrawal'])) {
 $current_date = date('M d, Y');
 
 // Get revenue vs payouts data for chart (last 7 days)
-$chart_sql = "SELECT 
-                DATE_FORMAT(created_at, '%b %d') as date,
+$chart_sql = "SELECT
+                TO_CHAR(DATE(created_at), 'Mon DD') as date,
                 SUM(CASE WHEN transaction_type = 'fee' THEN amount ELSE 0 END) as revenue,
                 SUM(CASE WHEN transaction_type = 'debit' AND reference_type = 'withdrawal' THEN amount ELSE 0 END) as payout
               FROM wallet_transactions
-              WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+              WHERE created_at >= NOW() - INTERVAL '30 days'
               GROUP BY DATE(created_at)
-              ORDER BY created_at ASC
+              ORDER BY DATE(created_at) ASC
               LIMIT 7";
 $chart_data = $conn->query($chart_sql);
 
@@ -115,7 +120,7 @@ $chart_revenues = [];
 $chart_payouts = [];
 $max_chart_value = 0;
 
-while ($row = $chart_data->fetch_assoc()) {
+while ($row = $chart_data->fetch()) {
     $chart_dates[] = $row['date'];
     $chart_revenues[] = $row['revenue'];
     $chart_payouts[] = $row['payout'];
@@ -344,9 +349,9 @@ function getUserAvatar($pic, $name) {
             <a href="withdrawals.php" class="bg-primary hover:bg-blue-600 text-white px-6 py-3 rounded-2xl text-sm font-bold shadow-xl shadow-primary/25 transition-all flex items-center gap-2">
                 <span class="material-icons-round text-xl">account_balance</span>
                 Withdrawal Requests
-                <?php if ($pending_withdrawals && $pending_withdrawals->num_rows > 0): ?>
+                <?php if ($pending_withdrawals && count($pending_withdrawals) > 0): ?>
                 <span class="bg-white text-primary text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                    <?php echo $pending_withdrawals->num_rows; ?>
+                    <?php echo count($pending_withdrawals); ?>
                 </span>
                 <?php endif; ?>
             </a>
@@ -389,7 +394,7 @@ function getUserAvatar($pic, $name) {
     </section>
     
     <!-- Pending Withdrawals Section -->
-    <?php if ($pending_withdrawals && $pending_withdrawals->num_rows > 0): ?>
+    <?php if ($pending_withdrawals && count($pending_withdrawals) > 0): ?>
     <section class="mb-12">
         <div class="glass-card rounded-[2rem] overflow-hidden border border-amber-200 dark:border-amber-800/30">
             <div class="p-8 border-b border-amber-100 dark:border-amber-800/30 flex items-center justify-between bg-amber-50/30 dark:bg-amber-900/10">
@@ -398,7 +403,7 @@ function getUserAvatar($pic, $name) {
                     Pending Withdrawal Requests
                 </h3>
                 <span class="px-4 py-1.5 glass rounded-full text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-500/10">
-                    <?php echo $pending_withdrawals->num_rows; ?> pending
+                    <?php echo count($pending_withdrawals); ?> pending
                 </span>
             </div>
             <div class="overflow-x-auto">
@@ -414,7 +419,7 @@ function getUserAvatar($pic, $name) {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                        <?php while ($row = $pending_withdrawals->fetch_assoc()): 
+                        <?php foreach ($pending_withdrawals as $row):
                             $avatar = getUserAvatar($row['profile_pic'], $row['full_name']);
                         ?>
                         <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
@@ -462,14 +467,14 @@ function getUserAvatar($pic, $name) {
                                 </div>
                             </td>
                         </tr>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
         </div>
     </section>
     <?php endif; ?>
-    
+
     <!-- Revenue vs Payouts Chart -->
     <div class="grid grid-cols-1 xl:grid-cols-12 gap-8 mb-12">
         <div class="xl:col-span-12 glass-card p-8 rounded-3xl">
@@ -528,8 +533,8 @@ function getUserAvatar($pic, $name) {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                        <?php if ($transactions && $transactions->num_rows > 0): ?>
-                            <?php while ($tx = $transactions->fetch_assoc()): 
+                        <?php if ($transactions && count($transactions) > 0): ?>
+                            <?php foreach ($transactions as $tx):
                                 list($icon, $color, $type_label) = getTransactionIcon($tx['transaction_type']);
                                 $is_positive = in_array($tx['transaction_type'], ['credit', 'fee']);
                                 $amount_prefix = $is_positive ? '+' : '-';
@@ -570,7 +575,7 @@ function getUserAvatar($pic, $name) {
                                     <?php echo time_elapsed_string($tx['created_at']); ?>
                                 </td>
                             </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
                                 <td colspan="5" class="px-8 py-12 text-center text-slate-400">

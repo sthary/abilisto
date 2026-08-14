@@ -1,6 +1,6 @@
 <?php
 // worker/check_my_sessions.php
-require_once '../db.php';
+require_once '../db_connect.php';
 
 $worker_id = $_SESSION['user_id'] ?? 0;
 
@@ -16,7 +16,7 @@ $query = "
         qs.urgency_level,
         qs.expires_at,
         u.full_name as client_name,
-        TIMESTAMPDIFF(MINUTE, NOW(), qs.expires_at) as minutes_left
+        EXTRACT(EPOCH FROM (qs.expires_at - NOW())) / 60 as minutes_left
     FROM quick_match_broadcasts qb
     JOIN quick_match_sessions qs ON qb.session_id = qs.id
     JOIN users u ON qs.client_id = u.id
@@ -28,11 +28,10 @@ $query = "
 ";
 
 $stmt = $conn->prepare($query);
-$stmt->bind_param("i", $worker_id);
-$stmt->execute();
-$result = $stmt->get_result();
+$stmt->execute([$worker_id]);
+$rows = $stmt->fetchAll();
 
-if ($result->num_rows === 0) {
+if (count($rows) === 0) {
     echo "<p style='color: #666;'>No active quick match sessions found.</p>";
 } else {
     echo "<table border='1' cellpadding='10' style='border-collapse: collapse;'>";
@@ -45,8 +44,8 @@ if ($result->num_rows === 0) {
             <th>Time Left</th>
             <th>Action</th>
           </tr>";
-    
-    while ($row = $result->fetch_assoc()) {
+
+    foreach ($rows as $row) {
         $urgency_color = $row['urgency_level'] == 'Emergency' ? '#dc2626' : 
                         ($row['urgency_level'] == 'Urgent' ? '#d97706' : '#2563eb');
         
@@ -83,11 +82,10 @@ $historyQuery = "
 ";
 
 $stmt2 = $conn->prepare($historyQuery);
-$stmt2->bind_param("i", $worker_id);
-$stmt2->execute();
-$historyResult = $stmt2->get_result();
+$stmt2->execute([$worker_id]);
+$historyRows = $stmt2->fetchAll();
 
-if ($historyResult->num_rows > 0) {
+if (count($historyRows) > 0) {
     echo "<table border='1' cellpadding='10' style='border-collapse: collapse; margin-top: 10px;'>";
     echo "<tr>
             <th>Session ID</th>
@@ -97,8 +95,8 @@ if ($historyResult->num_rows > 0) {
             <th>Session Status</th>
             <th>Responded At</th>
           </tr>";
-    
-    while ($row = $historyResult->fetch_assoc()) {
+
+    foreach ($historyRows as $row) {
         $status_color = $row['status'] == 'accepted' ? '#10b981' : 
                        ($row['status'] == 'declined' ? '#ef4444' : '#f59e0b');
         

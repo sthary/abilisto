@@ -1,6 +1,6 @@
 <?php
 // admin/bookings.php
-include '../db.php';
+include '../db_connect.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') { 
     header("Location: ../auth/login.php"); 
@@ -10,17 +10,17 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 // STATUS OVERRIDE
 if (isset($_GET['action']) && isset($_GET['bid'])) {
     $bid = intval($_GET['bid']);
-    $status = $conn->real_escape_string($_GET['action']);
-    $conn->query("UPDATE bookings SET status='$status' WHERE id=$bid");
-    header("Location: bookings.php?msg=updated"); 
+    $status = $_GET['action'];
+    $conn->prepare("UPDATE bookings SET status=? WHERE id=?")->execute([$status, $bid]);
+    header("Location: bookings.php?msg=updated");
     exit();
 }
 
 // Get admin info for navbar
 $admin_id = $_SESSION['user_id'];
-$admin_sql = "SELECT full_name, profile_pic FROM users WHERE id = $admin_id";
-$admin_res = $conn->query($admin_sql);
-$admin = $admin_res->fetch_assoc();
+$admin_stmt = $conn->prepare("SELECT full_name, profile_pic FROM users WHERE id = ?");
+$admin_stmt->execute([$admin_id]);
+$admin = $admin_stmt->fetch();
 $admin_name = $admin['full_name'] ?? 'Admin';
 
 // ─── FILTER & SORT PARAMETERS ────────────────────────────────────────────────
@@ -34,21 +34,23 @@ $per_page    = 10;
 
 // ─── BUILD WHERE CLAUSE ──────────────────────────────────────────────────────
 $where_parts = [];
+$where_params = [];
 if ($search_name !== '') {
-    $safe_name = $conn->real_escape_string($search_name);
-    $where_parts[] = "(c.full_name LIKE '%$safe_name%' OR w.full_name LIKE '%$safe_name%')";
+    $where_parts[] = "(c.full_name LIKE ? OR w.full_name LIKE ?)";
+    $where_params[] = "%$search_name%";
+    $where_params[] = "%$search_name%";
 }
 if ($search_id !== '') {
-    $safe_id = $conn->real_escape_string($search_id);
-    $where_parts[] = "b.id = '$safe_id'";
+    $where_parts[] = "b.id = ?";
+    $where_params[] = $search_id;
 }
 if ($date_from !== '') {
-    $safe_from = $conn->real_escape_string($date_from);
-    $where_parts[] = "DATE(b.booking_date) >= '$safe_from'";
+    $where_parts[] = "DATE(b.booking_date) >= ?";
+    $where_params[] = $date_from;
 }
 if ($date_to !== '') {
-    $safe_to = $conn->real_escape_string($date_to);
-    $where_parts[] = "DATE(b.booking_date) <= '$safe_to'";
+    $where_parts[] = "DATE(b.booking_date) <= ?";
+    $where_params[] = $date_to;
 }
 $where_sql = count($where_parts) > 0 ? 'WHERE ' . implode(' AND ', $where_parts) : '';
 
@@ -66,15 +68,16 @@ $count_sql = "SELECT COUNT(*) as cnt
               JOIN users c ON b.client_id = c.id
               JOIN users w ON b.worker_id = w.id
               $where_sql";
-$count_res   = $conn->query($count_sql);
-$total_rows  = $count_res ? (int)$count_res->fetch_assoc()['cnt'] : 0;
+$count_stmt  = $conn->prepare($count_sql);
+$count_stmt->execute($where_params);
+$total_rows  = (int)$count_stmt->fetch()['cnt'];
 $total_pages = max(1, ceil($total_rows / $per_page));
 $page        = min($page, $total_pages);
 $offset      = ($page - 1) * $per_page;
 
 // ─── FETCH BOOKINGS (paginated) ───────────────────────────────────────────────
-$sql = "SELECT b.*, 
-               c.full_name as client_name, 
+$sql = "SELECT b.*,
+               c.full_name as client_name,
                c.profile_pic as client_pic,
                w.full_name as worker_name,
                w.profile_pic as worker_pic
@@ -83,22 +86,25 @@ $sql = "SELECT b.*,
         JOIN users w ON b.worker_id = w.id
         $where_sql
         $order_sql
-        LIMIT $per_page OFFSET $offset";
-$bookings = $conn->query($sql);
+        LIMIT ? OFFSET ?";
+$bookings_stmt = $conn->prepare($sql);
+$bookings_stmt->execute(array_merge($where_params, [$per_page, $offset]));
+$bookings = $bookings_stmt->fetchAll();
 
 // ─── STATISTICS ───────────────────────────────────────────────────────────────
 $today = date('Y-m-d');
-$stats_sql = "SELECT 
+$stats_sql = "SELECT
     COUNT(*) as total_bookings,
-    SUM(CASE WHEN DATE(booking_date) = '$today' THEN 1 ELSE 0 END) as daily_bookings,
+    SUM(CASE WHEN DATE(booking_date) = ? THEN 1 ELSE 0 END) as daily_bookings,
     SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed_bookings,
     SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending_bookings,
     SUM(CASE WHEN status = 'Cancelled' THEN 1 ELSE 0 END) as cancelled_bookings,
     SUM(CASE WHEN status = 'Accepted' THEN 1 ELSE 0 END) as accepted_bookings,
     SUM(CASE WHEN payment_method = 'Xendit' THEN 1 ELSE 0 END) as xendit_payments
 FROM bookings";
-$stats_result = $conn->query($stats_sql);
-$stats = $stats_result->fetch_assoc();
+$stats_stmt = $conn->prepare($stats_sql);
+$stats_stmt->execute([$today]);
+$stats = $stats_stmt->fetch();
 
 $daily_bookings     = $stats['daily_bookings']     ?? 0;
 $total_bookings     = $stats['total_bookings']     ?? 0;
@@ -109,21 +115,21 @@ $accepted_bookings  = $stats['accepted_bookings']  ?? 0;
 $success_rate       = $total_bookings > 0 ? round(($completed_bookings / $total_bookings) * 100, 1) : 0;
 
 // Growth
-$last_month_sql = "SELECT COUNT(*) as c FROM bookings WHERE booking_date >= DATE_SUB(NOW(), INTERVAL 1 MONTH)";
-$last_month = (int)$conn->query($last_month_sql)->fetch_assoc()['c'];
-$prev_month_sql = "SELECT COUNT(*) as c FROM bookings WHERE booking_date >= DATE_SUB(NOW(), INTERVAL 2 MONTH) AND booking_date < DATE_SUB(NOW(), INTERVAL 1 MONTH)";
-$prev_month = (int)$conn->query($prev_month_sql)->fetch_assoc()['c'];
+$last_month_sql = "SELECT COUNT(*) as c FROM bookings WHERE booking_date >= NOW() - INTERVAL '1 month'";
+$last_month = (int)$conn->query($last_month_sql)->fetch()['c'];
+$prev_month_sql = "SELECT COUNT(*) as c FROM bookings WHERE booking_date >= NOW() - INTERVAL '2 months' AND booking_date < NOW() - INTERVAL '1 month'";
+$prev_month = (int)$conn->query($prev_month_sql)->fetch()['c'];
 $booking_growth = $prev_month > 0 ? round((($last_month - $prev_month) / $prev_month) * 100, 1) : 0;
 
 // ─── SPARKLINE: daily bookings last 7 days ────────────────────────────────────
-$daily7_sql = "SELECT DATE(booking_date) as d, COUNT(*) as cnt 
-               FROM bookings 
-               WHERE booking_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+$daily7_sql = "SELECT DATE(booking_date) as d, COUNT(*) as cnt
+               FROM bookings
+               WHERE booking_date >= CURRENT_DATE - INTERVAL '6 days'
                GROUP BY DATE(booking_date)
                ORDER BY d ASC";
 $daily7_res = $conn->query($daily7_sql);
 $daily7_map = [];
-while ($r = $daily7_res->fetch_assoc()) { $daily7_map[$r['d']] = (int)$r['cnt']; }
+while ($r = $daily7_res->fetch()) { $daily7_map[$r['d']] = (int)$r['cnt']; }
 $daily7_labels = []; $daily7_data = [];
 for ($i = 6; $i >= 0; $i--) {
     $d = date('Y-m-d', strtotime("-$i days"));
@@ -132,46 +138,46 @@ for ($i = 6; $i >= 0; $i--) {
 }
 
 // ─── SPARKLINE: success rate last 6 months ───────────────────────────────────
-$sr_sql = "SELECT DATE_FORMAT(booking_date,'%Y-%m') as ym,
+$sr_sql = "SELECT TO_CHAR(booking_date,'YYYY-MM') as ym,
                   SUM(CASE WHEN status='Completed' THEN 1 ELSE 0 END) as comp,
                   COUNT(*) as tot
            FROM bookings
-           WHERE booking_date >= DATE_SUB(NOW(), INTERVAL 5 MONTH)
+           WHERE booking_date >= NOW() - INTERVAL '5 months'
            GROUP BY ym ORDER BY ym ASC";
 $sr_res = $conn->query($sr_sql);
 $sr_labels = []; $sr_data = [];
-while ($r = $sr_res->fetch_assoc()) {
+while ($r = $sr_res->fetch()) {
     $sr_labels[] = date('M', strtotime($r['ym'].'-01'));
     $sr_data[]   = $r['tot'] > 0 ? round(($r['comp']/$r['tot'])*100, 1) : 0;
 }
 
 // ─── SPARKLINE: total bookings cumulative last 6 months ──────────────────────
-$tb_sql = "SELECT DATE_FORMAT(booking_date,'%Y-%m') as ym, COUNT(*) as cnt
+$tb_sql = "SELECT TO_CHAR(booking_date,'YYYY-MM') as ym, COUNT(*) as cnt
            FROM bookings
-           WHERE booking_date >= DATE_SUB(NOW(), INTERVAL 5 MONTH)
+           WHERE booking_date >= NOW() - INTERVAL '5 months'
            GROUP BY ym ORDER BY ym ASC";
 $tb_res = $conn->query($tb_sql);
 $tb_labels = []; $tb_data = []; $running = 0;
-$base_count_sql = "SELECT COUNT(*) as c FROM bookings WHERE booking_date < DATE_SUB(NOW(), INTERVAL 5 MONTH)";
-$running = (int)$conn->query($base_count_sql)->fetch_assoc()['c'];
-while ($r = $tb_res->fetch_assoc()) {
+$base_count_sql = "SELECT COUNT(*) as c FROM bookings WHERE booking_date < NOW() - INTERVAL '5 months'";
+$running = (int)$conn->query($base_count_sql)->fetch()['c'];
+while ($r = $tb_res->fetch()) {
     $running += (int)$r['cnt'];
     $tb_labels[] = date('M', strtotime($r['ym'].'-01'));
     $tb_data[]   = $running;
 }
 
 // ─── MAIN CHART: last 6 months completed vs pending ──────────────────────────
-$monthly_sql = "SELECT 
-    DATE_FORMAT(booking_date, '%b') as month,
-    DATE_FORMAT(booking_date, '%Y-%m') as ym,
+$monthly_sql = "SELECT
+    TO_CHAR(booking_date, 'Mon') as month,
+    TO_CHAR(booking_date, 'YYYY-MM') as ym,
     SUM(CASE WHEN status='Completed' THEN 1 ELSE 0 END) as completed,
     SUM(CASE WHEN status='Pending'   THEN 1 ELSE 0 END) as pending
-FROM bookings 
-WHERE booking_date >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-GROUP BY ym ORDER BY ym ASC";
+FROM bookings
+WHERE booking_date >= NOW() - INTERVAL '6 months'
+GROUP BY ym, month ORDER BY ym ASC";
 $monthly_res = $conn->query($monthly_sql);
 $months = []; $monthly_completed = []; $monthly_pending = [];
-while ($row = $monthly_res->fetch_assoc()) {
+while ($row = $monthly_res->fetch()) {
     $months[]            = $row['month'];
     $monthly_completed[] = (int)$row['completed'];
     $monthly_pending[]   = (int)$row['pending'];
@@ -441,8 +447,8 @@ function buildQuery($overrides = []) {
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-50 dark:divide-slate-800/50">
-                    <?php if ($bookings && $bookings->num_rows > 0): ?>
-                        <?php while($row = $bookings->fetch_assoc()):
+                    <?php if ($bookings && count($bookings) > 0): ?>
+                        <?php foreach ($bookings as $row):
                             $client_avatar = getUserAvatar($row['client_pic'], $row['client_name']);
                             $worker_avatar = getUserAvatar($row['worker_pic'], $row['worker_name']);
                             switch($row['status']) {
@@ -519,7 +525,7 @@ function buildQuery($overrides = []) {
                                 </div>
                             </td>
                         </tr>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
                             <td colspan="6" class="px-6 py-16 text-center">

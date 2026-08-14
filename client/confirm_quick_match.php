@@ -1,7 +1,7 @@
 <?php
 // client/confirm_quick_match.php
 session_start();
-include '../db.php';
+include '../db_connect.php';
 include '../includes/fcm_sender.php';
 
 
@@ -31,13 +31,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
 
     // Verify broadcast belongs to this client
     $chk = $conn->prepare("SELECT id FROM job_broadcasts WHERE id = ? AND client_id = ?");
-    $chk->bind_param('ii', $bid, $ajax_client);
-    $chk->execute();
-    if (!$chk->get_result()->fetch_assoc()) {
+    $chk->execute([$bid, $ajax_client]);
+    if (!$chk->fetch()) {
         echo json_encode(['ok' => false, 'error' => 'Unauthorized']);
         exit;
     }
-    $chk->close();
 
     // 1. Patch the broadcast row
     $stmt = $conn->prepare(
@@ -45,9 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
          SET latitude = ?, longitude = ?, client_lat = ?, client_lng = ?, location_address = ?
          WHERE id = ?"
     );
-    $stmt->bind_param('ddddsi', $lat, $lng, $lat, $lng, $address, $bid);
-    $stmt->execute();
-    $stmt->close();
+    $stmt->execute([$lat, $lng, $lat, $lng, $address, $bid]);
 
     // 2. Patch every booking created from this broadcast
     $stmt = $conn->prepare(
@@ -55,9 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
          SET latitude = ?, longitude = ?, location_address = ?
          WHERE broadcast_id = ? AND client_id = ?"
     );
-    $stmt->bind_param('ddsii', $lat, $lng, $address, $bid, $ajax_client);
-    $stmt->execute();
-    $stmt->close();
+    $stmt->execute([$lat, $lng, $address, $bid, $ajax_client]);
 
     error_log("✅ Geo saved for broadcast #$bid — lat=$lat, lng=$lng, addr=$address");
     echo json_encode(['ok' => true, 'address' => $address]);
@@ -89,20 +83,16 @@ $problems = is_array($_SESSION['quick_match']['problems']) ?
 $urgency = $_SESSION['quick_match']['urgency'];
 $fee = $_SESSION['quick_match']['fee'];
 
-// Escape before use in raw SQL below — these values originate from user POST input
-// relayed through the session in quick_match.php, and were never escaped there.
-$category = $conn->real_escape_string($category);
-$problems = $conn->real_escape_string($problems);
-$urgency  = $conn->real_escape_string($urgency);
-
 // Get client info
-$client = $conn->query("SELECT full_name, latitude, longitude FROM users WHERE id = '$client_id'")->fetch_assoc();
+$client_stmt = $conn->prepare("SELECT full_name, latitude, longitude FROM users WHERE id = ?");
+$client_stmt->execute([$client_id]);
+$client = $client_stmt->fetch();
 $client_name = $client['full_name'];
 $lat = $client['latitude'] ?? 0;
 $lng = $client['longitude'] ?? 0;
 
 // Start transaction
-$conn->begin_transaction();
+$conn->beginTransaction();
 error_log("DEBUG: workers count = " . count($workers) . " | broadcast category = " . $category);
 
 try {
@@ -110,18 +100,20 @@ try {
     $expires_at = date('Y-m-d H:i:s', strtotime('+485 minutes'));
     $worker_ids = json_encode(array_column($workers, 'id'));
     
-    $sql = "INSERT INTO job_broadcasts 
+    $sql = "INSERT INTO job_broadcasts
             (client_id, category, problem_tags, urgency, latitude, longitude,
-             client_lat, client_lng, status, expires_at, candidate_workers, is_quick_match, created_at) 
-            VALUES 
-            ('$client_id', '$category', '$problems', '$urgency', '$lat', '$lng',
-             '$lat', '$lng', 'searching', '$expires_at', '$worker_ids', 1, NOW())";
-    
-    if (!$conn->query($sql)) {
-        throw new Exception("Error creating broadcast: " . $conn->error);
+             client_lat, client_lng, status, expires_at, candidate_workers, is_quick_match, created_at)
+            VALUES
+            (?, ?, ?, ?, ?, ?,
+             ?, ?, 'searching', ?, ?, 1, NOW())";
+
+    $stmt = $conn->prepare($sql);
+    if (!$stmt->execute([$client_id, $category, $problems, $urgency, $lat, $lng,
+             $lat, $lng, $expires_at, $worker_ids])) {
+        throw new Exception("Error creating broadcast");
     }
-    
-    $broadcast_id = $conn->insert_id;
+
+    $broadcast_id = $conn->lastInsertId('job_broadcasts_id_seq');
     
     // ============================================
     // 🔔 PUSH NOTIFICATIONS
@@ -133,35 +125,40 @@ try {
         $worker_id = $worker['id'];
         $score = $worker['score'] ?? (100 - ($index * 5));
         
-        $sql = "INSERT INTO job_candidates (broadcast_id, worker_id, score) 
-                VALUES ('$broadcast_id', '$worker_id', '$score')";
-        if (!$conn->query($sql)) {
-            throw new Exception("Error inserting candidate: " . $conn->error);
+        $sql = "INSERT INTO job_candidates (broadcast_id, worker_id, score)
+                VALUES (?, ?, ?)";
+        $cand_stmt = $conn->prepare($sql);
+        if (!$cand_stmt->execute([$broadcast_id, $worker_id, $score])) {
+            throw new Exception("Error inserting candidate");
         }
-        
+
         $booking_date = date('Y-m-d H:i:s', strtotime('+1 hour'));
-        
-        $check_sql = "SELECT id FROM bookings WHERE broadcast_id = '$broadcast_id' AND worker_id = '$worker_id'";
-        $check_result = $conn->query($check_sql);
-        
-        if ($check_result->num_rows == 0) {
-            $sql = "INSERT INTO bookings 
-                    (client_id, worker_id, service_type, problem_desc, calculated_fee, 
+
+        $check_sql = "SELECT id FROM bookings WHERE broadcast_id = ? AND worker_id = ?";
+        $check_stmt = $conn->prepare($check_sql);
+        $check_stmt->execute([$broadcast_id, $worker_id]);
+        $booking = $check_stmt->fetch();
+
+        if (!$booking) {
+            $sql = "INSERT INTO bookings
+                    (client_id, worker_id, service_type, problem_desc, calculated_fee,
                      urgency_level, status, booking_date, payment_method, broadcast_id,
-                     latitude, longitude, location_address, created_at) 
-                    VALUES 
-                    ('$client_id', '$worker_id', '$category', '$problems', '$fee', 
-                     '$urgency', 'Pending', '$booking_date', 'Cash', '$broadcast_id',
-                     '$lat', '$lng', '', NOW())";
-            
-            if (!$conn->query($sql)) {
-                throw new Exception("Error creating booking: " . $conn->error);
+                     latitude, longitude, location_address, created_at)
+                    VALUES
+                    (?, ?, ?, ?, ?,
+                     ?, 'Pending', ?, 'Cash', ?,
+                     ?, ?, '', NOW())";
+
+            $book_stmt = $conn->prepare($sql);
+            if (!$book_stmt->execute([$client_id, $worker_id, $category, $problems, $fee,
+                     $urgency, $booking_date, $broadcast_id,
+                     $lat, $lng])) {
+                throw new Exception("Error creating booking");
             }
-            
-            $booking_id = $conn->insert_id;
+
+            $booking_id = $conn->lastInsertId('bookings_id_seq');
             error_log("✅ Created booking #$booking_id for worker #$worker_id from broadcast #$broadcast_id");
         } else {
-            $booking = $check_result->fetch_assoc();
             $booking_id = $booking['id'];
             error_log("⚠️ Booking already exists: #$booking_id for worker #$worker_id");
         }
@@ -780,7 +777,7 @@ setTimeout(animateWorkers, 100);
     <?php
 
 } catch (Exception $e) {
-    $conn->rollback();
+    $conn->rollBack();
     error_log("QUICK MATCH ERROR: " . $e->getMessage());
     die("Error: " . $e->getMessage());
 }

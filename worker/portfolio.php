@@ -1,6 +1,6 @@
 <?php
 // worker/portfolio.php
-include '../db.php';
+include '../db_connect.php';
 $worker_id = $_SESSION['user_id'];
 
 // Only process image uploads here (simplified for MVP)
@@ -13,7 +13,7 @@ if (isset($_POST['upload_photo'])) {
         // We can create a simple 'portfolio_images' table or just store in a folder
         // For this MVP, let's assume a table 'portfolio_images' exists or just list files from folder
         // Here I will use a simple DB insert assuming you add this table
-        $conn->query("INSERT INTO portfolio_images (user_id, image_path) VALUES ($worker_id, '$file_name')");
+        $conn->prepare("INSERT INTO portfolio_images (user_id, image_path) VALUES (?, ?)")->execute([$worker_id, $file_name]);
         echo "<script>alert('Photo added to portfolio!');</script>";
     }
 }
@@ -45,8 +45,9 @@ if (isset($_POST['upload_photo'])) {
         <div class="gallery">
             <?php 
             // Create this table in DB: CREATE TABLE portfolio_images (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT, image_path VARCHAR(255));
-            $images = $conn->query("SELECT * FROM portfolio_images WHERE user_id = $worker_id");
-            while($img = $images->fetch_assoc()): 
+            $images_stmt = $conn->prepare("SELECT * FROM portfolio_images WHERE user_id = ?");
+            $images_stmt->execute([$worker_id]);
+            while($img = $images_stmt->fetch()):
             ?>
                 <img src="../uploads/portfolios/<?php echo $img['image_path']; ?>">
             <?php endwhile; ?>

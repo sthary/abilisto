@@ -1,6 +1,6 @@
 <?php
 // admin/finance.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 // ── Security Check ─────────────────────────────────────────
@@ -20,11 +20,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
 
     if ($_POST['action'] === 'add_expense') {
-        $type    = $conn->real_escape_string($_POST['expense_type'] ?? '');
-        $cat     = $conn->real_escape_string($_POST['category'] ?? '');
-        $desc    = $conn->real_escape_string($_POST['description'] ?? '');
+        $type    = $_POST['expense_type'] ?? '';
+        $cat     = $_POST['category'] ?? '';
+        $desc    = $_POST['description'] ?? '';
         $amount  = floatval($_POST['amount'] ?? 0);
-        $date    = $conn->real_escape_string($_POST['expense_date'] ?? date('Y-m-d'));
+        $date    = $_POST['expense_date'] ?? date('Y-m-d');
 
         if (!in_array($type, ['MOOE', 'PS']) || $amount <= 0 || empty($cat)) {
             echo json_encode(['success' => false, 'message' => 'Invalid input.']);
@@ -32,18 +32,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         $sql = "INSERT INTO admin_expenses (expense_type, category, description, amount, expense_date, logged_by)
-                VALUES ('$type', '$cat', '$desc', $amount, '$date', $admin_id)";
-        if ($conn->query($sql)) {
+                VALUES (?, ?, ?, ?, ?, ?)";
+        try {
+            $conn->prepare($sql)->execute([$type, $cat, $desc, $amount, $date, $admin_id]);
             echo json_encode(['success' => true, 'message' => 'Expense logged successfully.']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'DB error: ' . $conn->error]);
+        } catch (PDOException $e) {
+            echo json_encode(['success' => false, 'message' => 'DB error: ' . $e->getMessage()]);
         }
         exit();
     }
 
     if ($_POST['action'] === 'delete_expense') {
         $eid = intval($_POST['expense_id'] ?? 0);
-        $conn->query("DELETE FROM admin_expenses WHERE id = $eid");
+        $conn->prepare("DELETE FROM admin_expenses WHERE id = ?")->execute([$eid]);
         echo json_encode(['success' => true]);
         exit();
     }
@@ -59,7 +60,7 @@ $booking_fees_sql = "SELECT SUM(amount) as total FROM wallet_transactions
                      AND user_id = 1
                      AND user_type = 'admin'
                      AND description LIKE '%Admin fee from booking%'";
-$booking_fees = (float)($conn->query($booking_fees_sql)->fetch_assoc()['total'] ?? 0);
+$booking_fees = (float)($conn->query($booking_fees_sql)->fetch()['total'] ?? 0);
 
 // 2. 4% commission from completed bookings
 $commission_sql = "SELECT SUM(amount) as total FROM wallet_transactions
@@ -67,14 +68,14 @@ $commission_sql = "SELECT SUM(amount) as total FROM wallet_transactions
                    AND user_id = 1
                    AND user_type = 'admin'
                    AND description LIKE '%commission%'";
-$commission = (float)($conn->query($commission_sql)->fetch_assoc()['total'] ?? 0);
+$commission = (float)($conn->query($commission_sql)->fetch()['total'] ?? 0);
 
 // 3. Top-up fees (₱30 processing fee per completed top-up — adjust if your rate differs)
 // Currently top-ups go directly to worker wallets; platform fee = 0 unless you charge one.
 // Using completed top-up count × ₱0 as placeholder; set your fee rate below.
 $TOPUP_FEE_RATE = 0; // Set to e.g. 30 if you charge ₱30 per top-up
 $topup_sql = "SELECT COUNT(*) as cnt, SUM(amount) as volume FROM top_ups WHERE status = 'completed'";
-$topup_row = $conn->query($topup_sql)->fetch_assoc();
+$topup_row = $conn->query($topup_sql)->fetch();
 $topup_count  = (int)($topup_row['cnt'] ?? 0);
 $topup_volume = (float)($topup_row['volume'] ?? 0);
 $topup_fees   = $topup_count * $TOPUP_FEE_RATE;
@@ -85,11 +86,11 @@ $total_income = $booking_fees + $commission + $topup_fees;
 // LIABILITIES — Money owed to workers (their wallet balances)
 // ============================================================
 $liabilities_sql = "SELECT SUM(wallet_balance) as total FROM worker_profiles WHERE wallet_balance > 0";
-$total_liabilities = (float)($conn->query($liabilities_sql)->fetch_assoc()['total'] ?? 0);
+$total_liabilities = (float)($conn->query($liabilities_sql)->fetch()['total'] ?? 0);
 
 // Worker count in debt
 $worker_debt_sql = "SELECT COUNT(*) as cnt FROM worker_profiles WHERE wallet_balance > 0";
-$workers_owed = (int)($conn->query($worker_debt_sql)->fetch_assoc()['cnt'] ?? 0);
+$workers_owed = (int)($conn->query($worker_debt_sql)->fetch()['cnt'] ?? 0);
 
 // ============================================================
 // EXPENSES — includes manual entries AND released payroll PS
@@ -98,8 +99,8 @@ $workers_owed = (int)($conn->query($worker_debt_sql)->fetch_assoc()['cnt'] ?? 0)
 // ============================================================
 $mooe_sql = "SELECT COALESCE(SUM(amount),0) as total FROM admin_expenses WHERE expense_type = 'MOOE'";
 $ps_sql   = "SELECT COALESCE(SUM(amount),0) as total FROM admin_expenses WHERE expense_type = 'PS'";
-$total_mooe = (float)($conn->query($mooe_sql)->fetch_assoc()['total'] ?? 0);
-$total_ps   = (float)($conn->query($ps_sql)->fetch_assoc()['total'] ?? 0);
+$total_mooe = (float)($conn->query($mooe_sql)->fetch()['total'] ?? 0);
+$total_ps   = (float)($conn->query($ps_sql)->fetch()['total'] ?? 0);
 $total_expenses = $total_mooe + $total_ps;
 
 // Payroll sub-total (PS entries that came from released payroll runs)
@@ -107,10 +108,10 @@ $payroll_ps_sql = "SELECT COALESCE(SUM(ae.amount),0) as total
     FROM admin_expenses ae
     INNER JOIN payroll_runs pr ON pr.expense_id = ae.id
     WHERE ae.expense_type = 'PS' AND pr.status = 'Released'";
-$total_payroll_ps = (float)($conn->query($payroll_ps_sql)->fetch_assoc()['total'] ?? 0);
+$total_payroll_ps = (float)($conn->query($payroll_ps_sql)->fetch()['total'] ?? 0);
 
 // Pending payroll count (approved by HR, awaiting Finance sign-off)
-$pending_payroll_count = (int)($conn->query("SELECT COUNT(*) as c FROM payroll_runs WHERE status='Approved' AND expense_id IS NULL")->fetch_assoc()['c'] ?? 0);
+$pending_payroll_count = (int)($conn->query("SELECT COUNT(*) as c FROM payroll_runs WHERE status='Approved' AND expense_id IS NULL")->fetch()['c'] ?? 0);
 
 // ============================================================
 // EQUITY FORMULA: Income - Liabilities - Expenses
@@ -119,7 +120,7 @@ $equity = $total_income - $total_liabilities - $total_expenses;
 
 // Admin wallet current balance
 $admin_balance_sql = "SELECT balance FROM admin_wallet WHERE id = 1";
-$admin_balance = (float)($conn->query($admin_balance_sql)->fetch_assoc()['balance'] ?? 0);
+$admin_balance = (float)($conn->query($admin_balance_sql)->fetch()['balance'] ?? 0);
 
 // ============================================================
 // SIMULATED XENDIT BALANCE (calculated from DB)
@@ -134,7 +135,7 @@ $xendit_in_mobilization_sql = "SELECT COALESCE(SUM(calculated_fee), 0) as total
     FROM bookings
     WHERE payment_method = 'Xendit'
     AND payment_status = 'Paid'";
-$xendit_in_mobilization = (float)($conn->query($xendit_in_mobilization_sql)->fetch_assoc()['total'] ?? 0);
+$xendit_in_mobilization = (float)($conn->query($xendit_in_mobilization_sql)->fetch()['total'] ?? 0);
 
 // IN 2: Final payments received via Xendit/GCash/Maya
 // final_payment_method IN ('Xendit','GCash','Maya') AND final_payment_status = 'paid'
@@ -142,19 +143,19 @@ $xendit_in_final_sql = "SELECT COALESCE(SUM(total_final_cost), 0) as total
     FROM bookings
     WHERE final_payment_status = 'paid'
     AND final_payment_method IN ('Xendit', 'GCash', 'Maya', 'gcash', 'maya')";
-$xendit_in_final = (float)($conn->query($xendit_in_final_sql)->fetch_assoc()['total'] ?? 0);
+$xendit_in_final = (float)($conn->query($xendit_in_final_sql)->fetch()['total'] ?? 0);
 
 // IN 3: Worker top-ups completed via GCash/bank (workers funded their wallets)
 $xendit_in_topups_sql = "SELECT COALESCE(SUM(amount), 0) as total
     FROM top_ups
     WHERE status = 'completed'";
-$xendit_in_topups = (float)($conn->query($xendit_in_topups_sql)->fetch_assoc()['total'] ?? 0);
+$xendit_in_topups = (float)($conn->query($xendit_in_topups_sql)->fetch()['total'] ?? 0);
 
 // OUT: Completed worker withdrawals (money sent OUT of Xendit to workers)
 $xendit_out_withdrawals_sql = "SELECT COALESCE(SUM(amount), 0) as total
     FROM withdrawals
     WHERE status IN ('Completed', 'completed', 'approved', 'Approved')";
-$xendit_out_withdrawals = (float)($conn->query($xendit_out_withdrawals_sql)->fetch_assoc()['total'] ?? 0);
+$xendit_out_withdrawals = (float)($conn->query($xendit_out_withdrawals_sql)->fetch()['total'] ?? 0);
 
 // Final simulated balance
 $xendit_total_in  = $xendit_in_mobilization + $xendit_in_final + $xendit_in_topups;
@@ -168,36 +169,36 @@ $is_solvent = $xendit_simulated_balance >= $total_liabilities;
 // ============================================================
 // REVENUE CHART — Monthly income vs expenses (last 6 months)
 // ============================================================
-$chart_income_sql = "SELECT 
-    DATE_FORMAT(created_at, '%b %Y') as month_label,
-    DATE_FORMAT(created_at, '%Y-%m') as month_key,
+$chart_income_sql = "SELECT
+    TO_CHAR(created_at, 'Mon YYYY') as month_label,
+    TO_CHAR(created_at, 'YYYY-MM') as month_key,
     SUM(amount) as total
 FROM wallet_transactions
 WHERE transaction_type = 'fee'
   AND user_id = 1
   AND user_type = 'admin'
-  AND created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-GROUP BY DATE_FORMAT(created_at, '%Y-%m')
-ORDER BY created_at ASC";
+  AND created_at >= NOW() - INTERVAL '6 months'
+GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+ORDER BY TO_CHAR(created_at, 'YYYY-MM') ASC";
 
 $chart_income_res = $conn->query($chart_income_sql);
 $chart_income_map = [];
-while ($r = $chart_income_res->fetch_assoc()) {
+while ($r = $chart_income_res->fetch()) {
     $chart_income_map[$r['month_key']] = ['label' => $r['month_label'], 'income' => (float)$r['total']];
 }
 
-$chart_expenses_sql = "SELECT 
-    DATE_FORMAT(expense_date, '%b %Y') as month_label,
-    DATE_FORMAT(expense_date, '%Y-%m') as month_key,
+$chart_expenses_sql = "SELECT
+    TO_CHAR(expense_date, 'Mon YYYY') as month_label,
+    TO_CHAR(expense_date, 'YYYY-MM') as month_key,
     SUM(amount) as total
 FROM admin_expenses
-WHERE expense_date >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-GROUP BY DATE_FORMAT(expense_date, '%Y-%m')
-ORDER BY expense_date ASC";
+WHERE expense_date >= NOW() - INTERVAL '6 months'
+GROUP BY TO_CHAR(expense_date, 'YYYY-MM')
+ORDER BY TO_CHAR(expense_date, 'YYYY-MM') ASC";
 
 $chart_expenses_res = $conn->query($chart_expenses_sql);
 $chart_expenses_map = [];
-while ($r = $chart_expenses_res->fetch_assoc()) {
+while ($r = $chart_expenses_res->fetch()) {
     $chart_expenses_map[$r['month_key']] = (float)$r['total'];
 }
 
@@ -229,30 +230,32 @@ $recent_expenses_sql = "SELECT e.*, u.full_name as logged_by_name, pr.id as payr
                         LEFT JOIN users u ON u.id = e.logged_by
                         ORDER BY e.expense_date DESC, e.created_at DESC
                         LIMIT 20";
-$recent_expenses = $conn->query($recent_expenses_sql);
+$recent_expenses = $conn->query($recent_expenses_sql)->fetchAll();
 
 // ============================================================
 // EXPENSE BREAKDOWN BY CATEGORY (for current month)
 // ============================================================
 $breakdown_sql = "SELECT expense_type, category, SUM(amount) as total
                   FROM admin_expenses
-                  WHERE MONTH(expense_date) = MONTH(NOW()) AND YEAR(expense_date) = YEAR(NOW())
+                  WHERE EXTRACT(MONTH FROM expense_date) = EXTRACT(MONTH FROM NOW()) AND EXTRACT(YEAR FROM expense_date) = EXTRACT(YEAR FROM NOW())
                   GROUP BY expense_type, category
                   ORDER BY total DESC";
 $breakdown_res = $conn->query($breakdown_sql);
 $breakdown = [];
-while ($r = $breakdown_res->fetch_assoc()) {
+while ($r = $breakdown_res->fetch()) {
     $breakdown[] = $r;
 }
 
 // Finance user navbar info
-$fin_user_sql = "SELECT full_name, profile_pic FROM users WHERE id = $admin_id";
-$fin_user_res = $conn->query($fin_user_sql);
-$fin_user     = $fin_user_res->fetch_assoc();
+$fin_user_stmt = $conn->prepare("SELECT full_name, profile_pic FROM users WHERE id = ?");
+$fin_user_stmt->execute([$admin_id]);
+$fin_user     = $fin_user_stmt->fetch();
 $fin_name     = $fin_user['full_name'] ?? 'Finance';
 
-$notif_count_sql = "SELECT COUNT(*) as count FROM notifications WHERE user_id = $admin_id AND is_read = 0";
-$notif_count = (int)($conn->query($notif_count_sql)->fetch_assoc()['count'] ?? 0);
+$notif_count_sql = "SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0";
+$notif_count_stmt = $conn->prepare($notif_count_sql);
+$notif_count_stmt->execute([$admin_id]);
+$notif_count = (int)($notif_count_stmt->fetch()['count'] ?? 0);
 $current_date = date('M d, Y');
 ?>
 <!DOCTYPE html>
@@ -897,8 +900,8 @@ $current_date = date('M d, Y');
                         </tr>
                     </thead>
                     <tbody id="expense-tbody">
-                        <?php if ($recent_expenses && $recent_expenses->num_rows > 0): ?>
-                            <?php while ($exp = $recent_expenses->fetch_assoc()):
+                        <?php if ($recent_expenses && count($recent_expenses) > 0): ?>
+                            <?php foreach ($recent_expenses as $exp):
                                 $is_payroll = !empty($exp['payroll_run_id']);
                             ?>
                             <tr data-id="<?php echo $exp['id']; ?>" class="<?php echo $is_payroll ? 'bg-violet-50/30 dark:bg-violet-900/5' : ''; ?>">
@@ -941,7 +944,7 @@ $current_date = date('M d, Y');
                                     <?php endif; ?>
                                 </td>
                             </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
                         <tr>
                             <td colspan="6" class="text-center py-12 text-slate-400">

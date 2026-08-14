@@ -1,6 +1,6 @@
 <?php
 session_start();
-include '../db.php';
+include '../db_connect.php';
 
 // Mark that the user has seen the tour
 if (isset($_SESSION['user_id'])) {
@@ -8,7 +8,8 @@ if (isset($_SESSION['user_id'])) {
     
     // Store in database to persist across sessions
     $user_id = $_SESSION['user_id'];
-    $conn->query("UPDATE users SET has_seen_tour = 1 WHERE id = '$user_id'");
+    $stmt = $conn->prepare("UPDATE users SET has_seen_tour = TRUE WHERE id = ?");
+    $stmt->execute([$user_id]);
     
     http_response_code(200);
     echo json_encode(['success' => true]);

@@ -1,6 +1,6 @@
 <?php
 // worker/my_reports.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 // Security Check
@@ -18,16 +18,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_report'])) {
     // Verify report belongs to this worker and is still pending
     $check_sql = "SELECT id FROM reports_worker WHERE id = ? AND worker_id = ? AND status = 'pending'";
     $check_stmt = $conn->prepare($check_sql);
-    $check_stmt->bind_param("ii", $report_id, $worker_id);
-    $check_stmt->execute();
-    $check_result = $check_stmt->get_result();
-    
-    if ($check_result->num_rows > 0) {
+    $check_stmt->execute([$report_id, $worker_id]);
+    $check_row = $check_stmt->fetch();
+
+    if ($check_row) {
         $update_sql = "UPDATE reports_worker SET status = 'dismissed', admin_notes = 'Cancelled by worker' WHERE id = ?";
         $update_stmt = $conn->prepare($update_sql);
-        $update_stmt->bind_param("i", $report_id);
-        
-        if ($update_stmt->execute()) {
+
+        if ($update_stmt->execute([$report_id])) {
             $_SESSION['success'] = "Report cancelled successfully.";
         } else {
             $_SESSION['error'] = "Failed to cancel report.";
@@ -49,12 +47,12 @@ $sql = "SELECT r.*,
                b.booking_date,
                b.problem_desc,
                b.status as booking_status,
-               DATEDIFF(NOW(), r.created_at) as days_ago
+               (NOW()::date - r.created_at::date) as days_ago
         FROM reports_worker r
         JOIN users u ON r.reported_user_id = u.id
         LEFT JOIN bookings b ON r.booking_id = b.id
         WHERE r.worker_id = ?
-        ORDER BY 
+        ORDER BY
             CASE r.status
                 WHEN 'pending' THEN 1
                 WHEN 'reviewed' THEN 2
@@ -64,23 +62,21 @@ $sql = "SELECT r.*,
             r.created_at DESC";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $worker_id);
-$stmt->execute();
-$reports_result = $stmt->get_result();
+$stmt->execute([$worker_id]);
+$reports_rows = $stmt->fetchAll();
 
 // Get statistics
-$stats_sql = "SELECT 
+$stats_sql = "SELECT
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
                 SUM(CASE WHEN status = 'reviewed' THEN 1 ELSE 0 END) as reviewed,
                 SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) as resolved,
                 SUM(CASE WHEN status = 'dismissed' THEN 1 ELSE 0 END) as dismissed
-              FROM reports_worker 
+              FROM reports_worker
               WHERE worker_id = ?";
 $stats_stmt = $conn->prepare($stats_sql);
-$stats_stmt->bind_param("i", $worker_id);
-$stats_stmt->execute();
-$stats = $stats_stmt->get_result()->fetch_assoc();
+$stats_stmt->execute([$worker_id]);
+$stats = $stats_stmt->fetch();
 
 // Helper function to get status styling (same as client version)
 function getReportStatusStyle($status) {
@@ -257,8 +253,8 @@ function getRoleBadge($role) {
     
     <!-- Reports List -->
     <div class="space-y-6">
-        <?php if ($reports_result && $reports_result->num_rows > 0): ?>
-            <?php while($report = $reports_result->fetch_assoc()): 
+        <?php if ($reports_rows && count($reports_rows) > 0): ?>
+            <?php foreach ($reports_rows as $report):
                 $status_style = getReportStatusStyle($report['status']);
                 $role_badge = getRoleBadge($report['reported_user_role']);
             ?>
@@ -438,8 +434,8 @@ function getRoleBadge($role) {
                     </div>
                 </div>
             </div>
-            <?php endwhile; ?>
-            
+            <?php endforeach; ?>
+
         <?php else: ?>
             <!-- Empty State -->
             <div class="bg-white dark:bg-slate-800 rounded-3xl p-16 text-center border border-slate-200 dark:border-slate-700">

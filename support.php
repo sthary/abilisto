@@ -1,6 +1,6 @@
 <?php
 // support.php
-include 'db.php';
+include 'db_connect.php';
 include 'includes/init_lang.php';
 
 // Security Check - Optional (remove if you want public access)
@@ -14,18 +14,17 @@ $user_role = $_SESSION['role'];
 
 // Handle contact form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
-    $name = $conn->real_escape_string($_POST['name']);
-    $email = $conn->real_escape_string($_POST['email']);
-    $subject = $conn->real_escape_string($_POST['subject']);
-    $message = $conn->real_escape_string($_POST['message']);
-    
+    $name = $_POST['name'];
+    $email = $_POST['email'];
+    $subject = $_POST['subject'];
+    $message = $_POST['message'];
+
     // Insert into contact_messages table (create this table if needed)
-    $sql = "INSERT INTO contact_messages (user_id, name, email, subject, message, created_at) 
+    $sql = "INSERT INTO contact_messages (user_id, name, email, subject, message, created_at)
             VALUES (?, ?, ?, ?, ?, NOW())";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("issss", $user_id, $name, $email, $subject, $message);
-    
-    if ($stmt->execute()) {
+
+    if ($stmt->execute([$user_id, $name, $email, $subject, $message])) {
         $_SESSION['success'] = "Message sent successfully! We'll respond within 24 hours.";
         
         // Send email notification to support
@@ -45,9 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
 // Get user data for pre-filling contact form
 $user_sql = "SELECT full_name, email FROM users WHERE id = ?";
 $user_stmt = $conn->prepare($user_sql);
-$user_stmt->bind_param("i", $user_id);
-$user_stmt->execute();
-$user = $user_stmt->get_result()->fetch_assoc();
+$user_stmt->execute([$user_id]);
+$user = $user_stmt->fetch();
 
 // FAQ categories and questions
 $faqs = [

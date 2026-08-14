@@ -1,6 +1,6 @@
 <?php
 // admin/hr_verifications.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 if (session_status() === PHP_SESSION_NONE) session_start();
@@ -10,7 +10,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'hr') {
 }
 
 $hr_user_id = $_SESSION['user_id'];
-$hr_name    = $conn->query("SELECT full_name FROM users WHERE id=$hr_user_id")->fetch_assoc()['full_name'] ?? 'HR';
+$hr_stmt    = $conn->prepare("SELECT full_name FROM users WHERE id=?");
+$hr_stmt->execute([$hr_user_id]);
+$hr_name    = $hr_stmt->fetch()['full_name'] ?? 'HR';
 
 // ── Decryption (same key as admin verifications) ─────────────
 define('ADMIN_ENC_KEY', hex2bin(
@@ -34,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_verification'
     $verification_id = (int)$_POST['verification_id'];
     $worker_id       = (int)$_POST['worker_id'];
     $action          = $_POST['action'];
-    $admin_notes     = $conn->real_escape_string($_POST['admin_notes'] ?? '');
+    $admin_notes     = $_POST['admin_notes'] ?? '';
     $community_only  = !empty($_POST['community_only']);
     $skill_actions   = $_POST['skill_action'] ?? [];
     $skill_badges    = $_POST['skill_badge']  ?? [];
@@ -43,51 +45,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_verification'
 
     if ($action === 'Approved') {
         if ($community_only) {
-            $conn->query("UPDATE verification SET verification_status='verified', verified_at=NOW(),
-                          id_verification_notes='$admin_notes', id_verified=1 WHERE id=$verification_id");
-            $conn->query("UPDATE worker_profiles SET verification_status='Community', is_verified=1 WHERE user_id=$worker_id");
+            $stmt = $conn->prepare("UPDATE verification SET verification_status='verified', verified_at=NOW(),
+                          id_verification_notes=?, id_verified=TRUE WHERE id=?");
+            $stmt->execute([$admin_notes, $verification_id]);
+            $stmt = $conn->prepare("UPDATE worker_profiles SET verification_status='Community', is_verified=TRUE WHERE user_id=?");
+            $stmt->execute([$worker_id]);
             $highest_badge = 'Community';
             $msg = "🎉 Your profile has been verified as Community by HR.";
         } else {
             foreach ($skill_actions as $nc_id => $decision) {
                 $nc_id = (int)$nc_id;
-                $badge = $conn->real_escape_string($skill_badges[$nc_id] ?? 'Unverified');
-                $snote = $conn->real_escape_string($skill_notes[$nc_id] ?? '');
+                $badge = $skill_badges[$nc_id] ?? 'Unverified';
+                $snote = $skill_notes[$nc_id] ?? '';
                 if ($decision === 'approve') {
-                    $conn->query("UPDATE verification_nc_skills SET is_verified=1, verified_at=NOW(),
-                                  badge_level='$badge', verification_notes='$snote'
-                                  WHERE id=$nc_id AND verification_id=$verification_id");
-                    $conn->query("UPDATE worker_skills ws JOIN verification_nc_skills vns ON vns.id=$nc_id
-                                  SET ws.badge_level='$badge', ws.is_verified=1, ws.verified_at=NOW(), ws.verification_notes='$snote'
-                                  WHERE ws.worker_id=$worker_id AND ws.sub_category=vns.sub_category");
+                    $stmt = $conn->prepare("UPDATE verification_nc_skills SET is_verified=TRUE, verified_at=NOW(),
+                                  badge_level=?, verification_notes=?
+                                  WHERE id=? AND verification_id=?");
+                    $stmt->execute([$badge, $snote, $nc_id, $verification_id]);
+                    $stmt = $conn->prepare("UPDATE worker_skills ws
+                                  SET badge_level=?, is_verified=TRUE, verified_at=NOW(), verification_notes=?
+                                  FROM verification_nc_skills vns
+                                  WHERE vns.id=? AND ws.worker_id=? AND ws.sub_category=vns.sub_category");
+                    $stmt->execute([$badge, $snote, $nc_id, $worker_id]);
                     if ((BADGE_RANK[$badge]??0) > (BADGE_RANK[$highest_badge]??0)) $highest_badge = $badge;
                 } else {
-                    $conn->query("UPDATE verification_nc_skills SET is_verified=0, badge_level='Unverified', verification_notes='$snote'
-                                  WHERE id=$nc_id AND verification_id=$verification_id");
+                    $stmt = $conn->prepare("UPDATE verification_nc_skills SET is_verified=FALSE, badge_level='Unverified', verification_notes=?
+                                  WHERE id=? AND verification_id=?");
+                    $stmt->execute([$snote, $nc_id, $verification_id]);
                 }
             }
-            $conn->query("UPDATE verification SET verification_status='verified', verified_at=NOW(),
-                          id_verification_notes='$admin_notes', id_verified=1 WHERE id=$verification_id");
-            $conn->query("UPDATE worker_profiles SET verification_status='$highest_badge', is_verified=1 WHERE user_id=$worker_id");
+            $stmt = $conn->prepare("UPDATE verification SET verification_status='verified', verified_at=NOW(),
+                          id_verification_notes=?, id_verified=TRUE WHERE id=?");
+            $stmt->execute([$admin_notes, $verification_id]);
+            $stmt = $conn->prepare("UPDATE worker_profiles SET verification_status=?, is_verified=TRUE WHERE user_id=?");
+            $stmt->execute([$highest_badge, $worker_id]);
             $label = ($highest_badge !== 'Unverified') ? "as $highest_badge" : "(no NC approved)";
             $msg   = "🎉 Your profile has been verified $label by HR.";
         }
     } else {
-        $conn->query("UPDATE verification SET verification_status='rejected',
-                      rejection_reason='$admin_notes', id_verification_notes='$admin_notes'
-                      WHERE id=$verification_id");
+        $stmt = $conn->prepare("UPDATE verification SET verification_status='rejected',
+                      rejection_reason=?, id_verification_notes=?
+                      WHERE id=?");
+        $stmt->execute([$admin_notes, $admin_notes, $verification_id]);
         $msg = "⚠️ Your verification was rejected by HR. Reason: $admin_notes";
     }
 
-    $safe_msg = $conn->real_escape_string($msg);
-    $conn->query("INSERT INTO notifications (user_id,message,link) VALUES ('$worker_id','$safe_msg','../worker/profile_edit.php')");
+    $stmt = $conn->prepare("INSERT INTO notifications (user_id,message,link) VALUES (?,?,?)");
+    $stmt->execute([$worker_id, $msg, '../worker/profile_edit.php']);
     header("Location: hr_verifications.php?status=success"); exit();
 }
 
 // ── Fetch pending verifications ───────────────────────────────
-$pending_count = $conn->query("SELECT COUNT(*) as c FROM verification WHERE verification_status='pending'")->fetch_assoc()['c'] ?? 0;
+$pending_count = $conn->query("SELECT COUNT(*) as c FROM verification WHERE verification_status='pending'")->fetch()['c'] ?? 0;
 
-$reqs = $conn->query("SELECT v.*, u.id AS worker_id, u.full_name, u.email, u.profile_pic,
+$reqs_stmt = $conn->query("SELECT v.*, u.id AS worker_id, u.full_name, u.email, u.profile_pic,
     u.created_at, wp.service_category, wp.verification_status AS current_badge,
     wp.is_verified, wp.jobs_completed
     FROM verification v
@@ -95,21 +106,23 @@ $reqs = $conn->query("SELECT v.*, u.id AS worker_id, u.full_name, u.email, u.pro
     LEFT JOIN worker_profiles wp ON u.id = wp.user_id
     WHERE v.verification_status = 'pending'
     ORDER BY v.submitted_at DESC");
+$pending_reqs = $reqs_stmt->fetchAll();
 
 // Pre-fetch NC skills for pending verifications
 $pending_nc = [];
-$nc_res = $conn->query("SELECT vns.* FROM verification_nc_skills vns
+$nc_stmt = $conn->query("SELECT vns.* FROM verification_nc_skills vns
     JOIN verification v ON v.id = vns.verification_id
     WHERE v.verification_status = 'pending'
     ORDER BY vns.verification_id, vns.sub_category");
-while ($nr = $nc_res->fetch_assoc()) $pending_nc[$nr['verification_id']][] = $nr;
+while ($nr = $nc_stmt->fetch()) $pending_nc[$nr['verification_id']][] = $nr;
 
 // History
-$history = $conn->query("SELECT v.*, u.full_name, u.profile_pic, wp.verification_status AS assigned_badge
+$history_stmt = $conn->query("SELECT v.*, u.full_name, u.profile_pic, wp.verification_status AS assigned_badge
     FROM verification v JOIN users u ON v.user_id=u.id
     LEFT JOIN worker_profiles wp ON u.id=wp.user_id
     WHERE v.verification_status IN ('verified','rejected')
     ORDER BY v.updated_at DESC LIMIT 10");
+$history_rows = $history_stmt->fetchAll();
 
 $current_date = date('M d, Y');
 
@@ -208,12 +221,12 @@ $SUB_EMOJI=['Electrical'=>'⚡','Plumbing'=>'💧','Carpentry'=>'🔨','Masonry'
     </header>
 
     <!-- ── PENDING REVIEWS ──────────────────────────────────── -->
-    <?php if ($reqs && $reqs->num_rows > 0): ?>
+    <?php if (count($pending_reqs) > 0): ?>
     <h2 class="font-display text-lg font-bold mb-4 flex items-center gap-2">
         <span class="material-icons-round text-hr">pending_actions</span>Pending Reviews
     </h2>
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-12">
-    <?php while ($row = $reqs->fetch_assoc()):
+    <?php foreach ($pending_reqs as $row):
         $avatar         = getUserAvatar($row['profile_pic'], $row['full_name']);
         $worker_code    = "#W-".str_pad($row['worker_id'], 4, '0', STR_PAD_LEFT);
         $submitted_date = date("M d, Y", strtotime($row['submitted_at']));
@@ -323,7 +336,7 @@ $SUB_EMOJI=['Electrical'=>'⚡','Plumbing'=>'💧','Carpentry'=>'🔨','Masonry'
             Review &amp; Decide
         </button>
     </div>
-    <?php endwhile; ?>
+    <?php endforeach; ?>
     </div>
 
     <?php else: ?>
@@ -351,8 +364,8 @@ $SUB_EMOJI=['Electrical'=>'⚡','Plumbing'=>'💧','Carpentry'=>'🔨','Masonry'
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-50 dark:divide-slate-800/50">
-                <?php if($history && $history->num_rows > 0):
-                    while($row=$history->fetch_assoc()):
+                <?php if(count($history_rows) > 0):
+                    foreach($history_rows as $row):
                         $av=getUserAvatar($row['profile_pic'],$row['full_name']);
                         $sc=getStatusClass($row['verification_status']);
                         $bc=match($row['assigned_badge']??''){
@@ -382,7 +395,7 @@ $SUB_EMOJI=['Electrical'=>'⚡','Plumbing'=>'💧','Carpentry'=>'🔨','Masonry'
                         <?php else: ?><span class="text-slate-400 text-xs">-</span><?php endif; ?>
                     </td>
                 </tr>
-                <?php endwhile; else: ?>
+                <?php endforeach; else: ?>
                 <tr><td colspan="6" class="px-6 py-8 text-center text-slate-400">No verification history yet.</td></tr>
                 <?php endif; ?>
                 </tbody>

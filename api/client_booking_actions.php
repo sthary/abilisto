@@ -2,8 +2,8 @@
 // api/client_booking_actions.php
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
-require_once '../db.php';
-require_once '../includes/functions/wallet_functions.php';
+require_once '../db_connect.php';
+require_once '../includes/functions/wallet_manager.php';
 require_once '../includes/fcm_sender.php';
 
 header('Content-Type: application/json');
@@ -38,10 +38,8 @@ try {
             WHERE b.id = ? AND b.client_id = ?";
     
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ii", $booking_id, $client_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $booking = $result->fetch_assoc();
+    $stmt->execute([$booking_id, $client_id]);
+    $booking = $stmt->fetch();
 
     if (!$booking) {
         throw new Exception('Booking not found');
@@ -55,19 +53,18 @@ try {
                 throw new Exception('This booking is not awaiting your confirmation.');
             }
 
-            $conn->begin_transaction();
-            
+            $conn->beginTransaction();
+
             try {
                 // Update booking to Completed
-                $update_sql = "UPDATE bookings SET 
+                $update_sql = "UPDATE bookings SET
                                status = 'Completed',
                                client_confirmed_at = NOW(),
                                updated_at = NOW()
                                WHERE id = ? AND client_id = ?";
                 $stmt = $conn->prepare($update_sql);
-                $stmt->bind_param("ii", $booking_id, $client_id);
-                
-                if (!$stmt->execute()) {
+
+                if (!$stmt->execute([$booking_id, $client_id])) {
                     throw new Exception('Failed to update booking status');
                 }
 
@@ -95,9 +92,8 @@ try {
                 // Increment worker's job count
                 $update_profile = "UPDATE worker_profiles SET jobs_completed = jobs_completed + 1 WHERE user_id = ?";
                 $stmt = $conn->prepare($update_profile);
-                $stmt->bind_param("i", $booking['worker_id']);
-                
-                if (!$stmt->execute()) {
+
+                if (!$stmt->execute([$booking['worker_id']])) {
                     throw new Exception('Failed to update worker job count');
                 }
                 
@@ -163,21 +159,18 @@ try {
                 }
                 
                 // Create in-app notification for worker with Listo Points info
-                $escaped_notif_msg = $conn->real_escape_string($worker_notification_message);
-                $in_app_sql = "INSERT INTO notifications (user_id, message, link, is_read, created_at) 
+                $in_app_sql = "INSERT INTO notifications (user_id, message, link, is_read, created_at)
                               VALUES (?, ?, '../worker/wallet.php', 0, NOW())";
                 $in_app_stmt = $conn->prepare($in_app_sql);
-                $in_app_stmt->bind_param("is", $booking['worker_id'], $escaped_notif_msg);
-                $in_app_stmt->execute();
-                
+                $in_app_stmt->execute([$booking['worker_id'], $worker_notification_message]);
+
                 // Also create a notification for the client confirming completion
                 $client_notif_msg = "✅ You've confirmed job completion. Thank you for using Abilisto!";
-                $client_notif_sql = "INSERT INTO notifications (user_id, message, link, is_read, created_at) 
+                $client_notif_sql = "INSERT INTO notifications (user_id, message, link, is_read, created_at)
                                     VALUES (?, ?, '../client/my_bookings.php', 0, NOW())";
                 $client_notif_stmt = $conn->prepare($client_notif_sql);
-                $client_notif_stmt->bind_param("is", $client_id, $client_notif_msg);
-                $client_notif_stmt->execute();
-                
+                $client_notif_stmt->execute([$client_id, $client_notif_msg]);
+
                 $conn->commit();
                 
                 // Build success response with Listo Points details
@@ -197,7 +190,7 @@ try {
                 ];
                 
             } catch (Exception $e) {
-                $conn->rollback();
+                $conn->rollBack();
                 error_log("Transaction failed in confirm_completion: " . $e->getMessage());
                 throw new Exception('Error confirming completion: ' . $e->getMessage());
             }

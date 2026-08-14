@@ -1,7 +1,7 @@
 <?php
 // auth/register_core.php
 session_start();
-include '../db.php'; 
+include '../db_connect.php'; 
 include '../includes/mailer.php';
 
 if (isset($_POST['register_btn'])) {
@@ -30,14 +30,12 @@ if (isset($_POST['register_btn'])) {
     // DUPLICATE CHECK — before attempting insert
     // ============================================================
     $stmt_check = $conn->prepare(
-        "SELECT 
+        "SELECT
             (SELECT COUNT(*) FROM users WHERE email = ?) AS email_count,
             (SELECT COUNT(*) FROM users WHERE phone = ?) AS phone_count"
     );
-    $stmt_check->bind_param("ss", $email, $phone);
-    $stmt_check->execute();
-    $dup = $stmt_check->get_result()->fetch_assoc();
-    $stmt_check->close();
+    $stmt_check->execute([$email, $phone]);
+    $dup = $stmt_check->fetch();
 
     if ($dup['email_count'] > 0) {
         $_SESSION['signup_error'] = 'email_taken';
@@ -63,19 +61,20 @@ if (isset($_POST['register_btn'])) {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)"
     );
 
-    if ($stmt === false) {
-        die("Prepare failed: " . $conn->error);
+    try {
+        $stmt->execute([
+            $full_name, $email, $password, $phone,
+            $full_address, $municipality, $role,
+            $lat, $lng, $email_token
+        ]);
+        $execute_ok = true;
+    } catch (PDOException $e) {
+        $execute_ok = false;
+        $db_error = $e->getMessage();
     }
 
-    $stmt->bind_param("ssssssssss",
-        $full_name, $email, $password, $phone,
-        $full_address, $municipality, $role,
-        $lat, $lng, $email_token
-    );
-
-    if ($stmt->execute() === TRUE) {
-        $user_id = $stmt->insert_id;
-        $stmt->close();
+    if ($execute_ok) {
+        $user_id = $conn->lastInsertId('users_id_seq');
 
         // Worker profile
         if ($role == 'worker') {
@@ -85,9 +84,7 @@ if (isset($_POST['register_btn'])) {
                     "INSERT INTO worker_profiles (user_id, service_category) VALUES (?, ?)"
                 );
                 if ($stmt_worker) {
-                    $stmt_worker->bind_param("is", $user_id, $category);
-                    $stmt_worker->execute();
-                    $stmt_worker->close();
+                    $stmt_worker->execute([$user_id, $category]);
                 }
             }
         }
@@ -102,9 +99,6 @@ if (isset($_POST['register_btn'])) {
 
     } else {
         // Catch any other DB errors gracefully
-        $db_error = $conn->error;
-        if (isset($stmt)) $stmt->close();
-
         // Catch duplicate key errors that slipped past our check (race condition)
         if (strpos($db_error, 'email') !== false) {
             $_SESSION['signup_error'] = 'email_taken';

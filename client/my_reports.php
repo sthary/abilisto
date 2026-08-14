@@ -1,6 +1,6 @@
 <?php
 // client/my_reports.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 // Security Check
@@ -18,16 +18,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_report'])) {
     // Verify report belongs to this client and is still pending
     $check_sql = "SELECT id FROM reports WHERE id = ? AND client_id = ? AND status = 'pending'";
     $check_stmt = $conn->prepare($check_sql);
-    $check_stmt->bind_param("ii", $report_id, $client_id);
-    $check_stmt->execute();
-    $check_result = $check_stmt->get_result();
-    
-    if ($check_result->num_rows > 0) {
+    $check_stmt->execute([$report_id, $client_id]);
+    $check_result = $check_stmt->fetch();
+
+    if ($check_result) {
         $update_sql = "UPDATE reports SET status = 'dismissed', admin_notes = 'Cancelled by client' WHERE id = ?";
         $update_stmt = $conn->prepare($update_sql);
-        $update_stmt->bind_param("i", $report_id);
-        
-        if ($update_stmt->execute()) {
+
+        if ($update_stmt->execute([$report_id])) {
             $_SESSION['success'] = "Report cancelled successfully.";
         } else {
             $_SESSION['error'] = "Failed to cancel report.";
@@ -48,7 +46,7 @@ $sql = "SELECT r.*,
                b.booking_date,
                b.problem_desc,
                b.status as booking_status,
-               DATEDIFF(NOW(), r.created_at) as days_ago
+               (NOW()::date - r.created_at::date) as days_ago
         FROM reports r
         JOIN users w ON r.worker_id = w.id
         LEFT JOIN bookings b ON r.booking_id = b.id
@@ -63,9 +61,8 @@ $sql = "SELECT r.*,
             r.created_at DESC";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $client_id);
-$stmt->execute();
-$reports_result = $stmt->get_result();
+$stmt->execute([$client_id]);
+$reports = $stmt->fetchAll();
 
 // Get statistics
 $stats_sql = "SELECT 
@@ -77,9 +74,8 @@ $stats_sql = "SELECT
               FROM reports 
               WHERE client_id = ?";
 $stats_stmt = $conn->prepare($stats_sql);
-$stats_stmt->bind_param("i", $client_id);
-$stats_stmt->execute();
-$stats = $stats_stmt->get_result()->fetch_assoc();
+$stats_stmt->execute([$client_id]);
+$stats = $stats_stmt->fetch();
 
 // Helper function to get status styling
 function getReportStatusStyle($status) {
@@ -240,8 +236,8 @@ function getReasonLabel($reason) {
     
     <!-- Reports List -->
     <div class="space-y-6">
-        <?php if ($reports_result && $reports_result->num_rows > 0): ?>
-            <?php while($report = $reports_result->fetch_assoc()): 
+        <?php if ($reports && count($reports) > 0): ?>
+            <?php foreach ($reports as $report):
                 $status_style = getReportStatusStyle($report['status']);
             ?>
             <div class="report-card bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -414,8 +410,8 @@ function getReasonLabel($reason) {
                     </div>
                 </div>
             </div>
-            <?php endwhile; ?>
-            
+            <?php endforeach; ?>
+
         <?php else: ?>
             <!-- Empty State -->
             <div class="bg-white dark:bg-slate-800 rounded-3xl p-16 text-center border border-slate-200 dark:border-slate-700">

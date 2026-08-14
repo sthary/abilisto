@@ -1,6 +1,6 @@
 <?php
 // admin/settings.php
-include '../db.php';
+include '../db_connect.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') { 
     header("Location: ../auth/login.php"); 
@@ -10,14 +10,14 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 // Set current user ID and IP for logging
 $current_user_id = $_SESSION['user_id'];
 $current_ip = $_SERVER['REMOTE_ADDR'];
-$conn->query("SET @current_user_id = $current_user_id");
-$conn->query("SET @current_ip = '$current_ip'");
+$conn->prepare("SELECT set_config('app.current_user_id', ?, false)")->execute([(string)$current_user_id]);
+$conn->prepare("SELECT set_config('app.current_ip', ?, false)")->execute([$current_ip]);
 
 // Get admin info for navbar
 $admin_id = $_SESSION['user_id'];
-$admin_sql = "SELECT full_name, profile_pic FROM users WHERE id = $admin_id";
-$admin_res = $conn->query($admin_sql);
-$admin = $admin_res->fetch_assoc();
+$admin_stmt = $conn->prepare("SELECT full_name, profile_pic FROM users WHERE id = ?");
+$admin_stmt->execute([$admin_id]);
+$admin = $admin_stmt->fetch();
 $admin_name = $admin['full_name'] ?? 'Admin';
 $admin_avatar = !empty($admin['profile_pic']) && file_exists("../uploads/profiles/".$admin['profile_pic']) 
     ? "../uploads/profiles/".$admin['profile_pic'] 
@@ -30,30 +30,30 @@ $message_type = '';
 // Save Service Availability
 if (isset($_POST['save_services'])) {
     $services = $_POST['services'] ?? [];
-    $conn->begin_transaction();
+    $conn->beginTransaction();
     try {
         $conn->query("UPDATE settings SET setting_value = '0' WHERE setting_key LIKE 'service_%'");
 
+        $upsert_stmt = $conn->prepare("INSERT INTO settings (setting_key, setting_value)
+                         VALUES (?, '1')
+                         ON CONFLICT (setting_key) DO UPDATE SET setting_value = '1'");
         foreach ($services as $raw_key => $enabled) {
-            $safe_key = $conn->real_escape_string(
-                str_replace(' ', '_', strtolower(trim($raw_key)))
-            );
+            $safe_key = str_replace(' ', '_', strtolower(trim($raw_key)));
             $service_key = 'service_' . $safe_key;
-            $conn->query("INSERT INTO settings (setting_key, setting_value) 
-                         VALUES ('$service_key', '1') 
-                         ON DUPLICATE KEY UPDATE setting_value = '1'");
+            $upsert_stmt->execute([$service_key]);
         }
         $conn->commit();
 
         $enabled_list = implode(', ', array_keys($services));
-        $details = $conn->real_escape_string("Updated service availability. Enabled: " . ($enabled_list ?: 'none'));
-        $conn->query("INSERT INTO system_logs (user_id, action, details, ip_address)
-                      VALUES ($current_user_id, 'update_services', '$details', '$current_ip')");
+        $details = "Updated service availability. Enabled: " . ($enabled_list ?: 'none');
+        $conn->prepare("INSERT INTO system_logs (user_id, action, details, ip_address)
+                      VALUES (?, 'update_services', ?, ?)")
+             ->execute([$current_user_id, $details, $current_ip]);
 
         $message = "Service availability updated!";
         $message_type = "success";
     } catch (Exception $e) {
-        $conn->rollback();
+        $conn->rollBack();
         $message = "Error: " . $e->getMessage();
         $message_type = "error";
     }
@@ -63,14 +63,15 @@ if (isset($_POST['save_services'])) {
 if (isset($_POST['save_fees'])) {
     $admin_fee = floatval($_POST['admin_fee']);
     $min_payout = floatval($_POST['min_payout']);
-    
-    $conn->query("UPDATE settings SET setting_value = '$admin_fee' WHERE setting_key = 'admin_fee_percentage'");
-    $conn->query("UPDATE settings SET setting_value = '$min_payout' WHERE setting_key = 'min_payout_amount'");
-    
+
+    $conn->prepare("UPDATE settings SET setting_value = ? WHERE setting_key = 'admin_fee_percentage'")->execute([$admin_fee]);
+    $conn->prepare("UPDATE settings SET setting_value = ? WHERE setting_key = 'min_payout_amount'")->execute([$min_payout]);
+
     $action = "update_fees";
     $details = "Updated fee settings: admin_fee=$admin_fee%, min_payout=₱$min_payout";
-    $conn->query("INSERT INTO system_logs (user_id, action, details, ip_address) VALUES ($current_user_id, '$action', '$details', '$current_ip')");
-    
+    $conn->prepare("INSERT INTO system_logs (user_id, action, details, ip_address) VALUES (?, ?, ?, ?)")
+         ->execute([$current_user_id, $action, $details, $current_ip]);
+
     $message = "Fee settings updated successfully!";
     $message_type = "success";
 }
@@ -78,13 +79,15 @@ if (isset($_POST['save_fees'])) {
 // Clear system logs
 if (isset($_POST['clear_logs'])) {
     $days = intval($_POST['clear_days']);
-    
+
     $action = "clear_logs";
     $details = "Cleared system logs older than $days days";
-    $conn->query("INSERT INTO system_logs (user_id, action, details, ip_address) VALUES ($current_user_id, '$action', '$details', '$current_ip')");
-    
-    $conn->query("DELETE FROM system_logs WHERE created_at < DATE_SUB(NOW(), INTERVAL $days DAY)");
-    
+    $conn->prepare("INSERT INTO system_logs (user_id, action, details, ip_address) VALUES (?, ?, ?, ?)")
+         ->execute([$current_user_id, $action, $details, $current_ip]);
+
+    $conn->prepare("DELETE FROM system_logs WHERE created_at < NOW() - (? || ' days')::interval")
+         ->execute([$days]);
+
     $message = "System logs older than $days days have been cleared!";
     $message_type = "success";
 }
@@ -92,7 +95,7 @@ if (isset($_POST['clear_logs'])) {
 // Fetch current settings
 $settings = [];
 $settings_result = $conn->query("SELECT setting_key, setting_value FROM settings");
-while ($row = $settings_result->fetch_assoc()) {
+while ($row = $settings_result->fetch()) {
     $settings[$row['setting_key']] = $row['setting_value'];
 }
 
@@ -101,10 +104,11 @@ $default_settings = [
     'min_payout_amount'    => '100'
 ];
 
+$default_insert_stmt = $conn->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)");
 foreach ($default_settings as $key => $default) {
     if (!isset($settings[$key])) {
         $settings[$key] = $default;
-        $conn->query("INSERT INTO settings (setting_key, setting_value) VALUES ('$key', '$default')");
+        $default_insert_stmt->execute([$key, $default]);
     }
 }
 
@@ -118,7 +122,7 @@ $service_result = $conn->query(
      GROUP BY sub_category
      ORDER BY sub_category ASC"
 );
-while ($row = $service_result->fetch_assoc()) {
+while ($row = $service_result->fetch()) {
     $service_categories[] = $row['sub_category'];
     $skill_worker_counts[$row['sub_category']] = (int)$row['worker_count'];
 }
@@ -130,29 +134,31 @@ if (empty($service_categories)) {
         'Domestic_Work','Caregiving','Massage','Beauty_Care',
         'Cookery','Baking','Graphic_Design','Photography','Videography','Music','Arts_Crafts','Others'
     ];
+    $seed_insert_stmt = $conn->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, '1')");
     foreach ($service_categories as $category) {
         $key = 'service_' . strtolower($category);
         if (!isset($settings[$key])) {
-            $conn->query("INSERT INTO settings (setting_key, setting_value) VALUES ('$key', '1')");
+            $seed_insert_stmt->execute([$key]);
             $settings[$key] = '1';
         }
     }
 }
 
 $service_availability = [];
+$avail_upsert_stmt = $conn->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, '1') ON CONFLICT (setting_key) DO UPDATE SET setting_value = settings.setting_value");
 foreach ($service_categories as $category) {
     $key = 'service_' . strtolower($category);
     if (!isset($settings[$key])) {
-        $conn->query("INSERT INTO settings (setting_key, setting_value) VALUES ('$key', '1') ON DUPLICATE KEY UPDATE setting_value = setting_value");
+        $avail_upsert_stmt->execute([$key]);
         $settings[$key] = '1';
     }
     $service_availability[$category] = $settings[$key] ?? '1';
 }
 
-$log_query = "SELECT l.*, u.full_name FROM system_logs l 
-              LEFT JOIN users u ON l.user_id = u.id 
+$log_query = "SELECT l.*, u.full_name FROM system_logs l
+              LEFT JOIN users u ON l.user_id = u.id
               ORDER BY l.created_at DESC LIMIT 100";
-$logs = $conn->query($log_query);
+$logs = $conn->query($log_query)->fetchAll();
 
 // Only two tabs now: services and fees/logs
 $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'services';
@@ -359,21 +365,21 @@ if (in_array($active_tab, ['general', 'security'])) {
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Users</span>
                 <span class="text-2xl font-bold"><?php
                     $result = $conn->query("SELECT COUNT(*) as count FROM users WHERE role != 'admin'");
-                    echo $result->fetch_assoc()['count'];
+                    echo $result->fetch()['count'];
                 ?></span>
             </div>
             <div class="glass-card p-5 rounded-2xl flex flex-col gap-1">
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Workers</span>
                 <span class="text-2xl font-bold"><?php
                     $result = $conn->query("SELECT COUNT(*) as count FROM users WHERE role = 'worker'");
-                    echo $result->fetch_assoc()['count'];
+                    echo $result->fetch()['count'];
                 ?></span>
             </div>
             <div class="glass-card p-5 rounded-2xl flex flex-col gap-1">
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Bookings</span>
                 <span class="text-2xl font-bold"><?php
                     $result = $conn->query("SELECT COUNT(*) as count FROM bookings");
-                    echo $result->fetch_assoc()['count'];
+                    echo $result->fetch()['count'];
                 ?></span>
             </div>
             <div class="glass-card p-5 rounded-2xl flex flex-col gap-1">
@@ -558,8 +564,8 @@ if (in_array($active_tab, ['general', 'security'])) {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                        <?php if ($logs && $logs->num_rows > 0): ?>
-                            <?php while($log = $logs->fetch_assoc()): ?>
+                        <?php if ($logs && count($logs) > 0): ?>
+                            <?php foreach ($logs as $log): ?>
                             <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                                 <td class="px-4 py-3 text-xs"><?php echo date('M d, Y H:i:s', strtotime($log['created_at'])); ?></td>
                                 <td class="px-4 py-3 text-xs font-medium"><?php echo htmlspecialchars($log['full_name'] ?? 'System'); ?></td>
@@ -579,7 +585,7 @@ if (in_array($active_tab, ['general', 'security'])) {
                                 <td class="px-4 py-3 text-xs text-slate-500"><?php echo htmlspecialchars($log['details']); ?></td>
                                 <td class="px-4 py-3 text-xs font-mono"><?php echo $log['ip_address']; ?></td>
                             </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
                                 <td colspan="5" class="px-4 py-8 text-center text-slate-400">No logs found.</td>

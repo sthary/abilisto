@@ -1,7 +1,7 @@
 <?php
 // api/expire_quick_match.php
 session_start();
-require_once '../db.php';
+require_once '../db_connect.php';
 
 header('Content-Type: application/json');
 
@@ -22,20 +22,17 @@ if (!$booking_id) {
 // Get the broadcast ID for this booking
 $sql = "SELECT broadcast_id FROM bookings WHERE id = ? AND worker_id = ?";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("ii", $booking_id, $worker_id);
-$stmt->execute();
-$result = $stmt->get_result();
+$stmt->execute([$booking_id, $worker_id]);
 
-if ($row = $result->fetch_assoc()) {
+if ($row = $stmt->fetch()) {
     $broadcast_id = $row['broadcast_id'];
-    
+
     if ($broadcast_id) {
         // Update broadcast to expired if still searching
-        $update = "UPDATE job_broadcasts SET status = 'expired' 
+        $update = "UPDATE job_broadcasts SET status = 'expired'
                    WHERE id = ? AND status = 'searching'";
         $stmt2 = $conn->prepare($update);
-        $stmt2->bind_param("i", $broadcast_id);
-        $stmt2->execute();
+        $stmt2->execute([$broadcast_id]);
         
         echo json_encode(['success' => true, 'message' => 'Broadcast expired']);
     } else {

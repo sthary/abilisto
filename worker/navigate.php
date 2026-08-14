@@ -1,6 +1,6 @@
 <?php
 // worker/navigate.php
-include '../db.php';
+include '../db_connect.php';
 
 // --- FORCE PHILIPPINE TIME ---
 date_default_timezone_set('Asia/Manila');
@@ -29,15 +29,12 @@ $sql = "SELECT bookings.*,
         WHERE bookings.id = ? AND bookings.worker_id = ?";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("ii", $booking_id, $worker_id);
-$stmt->execute();
-$result = $stmt->get_result();
+$stmt->execute([$booking_id, $worker_id]);
+$booking = $stmt->fetch();
 
-if ($result->num_rows == 0) {
+if (!$booking) {
     die("Booking not found or you don't have permission to view it.");
 }
-
-$booking = $result->fetch_assoc();
 
 // Get location from bookings table
 $destination_lat = $booking['latitude'] ?? null;

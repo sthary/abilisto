@@ -1,6 +1,6 @@
 <?php
 // admin/finance_withdrawals.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'finance') {
@@ -9,22 +9,25 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'finance') {
 }
 
 $fin_user_id = $_SESSION['user_id'];
-$fin_name = $conn->query("SELECT full_name FROM users WHERE id=$fin_user_id")->fetch_assoc()['full_name'] ?? 'Finance';
+$fin_stmt = $conn->prepare("SELECT full_name FROM users WHERE id=?");
+$fin_stmt->execute([$fin_user_id]);
+$fin_name = $fin_stmt->fetch()['full_name'] ?? 'Finance';
 
 // ── Filters ────────────────────────────────────────────────
-$search    = $conn->real_escape_string($_GET['search'] ?? '');
-$date_from = $conn->real_escape_string($_GET['date_from'] ?? '');
-$date_to   = $conn->real_escape_string($_GET['date_to'] ?? '');
-$status_f  = $conn->real_escape_string($_GET['status'] ?? '');
+$search    = $_GET['search'] ?? '';
+$date_from = $_GET['date_from'] ?? '';
+$date_to   = $_GET['date_to'] ?? '';
+$status_f  = $_GET['status'] ?? '';
 $page      = max(1, intval($_GET['page'] ?? 1));
 $per_page  = 25;
 $offset    = ($page - 1) * $per_page;
 
 $where = "WHERE 1=1";
-if ($search)    $where .= " AND (u.full_name LIKE '%$search%' OR u.email LIKE '%$search%' OR w.gcash_number LIKE '%$search%')";
-if ($date_from) $where .= " AND DATE(w.request_date) >= '$date_from'";
-if ($date_to)   $where .= " AND DATE(w.request_date) <= '$date_to'";
-if ($status_f)  $where .= " AND w.status = '$status_f'";
+$params = [];
+if ($search)    { $where .= " AND (u.full_name LIKE ? OR u.email LIKE ? OR w.gcash_number LIKE ?)"; $params[] = "%$search%"; $params[] = "%$search%"; $params[] = "%$search%"; }
+if ($date_from) { $where .= " AND DATE(w.request_date) >= ?"; $params[] = $date_from; }
+if ($date_to)   { $where .= " AND DATE(w.request_date) <= ?"; $params[] = $date_to; }
+if ($status_f)  { $where .= " AND w.status = ?"; $params[] = $status_f; }
 
 // ── Stats ──────────────────────────────────────────────────
 $stats_sql = "SELECT
@@ -34,9 +37,13 @@ $stats_sql = "SELECT
     COALESCE(SUM(CASE WHEN w.status IN ('Pending','pending') THEN w.amount ELSE 0 END),0) as total_pending,
     COUNT(CASE WHEN w.status IN ('Pending','pending') THEN 1 END) as pending_cnt
 FROM withdrawals w LEFT JOIN users u ON u.id = w.worker_id $where";
-$stats = $conn->query($stats_sql)->fetch_assoc();
+$stats_stmt = $conn->prepare($stats_sql);
+$stats_stmt->execute($params);
+$stats = $stats_stmt->fetch();
 
-$total_rows  = (int)$conn->query("SELECT COUNT(*) as c FROM withdrawals w LEFT JOIN users u ON u.id=w.worker_id $where")->fetch_assoc()['c'];
+$count_stmt = $conn->prepare("SELECT COUNT(*) as c FROM withdrawals w LEFT JOIN users u ON u.id=w.worker_id $where");
+$count_stmt->execute($params);
+$total_rows  = (int)$count_stmt->fetch()['c'];
 $total_pages = ceil($total_rows / $per_page);
 
 $data_sql = "SELECT w.*, u.full_name, u.email, wp.wallet_balance
@@ -45,11 +52,15 @@ $data_sql = "SELECT w.*, u.full_name, u.email, wp.wallet_balance
              LEFT JOIN worker_profiles wp ON wp.user_id = w.worker_id
              $where
              ORDER BY w.request_date DESC
-             LIMIT $per_page OFFSET $offset";
-$rows = $conn->query($data_sql);
+             LIMIT ? OFFSET ?";
+$data_stmt = $conn->prepare($data_sql);
+$data_stmt->execute(array_merge($params, [$per_page, $offset]));
+$rows = $data_stmt->fetchAll();
 
 $current_date = date('M d, Y');
-$notif_count  = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHERE user_id=$fin_user_id AND is_read=0")->fetch_assoc()['c'] ?? 0);
+$notif_stmt = $conn->prepare("SELECT COUNT(*) as c FROM notifications WHERE user_id=? AND is_read=0");
+$notif_stmt->execute([$fin_user_id]);
+$notif_count  = (int)($notif_stmt->fetch()['c'] ?? 0);
 ?>
 <!DOCTYPE html>
 <html class="light" lang="en">
@@ -213,8 +224,8 @@ $notif_count  = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHER
                     </tr>
                 </thead>
                 <tbody>
-                <?php if($rows && $rows->num_rows > 0):
-                    while($r = $rows->fetch_assoc()):
+                <?php if($rows && count($rows) > 0):
+                    foreach($rows as $r):
                         $status_key = strtolower($r['status']);
                 ?>
                 <tr>
@@ -248,7 +259,7 @@ $notif_count  = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHER
                         <?php endif; ?>
                     </td>
                 </tr>
-                <?php endwhile; else: ?>
+                <?php endforeach; else: ?>
                 <tr><td colspan="9" class="text-center py-16 text-slate-400">
                     <span class="material-icons-round text-3xl block mb-2 opacity-30">payments</span>
                     No withdrawal requests found.

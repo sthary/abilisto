@@ -1,6 +1,6 @@
 <?php
 // admin/finance_reports.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'finance') {
@@ -9,7 +9,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'finance') {
 }
 
 $fin_user_id = $_SESSION['user_id'];
-$fin_name = $conn->query("SELECT full_name FROM users WHERE id=$fin_user_id")->fetch_assoc()['full_name'] ?? 'Finance';
+$fin_stmt = $conn->prepare("SELECT full_name FROM users WHERE id=?");
+$fin_stmt->execute([$fin_user_id]);
+$fin_name = $fin_stmt->fetch()['full_name'] ?? 'Finance';
 
 $selected_year  = intval($_GET['year']  ?? date('Y'));
 $selected_month = intval($_GET['month'] ?? 0); // 0 = full year
@@ -27,46 +29,52 @@ $month_clause = $selected_month > 0
     : "AND YEAR(created_at) = $selected_year";
 
 $month_clause_date = $selected_month > 0
-    ? "AND MONTH(expense_date) = $selected_month AND YEAR(expense_date) = $selected_year"
-    : "AND YEAR(expense_date) = $selected_year";
+    ? "AND EXTRACT(MONTH FROM expense_date) = ? AND EXTRACT(YEAR FROM expense_date) = ?"
+    : "AND EXTRACT(YEAR FROM expense_date) = ?";
+$month_clause_date_params = $selected_month > 0
+    ? [$selected_month, $selected_year]
+    : [$selected_year];
 
 // ── 1. MONTHLY INCOME SUMMARY ──────────────────────────────
 $income_sql = "SELECT
-    MONTH(created_at) as mon,
+    EXTRACT(MONTH FROM created_at)::INTEGER as mon,
     COALESCE(SUM(CASE WHEN description LIKE '%Admin fee from booking%' THEN amount ELSE 0 END),0) as booking_fees,
     COALESCE(SUM(CASE WHEN description LIKE '%commission%' THEN amount ELSE 0 END),0) as commissions,
     COALESCE(SUM(amount),0) as total
 FROM wallet_transactions
 WHERE transaction_type='fee' AND user_id=1 AND user_type='admin'
-AND YEAR(created_at) = $selected_year
-GROUP BY MONTH(created_at)
+AND EXTRACT(YEAR FROM created_at) = ?
+GROUP BY EXTRACT(MONTH FROM created_at)
 ORDER BY mon ASC";
-$income_res = $conn->query($income_sql);
+$income_stmt = $conn->prepare($income_sql);
+$income_stmt->execute([$selected_year]);
 $income_by_month = array_fill(1, 12, ['booking_fees'=>0,'commissions'=>0,'total'=>0]);
-while($r = $income_res->fetch_assoc()) $income_by_month[$r['mon']] = $r;
+while($r = $income_stmt->fetch()) $income_by_month[$r['mon']] = $r;
 
 // ── 2. EXPENSE BREAKDOWN ───────────────────────────────────
 $exp_sql = "SELECT
-    MONTH(expense_date) as mon,
+    EXTRACT(MONTH FROM expense_date)::INTEGER as mon,
     expense_type,
     COALESCE(SUM(amount),0) as total
 FROM admin_expenses
-WHERE YEAR(expense_date) = $selected_year
+WHERE EXTRACT(YEAR FROM expense_date) = ?
 $month_clause_date
-GROUP BY MONTH(expense_date), expense_type
+GROUP BY EXTRACT(MONTH FROM expense_date), expense_type
 ORDER BY mon ASC";
-$exp_res = $conn->query($exp_sql);
+$exp_stmt = $conn->prepare($exp_sql);
+$exp_stmt->execute(array_merge([$selected_year], $month_clause_date_params));
 $exp_by_month = array_fill(1, 12, ['MOOE'=>0,'PS'=>0]);
-while($r = $exp_res->fetch_assoc()) $exp_by_month[$r['mon']][$r['expense_type']] = (float)$r['total'];
+while($r = $exp_stmt->fetch()) $exp_by_month[$r['mon']][$r['expense_type']] = (float)$r['total'];
 
 // ── Category breakdown for the period ─────────────────────
 $cat_sql = "SELECT expense_type, category, SUM(amount) as total
             FROM admin_expenses
-            WHERE YEAR(expense_date) = $selected_year $month_clause_date
+            WHERE EXTRACT(YEAR FROM expense_date) = ? $month_clause_date
             GROUP BY expense_type, category ORDER BY total DESC LIMIT 10";
-$cat_res = $conn->query($cat_sql);
+$cat_stmt = $conn->prepare($cat_sql);
+$cat_stmt->execute(array_merge([$selected_year], $month_clause_date_params));
 $categories = [];
-while($r = $cat_res->fetch_assoc()) $categories[] = $r;
+while($r = $cat_stmt->fetch()) $categories[] = $r;
 
 // ── 3. WORKER PAYOUT REPORT ───────────────────────────────
 $payout_sql = "SELECT
@@ -80,13 +88,14 @@ $payout_sql = "SELECT
 FROM withdrawals w
 LEFT JOIN users u ON u.id = w.worker_id
 LEFT JOIN worker_profiles wp ON wp.user_id = w.worker_id
-WHERE YEAR(w.request_date) = $selected_year
-GROUP BY w.worker_id
+WHERE EXTRACT(YEAR FROM w.request_date) = ?
+GROUP BY w.worker_id, u.full_name, u.email, wp.wallet_balance
 ORDER BY total_requested DESC";
-$payout_res = $conn->query($payout_sql);
+$payout_stmt = $conn->prepare($payout_sql);
+$payout_stmt->execute([$selected_year]);
 $payouts = [];
 $total_paid_out = 0;
-while($r = $payout_res->fetch_assoc()) { $payouts[] = $r; $total_paid_out += $r['total_paid']; }
+while($r = $payout_stmt->fetch()) { $payouts[] = $r; $total_paid_out += $r['total_paid']; }
 
 // ── 4. EQUITY OVER TIME ───────────────────────────────────
 // Monthly: income − expenses per month
@@ -104,15 +113,18 @@ $period_ps       = array_sum(array_column($exp_by_month, 'PS'));
 $period_expenses = $period_mooe + $period_ps;
 
 // Worker debt (always live)
-$liabilities = (float)$conn->query("SELECT COALESCE(SUM(wallet_balance),0) as t FROM worker_profiles WHERE wallet_balance>0")->fetch_assoc()['t'];
+$liabilities_stmt = $conn->query("SELECT COALESCE(SUM(wallet_balance),0) as t FROM worker_profiles WHERE wallet_balance>0");
+$liabilities = (float)$liabilities_stmt->fetch()['t'];
 $period_equity = $period_income - $liabilities - $period_expenses;
 
 // Available years for filter
-$years_res = $conn->query("SELECT DISTINCT YEAR(created_at) as yr FROM wallet_transactions ORDER BY yr DESC");
+$years_res = $conn->query("SELECT DISTINCT EXTRACT(YEAR FROM created_at)::INTEGER as yr FROM wallet_transactions ORDER BY yr DESC");
 $years = [];
-while($y = $years_res->fetch_assoc()) $years[] = $y['yr'];
+while($y = $years_res->fetch()) $years[] = $y['yr'];
 if(!in_array(date('Y'), $years)) array_unshift($years, date('Y'));
-$notif_count = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHERE user_id=$fin_user_id AND is_read=0")->fetch_assoc()['c'] ?? 0);
+$notif_stmt = $conn->prepare("SELECT COUNT(*) as c FROM notifications WHERE user_id=? AND is_read=0");
+$notif_stmt->execute([$fin_user_id]);
+$notif_count = (int)($notif_stmt->fetch()['c'] ?? 0);
 ?>
 <!DOCTYPE html>
 <html class="light" lang="en">

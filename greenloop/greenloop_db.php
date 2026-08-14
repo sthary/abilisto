@@ -4,15 +4,15 @@
 // Include this in every GreenLoop PHP file
 // ============================================================
 // This assumes your existing db connection is already available.
-// If your project has a central db.php / config.php, replace
+// If your project has a central db_connect.php / config.php, replace
 // the block below with:  require_once '../config.php';
 // and remove the $pdo setup below.
 // ============================================================
 
 // DB credentials live in .env now — reuse the central connection instead of
-// redefining it (this pulls in both $conn and $pdo from ../db.php).
+// redefining it (this pulls in both $conn and $pdo from ../db_connect.php).
 if (!isset($pdo)) {
-    require_once __DIR__ . '/../db.php';
+    require_once __DIR__ . '/../db_connect.php';
 }
 
 // ── Green Coin Helpers ────────────────────────────────────────

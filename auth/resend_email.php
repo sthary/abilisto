@@ -1,7 +1,7 @@
 <?php
 // auth/resend_email.php
 session_start();
-include '../db.php';
+include '../db_connect.php';
 include '../includes/mailer.php'; // Includes your new sendAbilistoEmail() function
 
 if (!isset($_SESSION['user_id'])) {
@@ -17,9 +17,8 @@ $user_name = '';
 
 // 1. Get User Details (Upgraded to Prepared Statement for Security)
 $stmt = $conn->prepare("SELECT full_name, email, verification_token FROM users WHERE id = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$user = $stmt->get_result()->fetch_assoc();
+$stmt->execute([$user_id]);
+$user = $stmt->fetch();
 
 if ($user) {
     $user_email = $user['email'];
@@ -30,8 +29,7 @@ if ($user) {
     if (empty($token)) {
         $token = bin2hex(random_bytes(32));
         $update_stmt = $conn->prepare("UPDATE users SET verification_token = ? WHERE id = ?");
-        $update_stmt->bind_param("si", $token, $user_id);
-        $update_stmt->execute();
+        $update_stmt->execute([$token, $user_id]);
     }
 
     // 3. Build the Email Subject and HTML Body

@@ -1,9 +1,9 @@
 <?php
 // api/notify_cash_payment.php
 session_start();
-require_once '../db.php';
+require_once '../db_connect.php';
 require_once '../includes/fcm_sender.php';
-require_once '../includes/functions/wallet_functions.php';
+require_once '../includes/functions/wallet_manager.php';
 
 header('Content-Type: application/json');
 
@@ -33,9 +33,8 @@ try {
             JOIN users u ON b.client_id = u.id
             WHERE b.id = ? AND b.worker_id = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ii", $booking_id, $worker_id);
-    $stmt->execute();
-    $booking = $stmt->get_result()->fetch_assoc();
+    $stmt->execute([$booking_id, $worker_id]);
+    $booking = $stmt->fetch();
 
     if (!$booking) {
         throw new Exception('Booking not found');
@@ -71,12 +70,13 @@ try {
 
     // Mark booking as cash payment confirmed — set to Pending Confirmation
     // so the client still sees a confirmation button before we mark Completed
-    $conn->query("UPDATE bookings 
+    $update_stmt = $conn->prepare("UPDATE bookings
                   SET final_payment_status = 'paid',
                       final_payment_method = 'Cash',
                       status               = 'Pending Confirmation',
                       updated_at           = NOW()
-                  WHERE id = $booking_id");
+                  WHERE id = ?");
+    $update_stmt->execute([$booking_id]);
 
     // ---------------------------------------------------------------
     // NOTIFY CLIENT
@@ -108,8 +108,7 @@ try {
     $in_app_sql = "INSERT INTO notifications (user_id, message, link, is_read, created_at) 
                    VALUES (?, ?, '../client/my_bookings.php', 0, NOW())";
     $in_app_stmt = $conn->prepare($in_app_sql);
-    $in_app_stmt->bind_param("is", $booking['client_id'], $notif_msg);
-    $in_app_stmt->execute();
+    $in_app_stmt->execute([$booking['client_id'], $notif_msg]);
 
     $response = [
         'success' => true,

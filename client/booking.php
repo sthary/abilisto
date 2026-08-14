@@ -1,6 +1,6 @@
 <?php
 include '../includes/init_lang.php';
-include '../db.php';
+include '../db_connect.php';
 require_once '../includes/fcm_sender.php';
 
 // ============================================
@@ -13,7 +13,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
 
 if (!isset($_SESSION['is_phone_verified']) || $_SESSION['is_phone_verified'] == 0) {
     $uid = $_SESSION['user_id'];
-    $db_check = $conn->query("SELECT is_phone_verified FROM users WHERE id = '$uid'")->fetch_assoc();
+    $db_check_stmt = $conn->prepare("SELECT is_phone_verified FROM users WHERE id = ?");
+    $db_check_stmt->execute([$uid]);
+    $db_check = $db_check_stmt->fetch();
     if ($db_check && $db_check['is_phone_verified'] == 1) {
         $_SESSION['is_phone_verified'] = 1;
     } else {
@@ -37,9 +39,10 @@ $client_id = intval($_SESSION['user_id']);
 // 2.5 FETCH CLIENT LOCATION
 // ============================================
 if (!isset($_SESSION['latitude']) || $_SESSION['latitude'] == 0) {
-    $client_location_res = $conn->query("SELECT latitude, longitude FROM users WHERE id = $client_id");
-    if ($client_location_res && $client_location_res->num_rows > 0) {
-        $client_location = $client_location_res->fetch_assoc();
+    $client_location_stmt = $conn->prepare("SELECT latitude, longitude FROM users WHERE id = ?");
+    $client_location_stmt->execute([$client_id]);
+    $client_location = $client_location_stmt->fetch();
+    if ($client_location) {
         $_SESSION['latitude']  = $client_location['latitude'];
         $_SESSION['longitude'] = $client_location['longitude'];
         error_log("Client location loaded from DB: Lat={$client_location['latitude']}, Lng={$client_location['longitude']}");
@@ -53,31 +56,34 @@ $clientLng = isset($_SESSION['longitude']) ? floatval($_SESSION['longitude']) : 
 // ============================================
 // CASH PAYMENT ELIGIBILITY
 // ============================================
-$cash_check        = $conn->query("SELECT COALESCE(cash_enabled,1) AS cash_enabled FROM users WHERE id=$client_id")->fetch_assoc();
+$cash_check_stmt = $conn->prepare("SELECT COALESCE(cash_enabled,TRUE) AS cash_enabled FROM users WHERE id=?");
+$cash_check_stmt->execute([$client_id]);
+$cash_check        = $cash_check_stmt->fetch();
 $cash_admin_enabled = $cash_check ? (int)$cash_check['cash_enabled'] : 1;
-$report_check      = $conn->query("SELECT COUNT(*) AS cnt FROM reports_worker
-                                    WHERE reported_user_id=$client_id
+$report_check_stmt = $conn->prepare("SELECT COUNT(*) AS cnt FROM reports_worker
+                                    WHERE reported_user_id=?
                                       AND reported_user_role='client'
                                       AND status='resolved'");
-$report_row        = $report_check ? $report_check->fetch_assoc() : ['cnt' => 0];
+$report_check_stmt->execute([$client_id]);
+$report_row        = $report_check_stmt->fetch() ?: ['cnt' => 0];
 $cash_report_blocked = $report_row['cnt'] > 0;
 $cash_enabled      = ($cash_admin_enabled == 1) && !$cash_report_blocked;
 
 // ============================================
 // AVAILABLE GREENLOOP VOUCHERS
 // ============================================
-$vouchers_res = $conn->query("
+$vouchers_stmt = $conn->prepare("
     SELECT rd.id, rd.promo_code, rw.reward_name, rw.reward_value
     FROM greenloop_redemptions rd
     JOIN greenloop_rewards rw ON rd.reward_id = rw.id
-    WHERE rd.user_id = $client_id
+    WHERE rd.user_id = ?
       AND rd.status = 'active'
       AND rd.expires_at > NOW()
       AND rw.reward_type IN ('booking_discount','free_booking')
     ORDER BY rw.reward_value DESC
 ");
-$available_vouchers = [];
-while ($row = $vouchers_res->fetch_assoc()) { $available_vouchers[] = $row; }
+$vouchers_stmt->execute([$client_id]);
+$available_vouchers = $vouchers_stmt->fetchAll();
 
 // ============================================
 // 3. FETCH WORKER DATA
@@ -86,10 +92,11 @@ $sql = "SELECT u.id, u.full_name, u.latitude, u.longitude, u.profile_pic,
                wp.service_category, wp.average_rating, wp.jobs_completed
         FROM users u
         LEFT JOIN worker_profiles wp ON u.id = wp.user_id
-        WHERE u.id = $worker_id";
-$res = $conn->query($sql);
-if (!$res || $res->num_rows === 0) { header("Location: dashboard.php"); exit(); }
-$worker = $res->fetch_assoc();
+        WHERE u.id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->execute([$worker_id]);
+$worker = $stmt->fetch();
+if (!$worker) { header("Location: dashboard.php"); exit(); }
 
 // ============================================
 // 3a. FETCH ACTIVE / UPCOMING JOBS  ← NEW
@@ -99,15 +106,13 @@ $sql_active = "SELECT b.id, b.booking_date, b.urgency_level, b.status,
                       u.full_name AS client_name
                FROM bookings b
                JOIN users u ON u.id = b.client_id
-               WHERE b.worker_id = $worker_id
+               WHERE b.worker_id = ?
                  AND b.status IN ('Pending','Accepted')
                  AND b.booking_date > NOW()
                ORDER BY b.booking_date ASC";
-$res_active  = $conn->query($sql_active);
-$active_jobs = [];
-while ($row = $res_active->fetch_assoc()) {
-    $active_jobs[] = $row;
-}
+$stmt_active = $conn->prepare($sql_active);
+$stmt_active->execute([$worker_id]);
+$active_jobs = $stmt_active->fetchAll();
 
 // ============================================
 // 3b. BUSY SLOTS (datetime strings for JS)
@@ -136,10 +141,10 @@ if (isset($_POST['book_btn'])) {
     if (empty($_POST['service_date']) || empty($_POST['problem_desc']) || empty($_POST['urgency'])) {
         echo "<script>alert('{$lang['error_fill_all_fields']}');</script>";
     } else {
-        $problem_desc     = $conn->real_escape_string(trim($_POST['problem_desc']));
-        $booking_datetime = $conn->real_escape_string($_POST['service_date']);
-        $urgency          = $conn->real_escape_string($_POST['urgency']);
-        $payment_method   = isset($_POST['payment_method']) ? $conn->real_escape_string($_POST['payment_method']) : 'Cash';
+        $problem_desc     = trim($_POST['problem_desc']);
+        $booking_datetime = $_POST['service_date'];
+        $urgency          = $_POST['urgency'];
+        $payment_method   = isset($_POST['payment_method']) ? $_POST['payment_method'] : 'Cash';
 
         if ($payment_method === 'Cash' && !$cash_enabled) { $payment_method = 'Xendit'; }
 
@@ -155,7 +160,7 @@ if (isset($_POST['book_btn'])) {
         $subtotal         = 20 + ($distance * 5) + $urgency_fee;
         $calculated_fee   = ($payment_method === 'Xendit') ? round($subtotal * 0.9, 2) : $subtotal;
         $discount_amount  = $subtotal - $calculated_fee;
-        $client_name      = $conn->real_escape_string($_SESSION['full_name']);
+        $client_name      = $_SESSION['full_name'];
 
         // Re-validate the voucher server-side — never trust the submitted ID alone.
         $voucher_id       = isset($_POST['voucher_id']) ? intval($_POST['voucher_id']) : 0;
@@ -170,9 +175,8 @@ if (isset($_POST['book_btn'])) {
                   AND rd.expires_at > NOW()
                   AND rw.reward_type IN ('booking_discount','free_booking')
             ");
-            $v_stmt->bind_param("ii", $voucher_id, $client_id);
-            $v_stmt->execute();
-            $applied_voucher = $v_stmt->get_result()->fetch_assoc();
+            $v_stmt->execute([$voucher_id, $client_id]);
+            $applied_voucher = $v_stmt->fetch();
             if ($applied_voucher) {
                 $voucher_discount = min((float)$applied_voucher['reward_value'], $calculated_fee);
                 $calculated_fee   = round($calculated_fee - $voucher_discount, 2);
@@ -184,36 +188,37 @@ if (isset($_POST['book_btn'])) {
         $urgency_icon   = $urgency_icons[$urgency]  ?? '📋';
         $urgency_label  = $urgency_labels[$urgency] ?? 'NORMAL';
 
-        $insert_sql = "INSERT INTO bookings (
+        $insert_stmt = $conn->prepare("INSERT INTO bookings (
             client_id, worker_id, problem_desc, booking_date, urgency_level,
             payment_method, payment_status, status, calculated_fee,
             latitude, longitude, location_address, created_at
         ) VALUES (
-            '$client_id','$worker_id','$problem_desc','$booking_datetime','$urgency',
-            '$payment_method','Pending','Pending','$calculated_fee',
-            '" . ($booking_lat ?: 'NULL') . "',
-            '" . ($booking_lng ?: 'NULL') . "',
-            '" . $conn->real_escape_string($_POST['location_address'] ?? '') . "',
-            NOW()
-        )";
+            ?, ?, ?, ?, ?,
+            ?, 'Pending', 'Pending', ?,
+            ?, ?, ?, NOW()
+        )");
 
-        error_log("INSERT SQL: " . $insert_sql);
+        $location_address = $_POST['location_address'] ?? '';
 
-        if ($conn->query($insert_sql) === TRUE) {
-            $booking_id     = $conn->insert_id;
+        try {
+            $insert_stmt->execute([
+                $client_id, $worker_id, $problem_desc, $booking_datetime, $urgency,
+                $payment_method, $calculated_fee,
+                ($booking_lat ?: null), ($booking_lng ?: null), $location_address
+            ]);
+            $booking_id     = $conn->lastInsertId('bookings_id_seq');
 
             // Verify the amount was saved
-            $check_sql = "SELECT calculated_fee FROM bookings WHERE id = $booking_id";
-            $check_res = $conn->query($check_sql);
-            $check_row = $check_res->fetch_assoc();
+            $check_stmt = $conn->prepare("SELECT calculated_fee FROM bookings WHERE id = ?");
+            $check_stmt->execute([$booking_id]);
+            $check_row = $check_stmt->fetch();
             error_log("✅ Booking #$booking_id created with fee: " . $check_row['calculated_fee']);
 
             // Mark the voucher used — the status='active' guard makes this safe
             // against a double-submit race (a repeat attempt matches zero rows).
             if ($applied_voucher) {
                 $mark_stmt = $conn->prepare("UPDATE greenloop_redemptions SET status='used', used_at=NOW(), used_booking_id=? WHERE id=? AND user_id=? AND status='active'");
-                $mark_stmt->bind_param("iii", $booking_id, $applied_voucher['id'], $client_id);
-                $mark_stmt->execute();
+                $mark_stmt->execute([$booking_id, $applied_voucher['id'], $client_id]);
             }
 
             $formatted_date = date('F j, Y \a\t g:i A', strtotime($booking_datetime));
@@ -246,14 +251,9 @@ if (isset($_POST['book_btn'])) {
                 $result = sendNotification($conn, $worker_id, $notif_msg, $notif_link);
                 error_log("📨 IN-APP NOTIFICATION - Worker: $worker_id, Booking: $booking_id, Result: " . ($result ? 'SUCCESS' : 'FAILED'));
             } else {
-                $sm = $conn->real_escape_string($notif_msg);
-                $sl = $conn->real_escape_string($notif_link);
-                $fallback_sql = "INSERT INTO notifications (user_id,message,link,created_at,is_read) VALUES ('$worker_id','$sm','$sl',NOW(),0)";
-                if ($conn->query($fallback_sql)) {
-                    error_log("✅ Fallback notification sent for booking #$booking_id");
-                } else {
-                    error_log("❌ Fallback notification FAILED: " . $conn->error);
-                }
+                $fallback_stmt = $conn->prepare("INSERT INTO notifications (user_id,message,link,created_at,is_read) VALUES (?,?,?,NOW(),0)");
+                $fallback_stmt->execute([$worker_id, $notif_msg, $notif_link]);
+                error_log("✅ Fallback notification sent for booking #$booking_id");
             }
 
             $voucher_notif_text = $applied_voucher ? " Voucher {$applied_voucher['promo_code']} applied: -₱{$voucher_discount}." : "";
@@ -268,9 +268,9 @@ if (isset($_POST['book_btn'])) {
                 echo "<script>alert('✅ Booking Request Sent Successfully!\\n\\n{$urgency_icon} Urgency: {$urgency_label}\\nTotal: ₱{$calculated_fee}{$voucher_js_msg}\\n{$cash_msg}\\nThe worker will be notified immediately.');window.location.href='my_bookings.php';</script>";
             }
             exit();
-        } else {
-            $db_error = $conn->error;
-            echo "<script>alert('DATABASE ERROR: Unable to create booking.\\n\\nError: " . addslashes($db_error) . "');</script>";
+        } catch (PDOException $e) {
+            error_log("❌ Booking insert failed: " . $e->getMessage());
+            echo "<script>alert('DATABASE ERROR: Unable to create booking.\\n\\nError: " . addslashes($e->getMessage()) . "');</script>";
         }
     }
 }

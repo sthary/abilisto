@@ -1,7 +1,7 @@
 <?php
 // client/check_match_status.php
 session_start();
-include '../db.php';
+include '../db_connect.php';
 
 header('Content-Type: application/json');
 
@@ -32,10 +32,8 @@ $stmt = $conn->prepare(
      LEFT JOIN users u    ON jb.accepted_worker_id  = u.id
      WHERE jb.id = ?"
 );
-$stmt->bind_param('i', $broadcast_id);
-$stmt->execute();
-$data = $stmt->get_result()->fetch_assoc();
-$stmt->close();
+$stmt->execute([$broadcast_id]);
+$data = $stmt->fetch();
 
 if (!$data) {
     echo json_encode(['status' => 'error', 'message' => 'Broadcast not found']);
@@ -59,7 +57,8 @@ if ($data['broadcast_status'] === 'accepted' && $data['booking_id']) {
         'message' => 'No workers accepted in time'
     ]);
 } elseif (strtotime($data['expires_at']) < time()) {
-    $conn->query("UPDATE job_broadcasts SET status='expired' WHERE id=$broadcast_id");
+    $exp_stmt = $conn->prepare("UPDATE job_broadcasts SET status='expired' WHERE id=?");
+    $exp_stmt->execute([$broadcast_id]);
     echo json_encode(['status' => 'expired']);
 } else {
     echo json_encode(['status' => 'waiting']);

@@ -1,6 +1,6 @@
 <?php
 // admin/dashboard.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 // Security Check
@@ -11,9 +11,10 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 
 // Get admin info for navbar
 $admin_id = $_SESSION['user_id'];
-$admin_sql = "SELECT full_name, profile_pic FROM users WHERE id = $admin_id";
-$admin_res = $conn->query($admin_sql);
-$admin = $admin_res->fetch_assoc();
+$admin_sql = "SELECT full_name, profile_pic FROM users WHERE id = ?";
+$admin_stmt = $conn->prepare($admin_sql);
+$admin_stmt->execute([$admin_id]);
+$admin = $admin_stmt->fetch();
 $admin_name = $admin['full_name'] ?? 'Admin';
 
 // ============================================
@@ -23,40 +24,40 @@ $admin_name = $admin['full_name'] ?? 'Admin';
 // User Counts
 $clients_sql = "SELECT COUNT(*) as count FROM users WHERE role = 'client'";
 $clients_res = $conn->query($clients_sql);
-$clients = $clients_res->fetch_assoc()['count'] ?? 0;
+$clients = $clients_res->fetch()['count'] ?? 0;
 
 $workers_sql = "SELECT COUNT(*) as count FROM users WHERE role = 'worker'";
 $workers_res = $conn->query($workers_sql);
-$workers = $workers_res->fetch_assoc()['count'] ?? 0;
+$workers = $workers_res->fetch()['count'] ?? 0;
 
 $business_sql = "SELECT COUNT(*) as count FROM users WHERE role = 'business'";
 $business_res = $conn->query($business_sql);
-$business = $business_res->fetch_assoc()['count'] ?? 0;
+$business = $business_res->fetch()['count'] ?? 0;
 
 $total_users = $clients + $workers + $business;
 
 // User growth (last 30 days)
-$new_users_sql = "SELECT COUNT(*) as count FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+$new_users_sql = "SELECT COUNT(*) as count FROM users WHERE created_at >= NOW() - INTERVAL '30 days'";
 $new_users_res = $conn->query($new_users_sql);
-$new_users = $new_users_res->fetch_assoc()['count'] ?? 0;
+$new_users = $new_users_res->fetch()['count'] ?? 0;
 $user_growth = $total_users > 0 ? round(($new_users / $total_users) * 100, 1) : 0;
 
 // Bookings Stats
 $total_bookings_sql = "SELECT COUNT(*) as count FROM bookings";
 $total_bookings_res = $conn->query($total_bookings_sql);
-$total_bookings = $total_bookings_res->fetch_assoc()['count'] ?? 0;
+$total_bookings = $total_bookings_res->fetch()['count'] ?? 0;
 
 $completed_bookings_sql = "SELECT COUNT(*) as count FROM bookings WHERE status = 'Completed'";
 $completed_bookings_res = $conn->query($completed_bookings_sql);
-$completed_bookings = $completed_bookings_res->fetch_assoc()['count'] ?? 0;
+$completed_bookings = $completed_bookings_res->fetch()['count'] ?? 0;
 
 $pending_bookings_sql = "SELECT COUNT(*) as count FROM bookings WHERE status = 'Pending'";
 $pending_bookings_res = $conn->query($pending_bookings_sql);
-$pending_bookings = $pending_bookings_res->fetch_assoc()['count'] ?? 0;
+$pending_bookings = $pending_bookings_res->fetch()['count'] ?? 0;
 
 $cancelled_bookings_sql = "SELECT COUNT(*) as count FROM bookings WHERE status = 'Cancelled'";
 $cancelled_bookings_res = $conn->query($cancelled_bookings_sql);
-$cancelled_bookings = $cancelled_bookings_res->fetch_assoc()['count'] ?? 0;
+$cancelled_bookings = $cancelled_bookings_res->fetch()['count'] ?? 0;
 
 $success_rate = $total_bookings > 0 ? round(($completed_bookings / $total_bookings) * 100, 1) : 0;
 
@@ -70,7 +71,7 @@ $category_sql = "SELECT sub_category AS service_category, COUNT(DISTINCT worker_
 $category_res = $conn->query($category_sql);
 $categories = [];
 $total_workers_with_categories = 0;
-while ($cat = $category_res->fetch_assoc()) {
+while ($cat = $category_res->fetch()) {
     $categories[] = $cat;
     $total_workers_with_categories += $cat['count'];
 }
@@ -80,11 +81,11 @@ while ($cat = $category_res->fetch_assoc()) {
 // Last 10 weeks × 7 days of week
 // ============================================
 $heatmap_sql = "SELECT
-                    DAYOFWEEK(booking_date) AS dow,   -- 1=Sun … 7=Sat
-                    FLOOR(DATEDIFF(CURDATE(), DATE(booking_date)) / 7) AS weeks_ago,
+                    (EXTRACT(DOW FROM booking_date)::int + 1) AS dow,   -- 1=Sun … 7=Sat
+                    FLOOR((CURRENT_DATE - booking_date::date)::numeric / 7) AS weeks_ago,
                     COUNT(*) AS cnt
                 FROM bookings
-                WHERE booking_date >= DATE_SUB(CURDATE(), INTERVAL 10 WEEK)
+                WHERE booking_date >= CURRENT_DATE - INTERVAL '10 weeks'
                 GROUP BY dow, weeks_ago
                 ORDER BY weeks_ago DESC, dow ASC";
 $heatmap_res = $conn->query($heatmap_sql);
@@ -95,7 +96,7 @@ for ($w = 9; $w >= 0; $w--) {
     $heatmap_matrix[$w] = array_fill(1, 7, 0); // dow 1-7
 }
 $heatmap_max = 1;
-while ($r = $heatmap_res->fetch_assoc()) {
+while ($r = $heatmap_res->fetch()) {
     $w   = (int)$r['weeks_ago'];
     $dow = (int)$r['dow'];
     if ($w <= 9 && $dow >= 1 && $dow <= 7) {
@@ -119,15 +120,15 @@ for ($w = 9; $w >= 0; $w--) {
 }
 
 // Daily user signups for the past 7 days
-$daily_sql = "SELECT DATE_FORMAT(created_at, '%a') as day, COUNT(*) as count
+$daily_sql = "SELECT TO_CHAR(created_at, 'Dy') as day, COUNT(*) as count
               FROM users
-              WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-              GROUP BY DATE(created_at)
-              ORDER BY created_at ASC";
+              WHERE created_at >= NOW() - INTERVAL '7 days'
+              GROUP BY DATE(created_at), day
+              ORDER BY DATE(created_at) ASC";
 $daily_res = $conn->query($daily_sql);
 $daily_labels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 $daily_counts = array_fill_keys($daily_labels, 0);
-while ($row = $daily_res->fetch_assoc()) {
+while ($row = $daily_res->fetch()) {
     if (isset($daily_counts[$row['day']])) $daily_counts[$row['day']] = (int)$row['count'];
 }
 $daily_data = array_values($daily_counts);
@@ -135,12 +136,15 @@ $daily_data = array_values($daily_counts);
 // Recent users
 $recent_users_sql = "SELECT id, full_name, email, role, created_at, profile_pic
                      FROM users ORDER BY created_at DESC LIMIT 5";
-$recent_users = $conn->query($recent_users_sql);
+$recent_users_stmt = $conn->query($recent_users_sql);
+$recent_users = $recent_users_stmt->fetchAll();
+$recent_users_count = count($recent_users);
 
 // Notification count
-$notif_count_sql = "SELECT COUNT(*) as count FROM notifications WHERE user_id = $admin_id AND is_read = 0";
-$notif_count_res = $conn->query($notif_count_sql);
-$notif_count = $notif_count_res->fetch_assoc()['count'] ?? 0;
+$notif_count_sql = "SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0";
+$notif_count_stmt = $conn->prepare($notif_count_sql);
+$notif_count_stmt->execute([$admin_id]);
+$notif_count = $notif_count_stmt->fetch()['count'] ?? 0;
 
 function getUserAvatar($user) {
     if (!empty($user['profile_pic']) && file_exists("../uploads/profiles/".$user['profile_pic'])) {
@@ -484,8 +488,8 @@ $current_date = date('M d, Y');
             <a href="users.php" class="text-[10px] font-bold text-primary uppercase tracking-wider hover:underline">View All</a>
         </div>
         <div class="divide-y divide-slate-50 dark:divide-slate-800/50">
-            <?php if ($recent_users && $recent_users->num_rows > 0): ?>
-                <?php while($user = $recent_users->fetch_assoc()):
+            <?php if ($recent_users && $recent_users_count > 0): ?>
+                <?php foreach ($recent_users as $user):
                     $avatar = getUserAvatar($user);
                     $role_color = $user['role'] == 'worker' ? 'indigo' : ($user['role'] == 'business' ? 'purple' : 'blue');
                 ?>
@@ -512,13 +516,13 @@ $current_date = date('M d, Y');
                         <span class="text-[9px] text-slate-400 font-medium">Joined <?php echo date("M d", strtotime($user['created_at'])); ?></span>
                     </div>
                 </div>
-                <?php endwhile; ?>
+                <?php endforeach; ?>
             <?php else: ?>
                 <div class="p-8 text-center text-slate-400">No recent users found</div>
             <?php endif; ?>
         </div>
         <div class="px-5 py-4 border-t border-slate-100 dark:border-slate-800">
-            <p class="text-[10px] text-slate-400">Showing <?php echo $recent_users ? min(5, $recent_users->num_rows) : 0; ?> results</p>
+            <p class="text-[10px] text-slate-400">Showing <?php echo $recent_users ? min(5, $recent_users_count) : 0; ?> results</p>
         </div>
     </div>
 </main>

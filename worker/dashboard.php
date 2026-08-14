@@ -8,9 +8,9 @@
 //   4. New "Awaiting Confirmation" section inserted between Active Jobs and Pending Requests
 //   5. can_accept_bookings = 0 shows an admin-disabled banner
 include '../includes/init_lang.php';
-include '../db.php';
+include '../db_connect.php';
 include '../auth/enforce_phone.php';
-include '../includes/functions/wallet_functions.php';
+include '../includes/functions/wallet_manager.php';
 include '../config/constants.php';
 
 // Security: Worker Only
@@ -22,7 +22,8 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
 // ── Tour: mark seen when JS pings this page with ?mark_tour_seen=1 ────────────
 if (isset($_GET['mark_tour_seen']) && $_GET['mark_tour_seen'] == '1' && isset($_SESSION['user_id'])) {
     $tid = (int)$_SESSION['user_id'];
-    $conn->query("UPDATE users SET has_seen_tour = 1 WHERE id = $tid");
+    $tour_stmt = $conn->prepare("UPDATE users SET has_seen_tour = TRUE WHERE id = ?");
+    $tour_stmt->execute([$tid]);
     echo json_encode(['ok' => true]);
     exit;
 }
@@ -40,12 +41,14 @@ $has_seen_tour = !empty($u['has_seen_tour']);
 $wallet        = new WalletManager($conn);
 
 // ── Get worker profile (now includes schedule + can_accept_bookings) ─────────
-$profile = $conn->query("SELECT availability_status, wallet_balance, jobs_completed, 
+$profile_stmt = $conn->prepare("SELECT availability_status, wallet_balance, jobs_completed,
                                 average_rating, verification_status, free_credits, free_bookings_used,
                                 listo_points,
                                 schedule_mode, schedule_days, schedule_time_start,
                                 schedule_time_end, schedule_label, can_accept_bookings
-                         FROM worker_profiles WHERE user_id = $worker_id")->fetch_assoc();
+                         FROM worker_profiles WHERE user_id = ?");
+$profile_stmt->execute([$worker_id]);
+$profile = $profile_stmt->fetch();
 
 $listo_points   = (int)($profile['listo_points']        ?? 0);
 $canAccept      = (int)($profile['can_accept_bookings']  ?? 1);
@@ -64,31 +67,31 @@ if (!empty($profile['schedule_days'])) {
 $is_verified = !empty($profile['verification_status']) && $profile['verification_status'] !== 'Unverified';
 
 // ── Pending bookings ──────────────────────────────────────────────────────────
-$pending_sql = "SELECT 
-    b.*, 
-    u.full_name, 
-    u.address, 
+$pending_sql = "SELECT
+    b.*,
+    u.full_name,
+    u.address,
     u.phone,
     u.t_latitude,
-    u.t_longitude, 
-    u.latitude, 
+    u.t_longitude,
+    u.latitude,
     u.longitude,
     jb.id as broadcast_id,
     jb.expires_at as broadcast_expires_at,
     jb.status as broadcast_status,
-    TIMESTAMPDIFF(SECOND, NOW(), jb.expires_at) as seconds_remaining,
-    CASE 
-        WHEN jb.id IS NOT NULL AND jb.expires_at > NOW() AND jb.status = 'searching' THEN 1 
-        ELSE 0 
+    EXTRACT(EPOCH FROM (jb.expires_at - NOW())) as seconds_remaining,
+    CASE
+        WHEN jb.id IS NOT NULL AND jb.expires_at > NOW() AND jb.status = 'searching' THEN 1
+        ELSE 0
     END as is_active_quick_match,
-    CASE 
-        WHEN jb.id IS NOT NULL AND jb.expires_at <= NOW() THEN 1 
-        ELSE 0 
+    CASE
+        WHEN jb.id IS NOT NULL AND jb.expires_at <= NOW() THEN 1
+        ELSE 0
     END as is_expired_quick_match
 FROM bookings b
 JOIN users u ON b.client_id = u.id
 LEFT JOIN job_broadcasts jb ON b.broadcast_id = jb.id
-WHERE b.worker_id = $worker_id 
+WHERE b.worker_id = ?
     AND b.status = 'Pending'
     AND (
         b.broadcast_id IS NULL
@@ -96,75 +99,80 @@ WHERE b.worker_id = $worker_id
         (jb.id IS NOT NULL AND jb.status = 'searching' AND jb.expires_at > NOW())
     )
     AND (jb.id IS NULL OR jb.status NOT IN ('cancelled', 'expired'))
-ORDER BY 
-    CASE 
+ORDER BY
+    CASE
         WHEN jb.id IS NOT NULL AND jb.expires_at > NOW() AND jb.status = 'searching' THEN 0
         WHEN jb.id IS NOT NULL AND jb.expires_at <= NOW() THEN 1
         ELSE 2
     END,
-    CASE b.urgency_level 
+    CASE b.urgency_level
         WHEN 'Emergency' THEN 1
         WHEN 'High' THEN 2
         WHEN 'Normal' THEN 3
     END,
     b.booking_date ASC";
 
-$pending = $conn->query($pending_sql);
-if (!$pending) {
-    die("SQL Error: " . $conn->error);
-}
-
-$pending = $conn->query($pending_sql);
-$pending_count = $pending->num_rows;
+$pending_stmt = $conn->prepare($pending_sql);
+$pending_stmt->execute([$worker_id]);
+$pending_rows = $pending_stmt->fetchAll();
+$pending_count = count($pending_rows);
 
 // ── Active jobs ───────────────────────────────────────────────────────────────
 $active_sql = "SELECT b.*, u.full_name, u.address, u.phone, u.latitude, u.longitude
                FROM bookings b
                JOIN users u ON b.client_id = u.id
-               WHERE b.worker_id = $worker_id AND b.status = 'Accepted'
+               WHERE b.worker_id = ? AND b.status = 'Accepted'
                ORDER BY b.booking_date ASC";
-$active = $conn->query($active_sql);
+$active_stmt = $conn->prepare($active_sql);
+$active_stmt->execute([$worker_id]);
+$active_rows = $active_stmt->fetchAll();
 
 // ── NEW: Pending Confirmation bookings ────────────────────────────────────────
 // These are jobs where the worker has confirmed cash payment but is waiting
 // for the client to press "Confirm Job Complete" on their side.
 $pending_conf_sql = "SELECT b.*, u.full_name, u.address, u.phone, u.latitude, u.longitude,
-                            DATE_FORMAT(b.booking_date, '%M %d, %Y') as formatted_date
+                            TO_CHAR(b.booking_date, 'FMMonth DD, YYYY') as formatted_date
                      FROM bookings b
                      JOIN users u ON b.client_id = u.id
-                     WHERE b.worker_id = $worker_id
+                     WHERE b.worker_id = ?
                        AND b.status = 'Pending Confirmation'
                      ORDER BY b.updated_at DESC";
-$pending_conf     = $conn->query($pending_conf_sql);
-$pending_conf_count = $pending_conf ? $pending_conf->num_rows : 0;
+$pending_conf_stmt  = $conn->prepare($pending_conf_sql);
+$pending_conf_stmt->execute([$worker_id]);
+$pending_conf_rows  = $pending_conf_stmt->fetchAll();
+$pending_conf_count = count($pending_conf_rows);
 
 // ── Completed jobs (last 10) ──────────────────────────────────────────────────
-$history_sql = "SELECT 
-    b.*, 
-    u.full_name, 
-    u.address, 
-    u.phone, 
-    u.latitude, 
+$history_sql = "SELECT
+    b.*,
+    u.full_name,
+    u.address,
+    u.phone,
+    u.latitude,
     u.longitude,
-    DATE_FORMAT(b.booking_date, '%M %d, %Y') as formatted_date,
+    TO_CHAR(b.booking_date, 'FMMonth DD, YYYY') as formatted_date,
     COALESCE(b.updated_at, b.created_at, b.booking_date) as sort_date
 FROM bookings b
 JOIN users u ON b.client_id = u.id
-WHERE b.worker_id = $worker_id AND b.status = 'Completed'
+WHERE b.worker_id = ? AND b.status = 'Completed'
 ORDER BY sort_date DESC
 LIMIT 10";
 
-$history = $conn->query($history_sql);
+$history_stmt = $conn->prepare($history_sql);
+$history_stmt->execute([$worker_id]);
+$history_rows = $history_stmt->fetchAll();
 
 // ── Pending escrow amount ─────────────────────────────────────────────────────
-$escrow_sql = "SELECT COUNT(*) as count, SUM(calculated_fee) as total 
-               FROM bookings 
-               WHERE worker_id = $worker_id 
-               AND payment_method = 'Xendit' 
-               AND payment_status = 'Paid' 
-               AND is_escrow = 1
+$escrow_sql = "SELECT COUNT(*) as count, SUM(calculated_fee) as total
+               FROM bookings
+               WHERE worker_id = ?
+               AND payment_method = 'Xendit'
+               AND payment_status = 'Paid'
+               AND is_escrow = TRUE
                AND status = 'Pending'";
-$escrow = $conn->query($escrow_sql)->fetch_assoc();
+$escrow_stmt = $conn->prepare($escrow_sql);
+$escrow_stmt->execute([$worker_id]);
+$escrow = $escrow_stmt->fetch();
 
 function getInitials($name) {
     $words = explode(' ', $name);
@@ -970,13 +978,13 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                 </div>
             </div>
 
-            <?php if ($active->num_rows > 0): ?>
+            <?php if (count($active_rows) > 0): ?>
             <div class="space-y-4">
                 <?php
                 include_once 'partials/booking_card.php';
-                while($job = $active->fetch_assoc()):
+                foreach ($active_rows as $job):
                     renderBookingCard($job, 'active');
-                endwhile;
+                endforeach;
                 ?>
             </div>
             <?php else: ?>
@@ -1012,11 +1020,9 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
                 <?php
                 $quickMatchCount = 0;
-                mysqli_data_seek($pending, 0);
-                while($b = $pending->fetch_assoc()) {
+                foreach ($pending_rows as $b) {
                     if ($b['is_active_quick_match']) $quickMatchCount++;
                 }
-                mysqli_data_seek($pending, 0);
                 if ($quickMatchCount > 0):
                 ?>
                 <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary uppercase tracking-wider">
@@ -1028,9 +1034,9 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             <div id="qm-live-grid" class="space-y-4">
                 <?php
                 include_once 'partials/booking_card.php';
-                while($booking = $pending->fetch_assoc()):
+                foreach ($pending_rows as $booking):
                     renderBookingCard($booking, 'pending');
-                endwhile;
+                endforeach;
                 ?>
             </div>
         </div>
@@ -1057,9 +1063,9 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <?php
             include_once 'partials/booking_card.php';
-            while ($conf_job = $pending_conf->fetch_assoc()):
+            foreach ($pending_conf_rows as $conf_job):
                 renderBookingCard($conf_job, 'pending_confirmation');
-            endwhile;
+            endforeach;
             ?>
         </div>
     </section>
@@ -1076,13 +1082,13 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             </div>
         </div>
 
-        <?php if ($history->num_rows > 0): ?>
+        <?php if (count($history_rows) > 0): ?>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <?php
             include_once 'partials/booking_card.php';
-            while($job = $history->fetch_assoc()):
+            foreach ($history_rows as $job):
                 renderBookingCard($job, 'history');
-            endwhile;
+            endforeach;
             ?>
         </div>
         <?php else: ?>

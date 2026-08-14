@@ -5,8 +5,8 @@
 //   - Final payment  (FINAL-...) → process 4% commission, complete booking
 //   - Expired / Failed        → mark booking failed
 
-require_once '../db.php';
-require_once '../includes/functions/wallet_functions.php';
+require_once '../db_connect.php';
+require_once '../includes/functions/wallet_manager.php';
 
 // ── Read & validate payload ────────────────────────────────────────────────
 $raw_input = file_get_contents('php://input');
@@ -57,9 +57,8 @@ switch ($event) {
 
         // Fetch booking
         $stmt = $conn->prepare("SELECT * FROM bookings WHERE id = ?");
-        $stmt->bind_param("i", $booking_id);
-        $stmt->execute();
-        $booking = $stmt->get_result()->fetch_assoc();
+        $stmt->execute([$booking_id]);
+        $booking = $stmt->fetch();
 
         if (!$booking) {
             error_log("Booking #$booking_id not found for external_id: $external_id");
@@ -99,17 +98,19 @@ switch ($event) {
             }
 
             // Mark booking completed
-            $conn->query("UPDATE bookings 
+            $upd_stmt = $conn->prepare("UPDATE bookings
                           SET final_payment_status = 'paid',
                               final_payment_method = 'GCash',
                               status               = 'Completed',
                               updated_at           = NOW()
-                          WHERE id = $booking_id");
+                          WHERE id = ?");
+            $upd_stmt->execute([$booking_id]);
 
             // Increment jobs_completed on worker profile
-            $conn->query("UPDATE worker_profiles 
-                          SET jobs_completed = jobs_completed + 1 
-                          WHERE user_id = {$booking['worker_id']}");
+            $wp_stmt = $conn->prepare("UPDATE worker_profiles
+                          SET jobs_completed = jobs_completed + 1
+                          WHERE user_id = ?");
+            $wp_stmt->execute([$booking['worker_id']]);
 
             // Notify worker
             $worker_gets = $total_final_cost - $commission_result['commission'];
@@ -170,20 +171,23 @@ switch ($event) {
 
         if ($is_final) {
             // Final payment expired — just flag it, don't touch wallets
-            $conn->query("UPDATE bookings 
-                          SET final_payment_status = 'failed', updated_at = NOW() 
-                          WHERE id = $booking_id AND final_payment_status != 'paid'");
+            $fail_stmt = $conn->prepare("UPDATE bookings
+                          SET final_payment_status = 'failed', updated_at = NOW()
+                          WHERE id = ? AND final_payment_status != 'paid'");
+            $fail_stmt->execute([$booking_id]);
             error_log("Final payment expired/failed for booking #$booking_id");
 
         } else {
             // Mobilization expired — mark booking failed
-            $conn->query("UPDATE bookings 
-                          SET payment_status = 'Failed', updated_at = NOW() 
-                          WHERE id = $booking_id");
+            $fail_stmt = $conn->prepare("UPDATE bookings
+                          SET payment_status = 'Failed', updated_at = NOW()
+                          WHERE id = ?");
+            $fail_stmt->execute([$booking_id]);
 
             // Fetch client_id from DB (the original code used $booking_id['client_id'] which is wrong)
-            $res = $conn->query("SELECT client_id FROM bookings WHERE id = $booking_id");
-            if ($res && $row = $res->fetch_assoc()) {
+            $res_stmt = $conn->prepare("SELECT client_id FROM bookings WHERE id = ?");
+            $res_stmt->execute([$booking_id]);
+            if ($row = $res_stmt->fetch()) {
                 sendNotification(
                     $conn,
                     $row['client_id'],

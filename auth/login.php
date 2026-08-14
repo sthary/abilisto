@@ -2,7 +2,7 @@
 // auth/login.php
 session_start();
 include '../includes/init_lang.php';
-include '../db.php';
+include '../db_connect.php';
 include 'google_config.php';
 
 $error = '';
@@ -17,23 +17,19 @@ if (isset($_GET['google_token']) && !empty($_GET['google_token'])) {
     $token = $_GET['google_token'];
 
     $stmt = $conn->prepare(
-        "SELECT * FROM users 
-         WHERE google_temp_token = ? 
+        "SELECT * FROM users
+         WHERE google_temp_token = ?
            AND google_temp_token_expires > NOW()"
     );
-    $stmt->bind_param("s", $token);
-    $stmt->execute();
-    $user = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+    $stmt->execute([$token]);
+    $user = $stmt->fetch();
 
     if ($user) {
         // Consume the token immediately so it can't be reused
         $stmt_clear = $conn->prepare(
             "UPDATE users SET google_temp_token = NULL, google_temp_token_expires = NULL WHERE id = ?"
         );
-        $stmt_clear->bind_param("i", $user['id']);
-        $stmt_clear->execute();
-        $stmt_clear->close();
+        $stmt_clear->execute([$user['id']]);
 
         // Create the real login session
         $_SESSION['user_id']           = $user['id'];
@@ -95,14 +91,14 @@ if (isset($_SESSION['flash_error']) && empty($error)) {
 // NORMAL EMAIL/PASSWORD LOGIN
 // ============================================================
 if (isset($_POST['login_btn'])) {
-    $email    = $conn->real_escape_string($_POST['email']);
+    $email    = $_POST['email'];
     $password = $_POST['password'];
 
-    $sql    = "SELECT * FROM users WHERE email='$email'";
-    $result = $conn->query($sql);
+    $sql    = "SELECT * FROM users WHERE email = ?";
+    $stmt   = $conn->prepare($sql);
+    $stmt->execute([$email]);
 
-    if ($result->num_rows > 0) {
-        $user = $result->fetch_assoc();
+    if ($user = $stmt->fetch()) {
 
         if (!empty($user['password']) && password_verify($password, $user['password'])) {
 

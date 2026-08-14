@@ -2,9 +2,9 @@
 // worker/topup.php
 // Worker wallet top-up page
 
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
-include '../includes/functions/wallet_functions.php';
+include '../includes/functions/wallet_manager.php';
 include '../config/constants.php';
 
 // Security Check
@@ -41,11 +41,13 @@ if (isset($_POST['topup_btn'])) {
 }
 
 // Get recent top-ups
-$topups_sql = "SELECT * FROM top_ups 
-               WHERE worker_id = $worker_id 
-               ORDER BY created_at DESC 
+$topups_sql = "SELECT * FROM top_ups
+               WHERE worker_id = ?
+               ORDER BY created_at DESC
                LIMIT 5";
-$topups = $conn->query($topups_sql);
+$topups_stmt = $conn->prepare($topups_sql);
+$topups_stmt->execute([$worker_id]);
+$topups = $topups_stmt->fetchAll();
 ?>
 
 <!DOCTYPE html>
@@ -292,7 +294,7 @@ $topups = $conn->query($topups_sql);
     </section>
     
     <!-- Recent Top-Ups -->
-    <?php if ($topups && $topups->num_rows > 0): ?>
+    <?php if ($topups && count($topups) > 0): ?>
     <section class="bg-white dark:bg-slate-800/50 rounded-2xl p-6 custom-shadow border border-slate-100 dark:border-slate-700">
         <div class="flex justify-between items-center mb-6">
             <div class="flex items-center gap-3">
@@ -317,7 +319,7 @@ $topups = $conn->query($topups_sql);
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-50 dark:divide-slate-800">
-                    <?php while($topup = $topups->fetch_assoc()): ?>
+                    <?php foreach ($topups as $topup): ?>
                     <tr class="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                         <td class="py-4 text-slate-600 dark:text-slate-400 text-xs font-medium">
                             <?php echo date('M d, Y, h:i A', strtotime($topup['created_at'])); ?>
@@ -351,7 +353,7 @@ $topups = $conn->query($topups_sql);
                             </span>
                         </td>
                     </tr>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>

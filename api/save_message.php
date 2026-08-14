@@ -1,6 +1,6 @@
 <?php
 // api/save_message.php
-include '../db.php';
+include '../db_connect.php';
 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
@@ -30,24 +30,19 @@ if ($sender_id !== (int)$_SESSION['user_id']) {
 }
 
 $check = $conn->prepare("SELECT id FROM bookings WHERE id = ? AND (client_id = ? OR worker_id = ?)");
-$check->bind_param("iii", $booking_id, $sender_id, $sender_id);
-$check->execute();
-if ($check->get_result()->num_rows === 0) {
+$check->execute([$booking_id, $sender_id, $sender_id]);
+if (!$check->fetch()) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Access denied to this booking']);
     exit();
 }
 
 $stmt = $conn->prepare("INSERT INTO messages (booking_id, sender_id, message, message_type) VALUES (?, ?, ?, ?)");
-$stmt->bind_param("iiss", $booking_id, $sender_id, $message, $message_type);
 
-if ($stmt->execute()) {
-    echo json_encode(['success' => true, 'message_id' => $stmt->insert_id]);
+if ($stmt->execute([$booking_id, $sender_id, $message, $message_type])) {
+    echo json_encode(['success' => true, 'message_id' => $conn->lastInsertId('messages_id_seq')]);
 } else {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Failed to save message']);
 }
-
-$stmt->close();
-$conn->close();
 ?>

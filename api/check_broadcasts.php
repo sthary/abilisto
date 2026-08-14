@@ -5,7 +5,7 @@
 // Returns JSON: { "statuses": { "booking_id": "searching|cancelled|expired|accepted" } }
 
 session_start();
-require_once '../db.php';
+require_once '../db_connect.php';
 
 header('Content-Type: application/json');
 
@@ -28,7 +28,6 @@ if (empty($booking_ids)) {
 
 // Build a safe IN clause
 $placeholders = implode(',', array_fill(0, count($booking_ids), '?'));
-$types        = str_repeat('i', count($booking_ids));
 
 $sql  = "SELECT b.id AS booking_id,
                 COALESCE(jb.status, 'none')                          AS broadcast_status,
@@ -42,13 +41,10 @@ $stmt = $conn->prepare($sql);
 
 // Bind worker_id + all booking_ids
 $bind_params = array_merge([$worker_id], $booking_ids);
-$bind_types  = 'i' . $types;
-$stmt->bind_param($bind_types, ...$bind_params);
-$stmt->execute();
-$rows = $stmt->get_result();
+$stmt->execute($bind_params);
 
 $statuses = [];
-while ($row = $rows->fetch_assoc()) {
+while ($row = $stmt->fetch()) {
     $bid = $row['booking_id'];
 
     if ($row['broadcast_status'] === 'cancelled') {

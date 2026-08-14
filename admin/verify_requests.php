@@ -4,7 +4,7 @@
 // ============================================
 // 1. INITIALIZATION - SINGLE CONNECTION
 // ============================================
-include '../db.php';  // ✅ ONE CONNECTION - THIS IS ALL WE NEED
+include '../db_connect.php';  // ✅ ONE CONNECTION - THIS IS ALL WE NEED
 
 // Start session if not started
 if (session_status() === PHP_SESSION_NONE) {
@@ -26,42 +26,44 @@ if (isset($_GET['action']) && isset($_GET['req_id'])) {
     // Sanitize inputs
     $req_id = intval($_GET['req_id']);
     $worker_id = isset($_GET['worker_id']) ? intval($_GET['worker_id']) : 0;
-    $type = isset($_GET['type']) ? $conn->real_escape_string($_GET['type']) : 'Document';
-    $action = $conn->real_escape_string($_GET['action']);
-    
+    $type = isset($_GET['type']) ? $_GET['type'] : 'Document';
+    $action = $_GET['action'];
+
     // Begin transaction
-    $conn->begin_transaction();
-    
+    $conn->beginTransaction();
+
     try {
         // 1. Update verification request status
-        $update_req = $conn->query("UPDATE verification_requests SET status='$action', reviewed_at=NOW(), reviewed_by='{$_SESSION['user_id']}' WHERE id=$req_id");
-        if (!$update_req) throw new Exception("Failed to update verification request: " . $conn->error);
-        
+        $update_stmt = $conn->prepare("UPDATE verification_requests SET status=?, reviewed_at=NOW(), reviewed_by=? WHERE id=?");
+        $update_stmt->execute([$action, $_SESSION['user_id'], $req_id]);
+
         // 2. If Approved, update worker's badge and verification status
         // admin/verify_requests.php - UPDATED ACTION HANDLER
 
 if (isset($_POST['approve_request'])) {
     $req_id = intval($_POST['req_id']);
     $worker_id = intval($_POST['worker_id']);
-    $badge_choice = $conn->real_escape_string($_POST['badge_type']); // New selection
+    $badge_choice = $_POST['badge_type']; // New selection
 
-    $conn->begin_transaction();
+    $conn->beginTransaction();
     try {
         // 1. Update request status
-        $conn->query("UPDATE verification_requests SET status='Approved', reviewed_at=NOW() WHERE id=$req_id");
+        $conn->prepare("UPDATE verification_requests SET status='Approved', reviewed_at=NOW() WHERE id=?")
+             ->execute([$req_id]);
 
         // 2. Update worker profile with the SPECIFIC badge
-        $is_tesda = ($badge_choice == 'Gold') ? 1 : 0;
-        $conn->query("UPDATE worker_profiles SET 
-                      verification_status='$badge_choice', 
-                      is_tesda_verified=$is_tesda, 
-                      is_verified=1 
-                      WHERE user_id=$worker_id");
+        $is_tesda = ($badge_choice == 'Gold') ? 'TRUE' : 'FALSE';
+        $conn->prepare("UPDATE worker_profiles SET
+                      verification_status=?,
+                      is_tesda_verified=$is_tesda,
+                      is_verified=TRUE
+                      WHERE user_id=?")
+             ->execute([$badge_choice, $worker_id]);
 
         $conn->commit();
         echo "<script>alert('Worker verified as $badge_choice!'); window.location.href='verify_requests.php';</script>";
     } catch (Exception $e) {
-        $conn->rollback();
+        $conn->rollBack();
         die("Error: " . $e->getMessage());
     }
 }
@@ -80,29 +82,23 @@ if (isset($_POST['approve_request'])) {
         }
         
         // ✅ DIRECT INSERT - USING THE SAME $conn CONNECTION
-        $safe_msg = $conn->real_escape_string($notif_msg);
-        $safe_link = $conn->real_escape_string($notif_link);
         $timestamp = date('Y-m-d H:i:s');
-        
-        $notif_sql = "INSERT INTO notifications (user_id, message, link, created_at, is_read) 
-                      VALUES ('$worker_id', '$safe_msg', '$safe_link', '$timestamp', 0)";
-        
-        $notif_result = $conn->query($notif_sql);
-        
-        if (!$notif_result) {
-            error_log("❌ Admin Notification Failed: " . $conn->error);
-            throw new Exception("Failed to send notification: " . $conn->error);
-        } else {
-            error_log("✅ Admin Notification Sent to Worker #$worker_id: $action");
-        }
-        
+
+        $notif_sql = "INSERT INTO notifications (user_id, message, link, created_at, is_read)
+                      VALUES (?, ?, ?, ?, 0)";
+
+        $notif_stmt = $conn->prepare($notif_sql);
+        $notif_stmt->execute([$worker_id, $notif_msg, $notif_link, $timestamp]);
+
+        error_log("✅ Admin Notification Sent to Worker #$worker_id: $action");
+
         // Commit transaction
         $conn->commit();
-        
+
         $success_message = "✅ Verification request " . strtolower($action) . " successfully! Notification sent to worker.";
-        
+
     } catch (Exception $e) {
-        $conn->rollback();
+        $conn->rollBack();
         $error_message = "❌ Error: " . $e->getMessage();
         error_log("❌ Verification processing failed: " . $e->getMessage());
     }
@@ -118,30 +114,30 @@ if (isset($_POST['approve_request'])) {
 // ============================================
 // 5. FETCH PENDING REQUESTS WITH PROPER JOINS
 // ============================================
-$sql = "SELECT 
-            vr.*, 
-            u.full_name, 
+$sql = "SELECT
+            vr.*,
+            u.full_name,
             u.email,
             u.profile_pic,
             wp.service_category,
             wp.average_rating,
             wp.jobs_completed,
-            DATEDIFF(NOW(), vr.uploaded_at) as days_ago
+            (NOW()::date - vr.uploaded_at::date) as days_ago
         FROM verification_requests vr
         JOIN users u ON vr.worker_id = u.id
         LEFT JOIN worker_profiles wp ON vr.worker_id = wp.user_id
         WHERE vr.status = 'Pending'
         ORDER BY vr.uploaded_at ASC"; // Oldest first
 
-$result = $conn->query($sql);
+$result = $conn->query($sql)->fetchAll();
 
 // Get counts for dashboard
-$stats_sql = "SELECT 
+$stats_sql = "SELECT
                 (SELECT COUNT(*) FROM verification_requests WHERE status = 'Pending') as pending_count,
-                (SELECT COUNT(*) FROM verification_requests WHERE status = 'Approved' AND uploaded_at > DATE_SUB(NOW(), INTERVAL 30 DAY)) as approved_30d,
-                (SELECT COUNT(*) FROM verification_requests WHERE status = 'Rejected' AND uploaded_at > DATE_SUB(NOW(), INTERVAL 30 DAY)) as rejected_30d,
-                (SELECT AVG(DATEDIFF(NOW(), uploaded_at)) FROM verification_requests WHERE status = 'Pending') as avg_wait_time";
-$stats = $conn->query($stats_sql)->fetch_assoc();
+                (SELECT COUNT(*) FROM verification_requests WHERE status = 'Approved' AND uploaded_at > NOW() - INTERVAL '30 days') as approved_30d,
+                (SELECT COUNT(*) FROM verification_requests WHERE status = 'Rejected' AND uploaded_at > NOW() - INTERVAL '30 days') as rejected_30d,
+                (SELECT AVG(NOW()::date - uploaded_at::date) FROM verification_requests WHERE status = 'Pending') as avg_wait_time";
+$stats = $conn->query($stats_sql)->fetch();
 ?>
 
 <!DOCTYPE html>
@@ -796,13 +792,13 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
         </div>
         
         <!-- Verification Requests Grid -->
-        <?php if ($result && $result->num_rows > 0): ?>
+        <?php if ($result && count($result) > 0): ?>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 style="color: white; font-size: 1.5rem; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-id-card"></i> 
+                    <i class="fas fa-id-card"></i>
                     Worker Verification Requests
                     <span style="background: var(--danger); color: white; padding: 5px 12px; border-radius: 30px; font-size: 0.9rem;">
-                        <?php echo $result->num_rows; ?> pending
+                        <?php echo count($result); ?> pending
                     </span>
                 </h2>
                 
@@ -819,7 +815,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
             </div>
             
             <div class="requests-grid" id="requestsGrid">
-                <?php while($row = $result->fetch_assoc()): 
+                <?php foreach ($result as $row):
                     $file_path = "../uploads/docs/" . $row['file_path'];
                     $file_ext = strtolower(pathinfo($row['file_path'], PATHINFO_EXTENSION));
                     $is_image = in_array($file_ext, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
@@ -934,7 +930,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                             </div>
                         </div>
                     </div>
-                <?php endwhile; ?>
+                <?php endforeach; ?>
             </div>
         <?php else: ?>
             <!-- Empty State -->

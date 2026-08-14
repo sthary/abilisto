@@ -1,7 +1,7 @@
 <?php
 // auth/google_config.php
 
-require_once __DIR__ . '/../config/env.php';
+require_once __DIR__ . '/../config/dotenv.php';
 
 define('GOOGLE_CLIENT_ID',     getenv('GOOGLE_CLIENT_ID'));
 define('GOOGLE_CLIENT_SECRET', getenv('GOOGLE_CLIENT_SECRET'));

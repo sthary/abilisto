@@ -1,6 +1,6 @@
 <?php
 // chat.php
-include 'db.php';
+include 'db_connect.php';
 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
@@ -18,9 +18,8 @@ $exit_link = ($role === 'worker') ? 'worker/dashboard.php' : 'client/my_bookings
 
 // Verify Access
 $check = $conn->prepare("SELECT * FROM bookings WHERE id = ? AND (client_id = ? OR worker_id = ?)");
-$check->bind_param("iii", $booking_id, $user_id, $user_id);
-$check->execute();
-if ($check->get_result()->num_rows == 0) die("Access Denied.");
+$check->execute([$booking_id, $user_id, $user_id]);
+if (!$check->fetch()) die("Access Denied.");
 
 // ✅ FIXED: Fetch other user's name + profile_pic (not avatar)
 $nameQuery = $conn->prepare("
@@ -30,9 +29,8 @@ $nameQuery = $conn->prepare("
     WHERE b.id = ? AND u.id != ?
     LIMIT 1
 ");
-$nameQuery->bind_param("ii", $booking_id, $user_id);
-$nameQuery->execute();
-$otherUser   = $nameQuery->get_result()->fetch_assoc();
+$nameQuery->execute([$booking_id, $user_id]);
+$otherUser   = $nameQuery->fetch();
 $otherName   = $otherUser ? $otherUser['full_name'] : 'User';
 
 // ✅ Build correct avatar URL from uploads/profiles/
@@ -49,11 +47,10 @@ $history = $conn->prepare(
      FROM messages
      JOIN users ON messages.sender_id = users.id
      WHERE booking_id = ?
-     ORDER BY timestamp ASC"
+     ORDER BY messages.\"timestamp\" ASC"
 );
-$history->bind_param("i", $booking_id);
-$history->execute();
-$history_result = $history->get_result();
+$history->execute([$booking_id]);
+$history_rows = $history->fetchAll();
 
 $quick_replies = ($role == 'client')
     ? ["Hi, are you available?", "Where are you located?", "Can you send a photo?", "Thank you!", "I'm here."]
@@ -157,7 +154,7 @@ $quick_replies = ($role == 'client')
         <!-- Chat Box -->
         <main class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 hide-scrollbar bg-slate-50/30 dark:bg-slate-900/30" id="chatBox">
 
-            <?php if ($history_result->num_rows == 0): ?>
+            <?php if (count($history_rows) == 0): ?>
                 <div class="flex flex-col items-center justify-center h-full text-center text-slate-400 dark:text-slate-500" id="emptyState">
                     <span class="material-symbols-outlined text-6xl mb-3">chat</span>
                     <p class="text-lg font-medium">Start the conversation!</p>
@@ -166,7 +163,7 @@ $quick_replies = ($role == 'client')
             <?php else: ?>
                 <?php
                 $lastDate = '';
-                while ($msg = $history_result->fetch_assoc()):
+                foreach ($history_rows as $msg):
                     $is_me    = ($msg['sender_id'] == $user_id);
                     $msg_type = $msg['message_type'] ?? 'text';
                     $attach   = $msg['attachment_path'] ?? '';
@@ -224,7 +221,7 @@ $quick_replies = ($role == 'client')
                             </span>
                         </div>
                     </div>
-                <?php endwhile; ?>
+                <?php endforeach; ?>
             <?php endif; ?>
 
         </main>

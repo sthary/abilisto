@@ -20,16 +20,16 @@ $trendCondition = '';
 
 switch ($period) {
     case 'today':
-        $dateCondition = "DATE(r.completed_at) = CURDATE()";
-        $trendCondition = "DATE(r.completed_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)";
+        $dateCondition = "DATE(r.completed_at) = CURRENT_DATE";
+        $trendCondition = "DATE(r.completed_at) = CURRENT_DATE - INTERVAL '1 day'";
         break;
     case 'week':
-        $dateCondition = "YEARWEEK(r.completed_at, 1) = YEARWEEK(CURDATE(), 1)";
-        $trendCondition = "YEARWEEK(r.completed_at, 1) = YEARWEEK(DATE_SUB(CURDATE(), INTERVAL 1 WEEK), 1)";
+        $dateCondition = "DATE_TRUNC('week', r.completed_at) = DATE_TRUNC('week', CURRENT_DATE::timestamp)";
+        $trendCondition = "DATE_TRUNC('week', r.completed_at) = DATE_TRUNC('week', CURRENT_DATE::timestamp - INTERVAL '1 week')";
         break;
     case 'month':
-        $dateCondition = "DATE_FORMAT(r.completed_at, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')";
-        $trendCondition = "DATE_FORMAT(r.completed_at, '%Y-%m') = DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m')";
+        $dateCondition = "TO_CHAR(r.completed_at, 'YYYY-MM') = TO_CHAR(CURRENT_DATE, 'YYYY-MM')";
+        $trendCondition = "TO_CHAR(r.completed_at, 'YYYY-MM') = TO_CHAR(CURRENT_DATE - INTERVAL '1 month', 'YYYY-MM')";
         break;
 }
 

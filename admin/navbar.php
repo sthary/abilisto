@@ -10,21 +10,22 @@ $pending_reports = 0;
 if (isset($conn) && $conn) {
     $r1 = $conn->query("SELECT COUNT(*) as c FROM reports WHERE status='pending'");
     $r2 = $conn->query("SELECT COUNT(*) as c FROM reports_worker WHERE status='pending'");
-    $pending_reports = ($r1?$r1->fetch_assoc()['c']:0) + ($r2?$r2->fetch_assoc()['c']:0);
+    $pending_reports = ($r1?$r1->fetch()['c']:0) + ($r2?$r2->fetch()['c']:0);
 }
 
 // Flagged users badge
 $flagged_users = 0;
 if (isset($conn) && $conn) {
-    $fu = $conn->query("SELECT COUNT(*) as c FROM users WHERE is_flagged=1");
-    if ($fu) $flagged_users = (int)$fu->fetch_assoc()['c'];
+    $fu = $conn->query("SELECT COUNT(*) as c FROM users WHERE is_flagged=TRUE");
+    if ($fu) $flagged_users = (int)$fu->fetch()['c'];
 }
 
 // Support admin info
 if (!isset($admin_name) && isset($_SESSION['user_id'])) {
     $admin_id  = $_SESSION['user_id'];
-    $a_res     = $conn->query("SELECT full_name, profile_pic FROM users WHERE id=$admin_id");
-    $a_row     = $a_res ? $a_res->fetch_assoc() : [];
+    $a_stmt    = $conn->prepare("SELECT full_name, profile_pic FROM users WHERE id=?");
+    $a_stmt->execute([$admin_id]);
+    $a_row     = $a_stmt->fetch() ?: [];
     $admin_name= $a_row['full_name'] ?? 'Support';
     $admin_avatar = !empty($a_row['profile_pic']) && file_exists("../uploads/profiles/".$a_row['profile_pic'])
         ? "../uploads/profiles/".$a_row['profile_pic']

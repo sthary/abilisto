@@ -1,6 +1,6 @@
 <?php
 // admin/greenloop_reports.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
@@ -9,11 +9,13 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 }
 
 $admin_id = $_SESSION['user_id'];
-$admin_res = $conn->query("SELECT full_name, profile_pic FROM users WHERE id = $admin_id");
-$admin     = $admin_res->fetch_assoc();
+$admin_stmt = $conn->prepare("SELECT full_name, profile_pic FROM users WHERE id = ?");
+$admin_stmt->execute([$admin_id]);
+$admin     = $admin_stmt->fetch();
 
-$notif_res   = $conn->query("SELECT COUNT(*) as c FROM notifications WHERE user_id = $admin_id AND is_read = 0");
-$notif_count = $notif_res->fetch_assoc()['c'] ?? 0;
+$notif_stmt  = $conn->prepare("SELECT COUNT(*) as c FROM notifications WHERE user_id = ? AND is_read = 0");
+$notif_stmt->execute([$admin_id]);
+$notif_count = $notif_stmt->fetch()['c'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html class="light" lang="en">

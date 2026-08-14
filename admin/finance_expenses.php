@@ -1,6 +1,6 @@
 <?php
 // admin/finance_expenses.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'finance') {
@@ -8,7 +8,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'finance') {
 }
 
 $fin_user_id = $_SESSION['user_id'];
-$fin_name    = $conn->query("SELECT full_name FROM users WHERE id=$fin_user_id")->fetch_assoc()['full_name'] ?? 'Finance';
+$fin_stmt    = $conn->prepare("SELECT full_name FROM users WHERE id=?");
+$fin_stmt->execute([$fin_user_id]);
+$fin_name    = $fin_stmt->fetch()['full_name'] ?? 'Finance';
 
 // ============================================================
 // HANDLE AJAX POSTS
@@ -18,27 +20,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     // ── Add manual expense ────────────────────────────────
     if ($_POST['action'] === 'add_expense') {
-        $type  = $conn->real_escape_string($_POST['expense_type'] ?? '');
-        $cat   = $conn->real_escape_string($_POST['category']     ?? '');
-        $desc  = $conn->real_escape_string($_POST['description']  ?? '');
+        $type  = $_POST['expense_type'] ?? '';
+        $cat   = $_POST['category']     ?? '';
+        $desc  = $_POST['description']  ?? '';
         $amt   = floatval($_POST['amount']  ?? 0);
-        $date  = $conn->real_escape_string($_POST['expense_date'] ?? date('Y-m-d'));
+        $date  = $_POST['expense_date'] ?? date('Y-m-d');
 
         if (!in_array($type, ['MOOE','PS']) || $amt <= 0 || empty($cat)) {
             echo json_encode(['success'=>false,'message'=>'Invalid input.']); exit();
         }
-        $conn->query("INSERT INTO admin_expenses (expense_type,category,description,amount,expense_date,logged_by)
-                      VALUES ('$type','$cat','$desc',$amt,'$date',$fin_user_id)");
-        echo json_encode(['success'=>true,'id'=>$conn->insert_id]); exit();
+        $add_stmt = $conn->prepare("INSERT INTO admin_expenses (expense_type,category,description,amount,expense_date,logged_by)
+                      VALUES (?,?,?,?,?,?)");
+        $add_stmt->execute([$type,$cat,$desc,$amt,$date,$fin_user_id]);
+        echo json_encode(['success'=>true,'id'=>$conn->lastInsertId('admin_expenses_id_seq')]); exit();
     }
 
     // ── Delete manual expense ─────────────────────────────
     if ($_POST['action'] === 'delete_expense') {
         $eid = intval($_POST['expense_id'] ?? 0);
         // Prevent deleting payroll-linked entries
-        $linked = $conn->query("SELECT id FROM payroll_runs WHERE expense_id=$eid")->num_rows;
+        $link_stmt = $conn->prepare("SELECT id FROM payroll_runs WHERE expense_id=?");
+        $link_stmt->execute([$eid]);
+        $linked = count($link_stmt->fetchAll());
         if ($linked > 0) { echo json_encode(['success'=>false,'message'=>'Cannot delete — linked to a payroll run.']); exit(); }
-        $conn->query("DELETE FROM admin_expenses WHERE id=$eid");
+        $del_stmt = $conn->prepare("DELETE FROM admin_expenses WHERE id=?");
+        $del_stmt->execute([$eid]);
         echo json_encode(['success'=>true]); exit();
     }
 
@@ -47,28 +53,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $run_id = intval($_POST['run_id'] ?? 0);
 
         // Verify the run exists and is in 'Approved' status (set by HR)
-        $run = $conn->query("SELECT * FROM payroll_runs WHERE id=$run_id AND status='Approved'")->fetch_assoc();
+        $run_stmt = $conn->prepare("SELECT * FROM payroll_runs WHERE id=? AND status='Approved'");
+        $run_stmt->execute([$run_id]);
+        $run = $run_stmt->fetch();
         if (!$run) { echo json_encode(['success'=>false,'message'=>'Payroll run not found or not yet approved by HR.']); exit(); }
         if ($run['expense_id']) { echo json_encode(['success'=>false,'message'=>'Already logged to expenses.']); exit(); }
 
-        $desc = $conn->real_escape_string("Payroll: {$run['title']} — {$run['employee_count']} employee(s)");
+        $desc = "Payroll: {$run['title']} — {$run['employee_count']} employee(s)";
         $amt  = (float)$run['total_net'];
         $date = $run['pay_date'];
 
-        $conn->query("INSERT INTO admin_expenses (expense_type,category,description,amount,expense_date,logged_by)
-                      VALUES ('PS','Staff Salary','$desc',$amt,'$date',$fin_user_id)");
-        $exp_id = $conn->insert_id;
+        $ins_stmt = $conn->prepare("INSERT INTO admin_expenses (expense_type,category,description,amount,expense_date,logged_by)
+                      VALUES ('PS','Staff Salary',?,?,?,?)");
+        $ins_stmt->execute([$desc,$amt,$date,$fin_user_id]);
+        $exp_id = $conn->lastInsertId('admin_expenses_id_seq');
 
-        $conn->query("UPDATE payroll_runs SET
-            status='Released', expense_id=$exp_id,
-            released_at=NOW(), approved_by=$fin_user_id, approved_at=NOW()
-            WHERE id=$run_id");
+        $upd_stmt = $conn->prepare("UPDATE payroll_runs SET
+            status='Released', expense_id=?,
+            released_at=NOW(), approved_by=?, approved_at=NOW()
+            WHERE id=?");
+        $upd_stmt->execute([$exp_id, $fin_user_id, $run_id]);
 
         // Notify HR that Finance approved it
-        $hr_id = (int)$conn->query("SELECT id FROM users WHERE role='hr' LIMIT 1")->fetch_assoc()['id'];
+        $hr_stmt = $conn->query("SELECT id FROM users WHERE role='hr' LIMIT 1");
+        $hr_id = (int)($hr_stmt->fetch()['id'] ?? 0);
         if ($hr_id) {
-            $notif = $conn->real_escape_string("✅ Finance has approved payroll run: {$run['title']}. It has been logged as a PS expense.");
-            $conn->query("INSERT INTO notifications (user_id,message,link) VALUES ($hr_id,'$notif','../admin/hr_payroll.php?run=$run_id')");
+            $notif = "✅ Finance has approved payroll run: {$run['title']}. It has been logged as a PS expense.";
+            $notif_ins_stmt = $conn->prepare("INSERT INTO notifications (user_id,message,link) VALUES (?,?,?)");
+            $notif_ins_stmt->execute([$hr_id, $notif, "../admin/hr_payroll.php?run=$run_id"]);
         }
 
         echo json_encode(['success'=>true,'expense_id'=>$exp_id,'amount'=>$amt,'desc'=>$run['title']]); exit();
@@ -77,13 +89,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     // ── Reject payroll run ────────────────────────────────
     if ($_POST['action'] === 'reject_payroll') {
         $run_id = intval($_POST['run_id'] ?? 0);
-        $reason = $conn->real_escape_string(trim($_POST['reason'] ?? ''));
-        $conn->query("UPDATE payroll_runs SET status='For Approval', notes=CONCAT(COALESCE(notes,''),' | Finance rejected: $reason') WHERE id=$run_id AND status='Approved'");
+        $reason = trim($_POST['reason'] ?? '');
+        $reject_stmt = $conn->prepare("UPDATE payroll_runs SET status='For Approval', notes=CONCAT(COALESCE(notes,''),' | Finance rejected: ',?) WHERE id=? AND status='Approved'");
+        $reject_stmt->execute([$reason, $run_id]);
 
-        $hr_id = (int)$conn->query("SELECT id FROM users WHERE role='hr' LIMIT 1")->fetch_assoc()['id'];
+        $hr_stmt = $conn->query("SELECT id FROM users WHERE role='hr' LIMIT 1");
+        $hr_id = (int)($hr_stmt->fetch()['id'] ?? 0);
         if ($hr_id) {
-            $notif = $conn->real_escape_string("⚠️ Finance rejected payroll run #$run_id. Reason: $reason");
-            $conn->query("INSERT INTO notifications (user_id,message,link) VALUES ($hr_id,'$notif','../admin/hr_payroll.php?run=$run_id')");
+            $notif = "⚠️ Finance rejected payroll run #$run_id. Reason: $reason";
+            $notif_ins_stmt = $conn->prepare("INSERT INTO notifications (user_id,message,link) VALUES (?,?,?)");
+            $notif_ins_stmt->execute([$hr_id, $notif, "../admin/hr_payroll.php?run=$run_id"]);
         }
         echo json_encode(['success'=>true]); exit();
     }
@@ -100,28 +115,29 @@ $pending_payrolls_res = $conn->query("SELECT pr.*, u.full_name as gen_by
     WHERE pr.status = 'Approved' AND pr.expense_id IS NULL
     ORDER BY pr.pay_date ASC");
 $pending_payrolls = [];
-while ($r = $pending_payrolls_res->fetch_assoc()) $pending_payrolls[] = $r;
+while ($r = $pending_payrolls_res->fetch()) $pending_payrolls[] = $r;
 
 // ── Filters ──────────────────────────────────────────────────
-$search    = $conn->real_escape_string($_GET['search']   ?? '');
-$type_f    = $conn->real_escape_string($_GET['type']     ?? '');
-$date_from = $conn->real_escape_string($_GET['date_from']?? '');
-$date_to   = $conn->real_escape_string($_GET['date_to']  ?? '');
-$source_f  = $conn->real_escape_string($_GET['source']   ?? ''); // 'manual' | 'payroll' | ''
+$search    = $_GET['search']   ?? '';
+$type_f    = $_GET['type']     ?? '';
+$date_from = $_GET['date_from']?? '';
+$date_to   = $_GET['date_to']  ?? '';
+$source_f  = $_GET['source']   ?? ''; // 'manual' | 'payroll' | ''
 $page      = max(1, intval($_GET['page'] ?? 1));
 $per_page  = 25;
 $offset    = ($page - 1) * $per_page;
 
 $where = "WHERE 1=1";
-if ($search)    $where .= " AND (ae.category LIKE '%$search%' OR ae.description LIKE '%$search%' OR u.full_name LIKE '%$search%')";
-if ($type_f)    $where .= " AND ae.expense_type='$type_f'";
-if ($date_from) $where .= " AND ae.expense_date>='$date_from'";
-if ($date_to)   $where .= " AND ae.expense_date<='$date_to'";
+$params = [];
+if ($search)    { $where .= " AND (ae.category LIKE ? OR ae.description LIKE ? OR u.full_name LIKE ?)"; $params[] = "%$search%"; $params[] = "%$search%"; $params[] = "%$search%"; }
+if ($type_f)    { $where .= " AND ae.expense_type=?"; $params[] = $type_f; }
+if ($date_from) { $where .= " AND ae.expense_date>=?"; $params[] = $date_from; }
+if ($date_to)   { $where .= " AND ae.expense_date<=?"; $params[] = $date_to; }
 if ($source_f === 'payroll')  $where .= " AND pr.id IS NOT NULL";
 if ($source_f === 'manual')   $where .= " AND pr.id IS NULL";
 
 // ── Summary stats ─────────────────────────────────────────────
-$stats = $conn->query("SELECT
+$stats_stmt = $conn->prepare("SELECT
     COUNT(*) as total,
     COALESCE(SUM(ae.amount),0) as total_all,
     COALESCE(SUM(CASE WHEN ae.expense_type='MOOE' THEN ae.amount ELSE 0 END),0) as total_mooe,
@@ -130,27 +146,35 @@ $stats = $conn->query("SELECT
 FROM admin_expenses ae
 LEFT JOIN users u ON u.id = ae.logged_by
 LEFT JOIN payroll_runs pr ON pr.expense_id = ae.id
-$where")->fetch_assoc();
+$where");
+$stats_stmt->execute($params);
+$stats = $stats_stmt->fetch();
 
-$total_rows  = (int)$conn->query("SELECT COUNT(*) as c FROM admin_expenses ae LEFT JOIN users u ON u.id=ae.logged_by LEFT JOIN payroll_runs pr ON pr.expense_id=ae.id $where")->fetch_assoc()['c'];
+$count_stmt = $conn->prepare("SELECT COUNT(*) as c FROM admin_expenses ae LEFT JOIN users u ON u.id=ae.logged_by LEFT JOIN payroll_runs pr ON pr.expense_id=ae.id $where");
+$count_stmt->execute($params);
+$total_rows  = (int)$count_stmt->fetch()['c'];
 $total_pages = ceil($total_rows / $per_page);
 
-$rows = $conn->query("SELECT ae.*, u.full_name as logged_by_name, pr.id as payroll_run_id, pr.title as payroll_title, pr.employee_count, pr.total_gross, pr.period_start, pr.period_end
+$rows_stmt = $conn->prepare("SELECT ae.*, u.full_name as logged_by_name, pr.id as payroll_run_id, pr.title as payroll_title, pr.employee_count, pr.total_gross, pr.period_start, pr.period_end
     FROM admin_expenses ae
     LEFT JOIN users u ON u.id = ae.logged_by
     LEFT JOIN payroll_runs pr ON pr.expense_id = ae.id
     $where
     ORDER BY ae.expense_date DESC, ae.created_at DESC
-    LIMIT $per_page OFFSET $offset");
+    LIMIT ? OFFSET ?");
+$rows_stmt->execute(array_merge($params, [$per_page, $offset]));
+$rows = $rows_stmt->fetchAll();
 
 // This month breakdown by category
 $breakdown = $conn->query("SELECT expense_type, category, SUM(amount) as total
     FROM admin_expenses
-    WHERE MONTH(expense_date)=MONTH(NOW()) AND YEAR(expense_date)=YEAR(NOW())
-    GROUP BY expense_type, category ORDER BY total DESC LIMIT 8");
+    WHERE EXTRACT(MONTH FROM expense_date)=EXTRACT(MONTH FROM NOW()) AND EXTRACT(YEAR FROM expense_date)=EXTRACT(YEAR FROM NOW())
+    GROUP BY expense_type, category ORDER BY total DESC LIMIT 8")->fetchAll();
 
 $current_date = date('M d, Y');
-$notif_count  = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHERE user_id=$fin_user_id AND is_read=0")->fetch_assoc()['c'] ?? 0);
+$notif_stmt = $conn->prepare("SELECT COUNT(*) as c FROM notifications WHERE user_id=? AND is_read=0");
+$notif_stmt->execute([$fin_user_id]);
+$notif_count  = (int)($notif_stmt->fetch()['c'] ?? 0);
 ?>
 <!DOCTYPE html>
 <html class="light" lang="en">
@@ -429,8 +453,8 @@ $notif_count  = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHER
                             </tr>
                         </thead>
                         <tbody id="expense-tbody">
-                        <?php if ($rows && $rows->num_rows > 0):
-                            while ($r = $rows->fetch_assoc()):
+                        <?php if ($rows && count($rows) > 0):
+                            foreach ($rows as $r):
                                 $is_payroll = !empty($r['payroll_run_id']);
                         ?>
                         <tr class="<?php echo $is_payroll ? 'payroll-row' : ''; ?>" data-id="<?php echo $r['id']; ?>">
@@ -475,7 +499,7 @@ $notif_count  = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHER
                                 <?php endif; ?>
                             </td>
                         </tr>
-                        <?php endwhile; else: ?>
+                        <?php endforeach; else: ?>
                         <tr><td colspan="7" class="text-center py-16 text-slate-400">
                             <span class="material-icons-round text-3xl block mb-2 opacity-30">receipt_long</span>
                             No expenses found. <button onclick="openForm()" class="text-fin font-semibold">Log your first expense →</button>
@@ -507,10 +531,10 @@ $notif_count  = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHER
                     <p class="text-[9px] text-slate-400 uppercase tracking-wider"><?php echo date('F Y'); ?></p>
                 </div>
                 <div class="p-5 space-y-3">
-                <?php if ($breakdown && $breakdown->num_rows > 0):
+                <?php if ($breakdown && count($breakdown) > 0):
                     $month_total = 0;
-                    $breakdown_rows = [];
-                    while($b=$breakdown->fetch_assoc()){ $breakdown_rows[]=$b; $month_total+=$b['total']; }
+                    $breakdown_rows = $breakdown;
+                    foreach ($breakdown_rows as $b) { $month_total += $b['total']; }
                     foreach($breakdown_rows as $b):
                         $pct = $month_total>0 ? round($b['total']/$month_total*100) : 0;
                         $col = $b['expense_type']==='MOOE' ? 'bg-expense' : 'bg-hr';

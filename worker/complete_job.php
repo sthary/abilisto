@@ -1,8 +1,8 @@
 <?php
 // worker/complete_job.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
-include '../includes/functions/wallet_functions.php';
+include '../includes/functions/wallet_manager.php';
 include '../config/constants.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
@@ -19,14 +19,13 @@ if (!$booking_id) {
 }
 
 // Get booking details
-$sql = "SELECT b.*, u.full_name as client_name, u.fcm_token 
+$sql = "SELECT b.*, u.full_name as client_name, u.fcm_token
         FROM bookings b
         JOIN users u ON b.client_id = u.id
         WHERE b.id = ? AND b.worker_id = ?";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("ii", $booking_id, $worker_id);
-$stmt->execute();
-$booking = $stmt->get_result()->fetch_assoc();
+$stmt->execute([$booking_id, $worker_id]);
+$booking = $stmt->fetch();
 
 if (!$booking) {
     header("Location: dashboard.php");
@@ -36,9 +35,8 @@ if (!$booking) {
 // Get worker's minimum standard rate
 $rate_sql = "SELECT minimum_standard_rate FROM worker_profiles WHERE user_id = ?";
 $rate_stmt = $conn->prepare($rate_sql);
-$rate_stmt->bind_param("i", $worker_id);
-$rate_stmt->execute();
-$rate_row = $rate_stmt->get_result()->fetch_assoc();
+$rate_stmt->execute([$worker_id]);
+$rate_row = $rate_stmt->fetch();
 $minimum_standard_rate = floatval($rate_row['minimum_standard_rate'] ?? 0);
 
 // Platform commission rate — see config/constants.php (ADMIN_COMMISSION_PERCENT)
@@ -85,13 +83,12 @@ if (isset($_POST['submit_completion'])) {
                        admin_fee_percentage = ?
                        WHERE id = ?";
         $stmt = $conn->prepare($update_sql);
-        $stmt->bind_param("ddddddi", $labor_fee, $materials_cost, $labor_materials, $total, $admin_fee, $COMMISSION_RATE, $booking_id);
 
-        if ($stmt->execute()) {
+        if ($stmt->execute([$labor_fee, $materials_cost, $labor_materials, $total, $admin_fee, $COMMISSION_RATE, $booking_id])) {
             header("Location: generate_receipt.php?booking_id=$booking_id");
             exit();
         } else {
-            $error = "Failed to save costs: " . $conn->error;
+            $error = "Failed to save costs.";
         }
     }
 }

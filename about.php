@@ -1,6 +1,6 @@
 <?php
 // about.php
-include 'db.php';
+include 'db_connect.php';
 include 'includes/init_lang.php';
 
 // Security Check (optional - remove if you want public access)
@@ -15,9 +15,8 @@ $user_role = $_SESSION['role'];
 // Get user data for profile
 $user_sql = "SELECT full_name, profile_pic, email FROM users WHERE id = ?";
 $user_stmt = $conn->prepare($user_sql);
-$user_stmt->bind_param("i", $user_id);
-$user_stmt->execute();
-$user = $user_stmt->get_result()->fetch_assoc();
+$user_stmt->execute([$user_id]);
+$user = $user_stmt->fetch();
 
 // Placeholder images for team members (using UI Avatars for consistency)
 function getAvatarUrl($name, $bg = '135bec') {

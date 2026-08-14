@@ -6,7 +6,7 @@
 //      current availability right away based on the saved rules
 //   3. Schedule clear (POST action=clear)   — reverts worker back to manual mode
 
-include '../db.php';
+include '../db_connect.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
     header("Location: ../auth/login.php");
@@ -46,8 +46,7 @@ if ($action === 'manual') {
              schedule_mode       = 'manual'
          WHERE user_id = ?"
     );
-    $stmt->bind_param('si', $new_status, $worker_id);
-    $stmt->execute();
+    $stmt->execute([$new_status, $worker_id]);
 
     header("Location: dashboard.php");
     exit();
@@ -99,16 +98,14 @@ if ($action === 'schedule') {
              availability_status = ?
          WHERE user_id = ?"
     );
-    $stmt->bind_param(
-        'sssssi',
+    $stmt->execute([
         $schedule_days,
         $timeStart,
         $timeEnd,
         $label,
         $new_status,
         $worker_id
-    );
-    $stmt->execute();
+    ]);
 
     header("Location: dashboard.php?schedule_saved=1");
     exit();
@@ -125,8 +122,7 @@ if ($action === 'clear') {
              schedule_label      = NULL
          WHERE user_id = ?"
     );
-    $stmt->bind_param('i', $worker_id);
-    $stmt->execute();
+    $stmt->execute([$worker_id]);
 
     header("Location: dashboard.php");
     exit();

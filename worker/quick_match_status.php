@@ -1,6 +1,6 @@
 <?php
 // client/quick_match_status.php
-require_once '../db.php';
+require_once '../db_connect.php';
 require_once '../ajax_auth_check.php';
 
 // Check authentication
@@ -18,14 +18,12 @@ if ($session_id === 0) {
 
 // Get session status with prepared statement
 $stmt = $conn->prepare("
-    SELECT status, expires_at 
-    FROM quick_match_sessions 
+    SELECT status, expires_at
+    FROM quick_match_sessions
     WHERE id = ? AND client_id = ?
 ");
-$stmt->bind_param("ii", $session_id, $client_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$session = $result->fetch_assoc();
+$stmt->execute([$session_id, $client_id]);
+$session = $stmt->fetch();
 
 if (!$session) {
     echo json_encode(['error' => 'Session not found']);
@@ -34,7 +32,7 @@ if (!$session) {
 
 // Get workers status
 $stmt2 = $conn->prepare("
-    SELECT 
+    SELECT
         qmb.status,
         u.full_name
     FROM quick_match_broadcasts qmb
@@ -42,12 +40,9 @@ $stmt2 = $conn->prepare("
     WHERE qmb.session_id = ?
     ORDER BY qmb.id
 ");
-$stmt2->bind_param("i", $session_id);
-$stmt2->execute();
-$workersResult = $stmt2->get_result();
-
+$stmt2->execute([$session_id]);
 $workerList = [];
-while ($worker = $workersResult->fetch_assoc()) {
+while ($worker = $stmt2->fetch()) {
     $workerList[] = [
         'full_name' => $worker['full_name'],
         'status' => $worker['status']

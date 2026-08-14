@@ -1,7 +1,7 @@
 <?php
 // includes/email_sender.php
 
-require_once __DIR__ . '/../config/env.php';
+require_once __DIR__ . '/../config/dotenv.php';
 
 function sendAbilistoEmail($to_email, $subject, $html_body) {
     $api_key = getenv('RESEND_API_KEY');

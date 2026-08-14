@@ -1,7 +1,7 @@
 <?php
 // api/process_cash_payment.php
-require_once '../db.php';
-require_once '../includes/functions/wallet_functions.php';
+require_once '../db_connect.php';
+require_once '../includes/functions/wallet_manager.php';
 
 header('Content-Type: application/json');
 
@@ -20,57 +20,57 @@ $sql = "SELECT b.*, u.fcm_token
         JOIN users u ON b.client_id = u.id
         WHERE b.id = ? AND b.worker_id = ?";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("ii", $booking_id, $worker_id);
-$stmt->execute();
-$booking = $stmt->get_result()->fetch_assoc();
+$stmt->execute([$booking_id, $worker_id]);
+$booking = $stmt->fetch();
 
 if (!$booking) {
     echo json_encode(['success' => false, 'message' => 'Booking not found']);
     exit();
 }
 
-$conn->begin_transaction();
+$conn->beginTransaction();
 
 try {
     // Update booking
-    $update = "UPDATE bookings SET 
+    $update = "UPDATE bookings SET
                final_payment_status = 'paid',
                status = 'Completed',
                updated_at = NOW()
                WHERE id = ?";
     $stmt = $conn->prepare($update);
-    $stmt->bind_param("i", $booking_id);
-    $stmt->execute();
-    
+    $stmt->execute([$booking_id]);
+
     // Calculate admin fee (2%)
     $total = floatval($booking['total_final_cost']);
     $admin_fee = round($total * 0.02, 2);
     $worker_gets = $total - $admin_fee;
-    
+
     // Credit worker's wallet
-    $conn->query("UPDATE worker_profiles 
-                  SET wallet_balance = wallet_balance + $worker_gets,
+    $wallet_stmt = $conn->prepare("UPDATE worker_profiles
+                  SET wallet_balance = wallet_balance + ?,
                       jobs_completed = jobs_completed + 1
-                  WHERE user_id = $worker_id");
-    
+                  WHERE user_id = ?");
+    $wallet_stmt->execute([$worker_gets, $worker_id]);
+
     // Add admin fee
-    $conn->query("UPDATE admin_wallet 
-                  SET balance = balance + $admin_fee,
-                      total_earned = total_earned + $admin_fee
+    $admin_stmt = $conn->prepare("UPDATE admin_wallet
+                  SET balance = balance + ?,
+                      total_earned = total_earned + ?
                   WHERE id = 1");
-    
+    $admin_stmt->execute([$admin_fee, $admin_fee]);
+
     // Notify client
     sendNotification($conn, $booking['client_id'],
         "✅ Cash payment received! Job completed. Thank you!",
         "../client/my_bookings.php"
     );
-    
+
     $conn->commit();
-    
+
     echo json_encode(['success' => true, 'message' => 'Payment recorded']);
-    
+
 } catch (Exception $e) {
-    $conn->rollback();
+    $conn->rollBack();
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 ?>

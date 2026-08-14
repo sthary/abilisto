@@ -1,7 +1,7 @@
 <?php
 // worker/process_scan.php
 session_start();
-require_once '../db.php';
+require_once '../db_connect.php';
 require_once '../includes/services/DocumentAIService.php';
 
 header('Content-Type: application/json');

@@ -1,6 +1,6 @@
 <?php
 // client/track_worker.php
-include '../db.php';
+include '../db_connect.php';
 
 // --- FIX 1: FORCE PHILIPPINE TIME ---
 date_default_timezone_set('Asia/Manila'); 
@@ -13,25 +13,25 @@ $booking_id = $_GET['booking_id'];
 $client_id = $_SESSION['user_id'];
 
 // 1. Fetch Booking (Updated to include profile_pic)
-$sql = "SELECT bookings.*, 
-        users.t_latitude as worker_lat, 
-        users.t_longitude as worker_lng, 
-        users.full_name as worker_name, 
+$sql = "SELECT bookings.*,
+        users.t_latitude as worker_lat,
+        users.t_longitude as worker_lng,
+        users.full_name as worker_name,
         users.phone as worker_phone,
         users.profile_pic
-        FROM bookings 
-        JOIN users ON bookings.worker_id = users.id 
-        WHERE bookings.id = $booking_id AND bookings.client_id = $client_id";
+        FROM bookings
+        JOIN users ON bookings.worker_id = users.id
+        WHERE bookings.id = ? AND bookings.client_id = ?";
 
 // --- THIS WAS MISSING ---
-$res = $conn->query($sql); 
+$stmt = $conn->prepare($sql);
+$stmt->execute([$booking_id, $client_id]);
 // ------------------------
 
-if (!$res || $res->num_rows == 0) {
+$booking = $stmt->fetch();
+if (!$booking) {
     die("Booking not found.");
 }
-
-$booking = $res->fetch_assoc();
 
 // --- PRIVACY GATES (Uncomment these for production) ---
 

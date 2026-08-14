@@ -6,7 +6,7 @@ ini_set('display_errors', 1);
 
 header('Content-Type: application/json');
 
-require_once '../../db.php';
+require_once '../../db_connect.php';
 require_once '../../includes/fcm_sender.php';
 
 // --- AUTH CHECK ---
@@ -22,39 +22,39 @@ $action = $_POST['action'] ?? '';
 // --- ACTION: FIND WORKERS (UI Search / AJAX) ---
 if ($action === 'find_workers') {
     try {
-        $category = $conn->real_escape_string($_POST['category'] ?? '');
+        $category = $_POST['category'] ?? '';
         $lat = floatval($_POST['lat'] ?? 0);
         $lng = floatval($_POST['lng'] ?? 0);
 
         if (empty($category)) throw new Exception('Category is required');
 
         // Fetch all workers in category within 10km, include availability + lat/lng for map
-        $query = "SELECT u.id, u.full_name, u.avatar, u.latitude, u.longitude,
-                    COALESCE(wp.average_rating, 0) AS average_rating,
-                    COALESCE(wp.verification_status, 'Unverified') AS verification_status,
-                    COALESCE(wp.availability_status, 'Unavailable') AS availability_status,
-                    COALESCE(wp.is_tesda_verified, 0) AS is_tesda_verified,
-                    COALESCE(wp.vouch_count, 0) AS vouch_count,
-                    (6371 * acos(
-                        cos(radians($lat)) * cos(radians(u.latitude)) *
-                        cos(radians(u.longitude) - radians($lng)) +
-                        sin(radians($lat)) * sin(radians(u.latitude))
-                    )) AS distance
-                  FROM users u
-                  LEFT JOIN worker_profiles wp ON u.id = wp.user_id
-                  WHERE u.role = 'worker'
-                    AND u.latitude IS NOT NULL AND u.latitude != 0
-                    AND u.longitude IS NOT NULL AND u.longitude != 0
-                    AND wp.service_category = '$category'
-                  HAVING distance <= 10
+        $query = "SELECT * FROM (
+                    SELECT u.id, u.full_name, u.avatar, u.latitude, u.longitude,
+                        COALESCE(wp.average_rating, 0) AS average_rating,
+                        COALESCE(wp.verification_status, 'Unverified') AS verification_status,
+                        COALESCE(wp.availability_status, 'Unavailable') AS availability_status,
+                        COALESCE(wp.is_tesda_verified, 0) AS is_tesda_verified,
+                        COALESCE(wp.vouch_count, 0) AS vouch_count,
+                        (6371 * acos(
+                            cos(radians(?)) * cos(radians(u.latitude)) *
+                            cos(radians(u.longitude) - radians(?)) +
+                            sin(radians(?)) * sin(radians(u.latitude))
+                        )) AS distance
+                      FROM users u
+                      LEFT JOIN worker_profiles wp ON u.id = wp.user_id
+                      WHERE u.role = 'worker'
+                        AND u.latitude IS NOT NULL AND u.latitude != 0
+                        AND u.longitude IS NOT NULL AND u.longitude != 0
+                        AND wp.service_category = ?
+                  ) sub
+                  WHERE distance <= 10
                   ORDER BY distance ASC
                   LIMIT 30";
 
-        $result = $conn->query($query);
-        $workers = [];
-        while ($row = $result->fetch_assoc()) {
-            $workers[] = $row;
-        }
+        $stmt = $conn->prepare($query);
+        $stmt->execute([$lat, $lng, $lat, $category]);
+        $workers = $stmt->fetchAll();
 
         // Score each worker
         $scored = scoreWorkers($workers, $lat, $lng);
@@ -87,9 +87,9 @@ if ($action === 'find_workers') {
 // --- ACTION: CREATE BROADCAST ---
 } elseif ($action === 'create_broadcast') {
     try {
-        $category  = $conn->real_escape_string($_POST['category'] ?? '');
-        $problems  = $conn->real_escape_string($_POST['problem'] ?? '[]');
-        $urgency   = $conn->real_escape_string($_POST['urgency'] ?? 'Normal');
+        $category  = $_POST['category'] ?? '';
+        $problems  = $_POST['problem'] ?? '[]';
+        $urgency   = $_POST['urgency'] ?? 'Normal';
         $lat       = floatval($_POST['lat'] ?? 0);
         $lng       = floatval($_POST['lng'] ?? 0);
         $worker_ids = json_decode($_POST['worker_ids'] ?? '[]', true);
@@ -106,10 +106,10 @@ if ($action === 'find_workers') {
         // Hard limit: max 5 workers
         $worker_ids = array_slice($worker_ids, 0, 5);
 
-        $conn->begin_transaction();
+        $conn->beginTransaction();
 
         $expires_at        = date('Y-m-d H:i:s', strtotime('-60 minutes'));
-        $candidate_workers = $conn->real_escape_string(json_encode($worker_ids));
+        $candidate_workers = json_encode($worker_ids);
 
         // Insert broadcast
         $sql = "INSERT INTO job_broadcasts
@@ -118,16 +118,12 @@ if ($action === 'find_workers') {
                 VALUES (?, ?, ?, ?, ?, ?, 'searching', ?, ?, 1, NOW())";
 
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("isssddss",
+        $stmt->execute([
             $client_id, $category, $problems, $urgency,
             $lat, $lng, $expires_at, $candidate_workers
-        );
+        ]);
 
-        if (!$stmt->execute()) {
-            throw new Exception("Failed to create broadcast: " . $stmt->error);
-        }
-
-        $broadcast_id    = $conn->insert_id;
+        $broadcast_id    = $conn->lastInsertId('job_broadcasts_id_seq');
         $booking_date    = date('Y-m-d H:i:s', strtotime('+1 hour'));
         $created_bookings = [];
 
@@ -136,8 +132,7 @@ if ($action === 'find_workers') {
 
             // job_candidates
             $cs = $conn->prepare("INSERT INTO job_candidates (broadcast_id, worker_id, score) VALUES (?, ?, ?)");
-            $cs->bind_param("iid", $broadcast_id, $worker_id, $score);
-            $cs->execute();
+            $cs->execute([$broadcast_id, $worker_id, $score]);
 
             // booking
             $bs = $conn->prepare(
@@ -146,27 +141,24 @@ if ($action === 'find_workers') {
                   urgency_level, status, booking_date, payment_method, broadcast_id, created_at)
                  VALUES (?, ?, ?, ?, ?, ?, 'Pending', ?, 'Cash', ?, NOW())"
             );
-            $bs->bind_param("iissdssi",
+
+            if ($bs->execute([
                 $client_id, $worker_id, $category, $problems,
                 $fee, $urgency, $booking_date, $broadcast_id
-            );
-
-            if ($bs->execute()) {
-                $created_bookings[] = $conn->insert_id;
-                error_log("✅ Created booking #{$conn->insert_id} for worker #$worker_id from broadcast #$broadcast_id");
+            ])) {
+                $new_booking_id = $conn->lastInsertId('bookings_id_seq');
+                $created_bookings[] = $new_booking_id;
+                error_log("✅ Created booking #{$new_booking_id} for worker #$worker_id from broadcast #$broadcast_id");
             } else {
-                error_log("❌ Failed booking for worker #$worker_id: " . $bs->error);
+                error_log("❌ Failed booking for worker #$worker_id");
             }
         }
 
         // --- FCM Notifications ---
         $placeholders = implode(',', array_fill(0, count($worker_ids), '?'));
-        $types        = str_repeat('i', count($worker_ids));
 
         $tq = $conn->prepare("SELECT id, full_name, fcm_token FROM users WHERE id IN ($placeholders) AND fcm_token IS NOT NULL AND fcm_token != ''");
-        $tq->bind_param($types, ...$worker_ids);
-        $tq->execute();
-        $token_result = $tq->get_result();
+        $tq->execute($worker_ids);
 
         $sent_count    = 0;
         $failed_workers = [];
@@ -184,7 +176,7 @@ if ($action === 'find_workers') {
 
         $fcm = new FCMv1();
 
-        while ($worker = $token_result->fetch_assoc()) {
+        while ($worker = $tq->fetch()) {
             if (empty($worker['fcm_token'])) {
                 $failed_workers[] = $worker['full_name'] . ' (no token)';
                 continue;
@@ -227,8 +219,7 @@ if ($action === 'find_workers') {
             $msg  = "{$urgency_icon} Quick Match: $client_name needs $category help!";
             $link = "../worker/dashboard.php";
             $ns   = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
-            $ns->bind_param("iss", $wid, $msg, $link);
-            $ns->execute();
+            $ns->execute([$wid, $msg, $link]);
         }
 
         // Save notification stats
@@ -239,8 +230,7 @@ if ($action === 'find_workers') {
             'bookings_created' => count($created_bookings),
         ]);
         $us = $conn->prepare("UPDATE job_broadcasts SET notification_stats = ? WHERE id = ?");
-        $us->bind_param("si", $stats, $broadcast_id);
-        $us->execute();
+        $us->execute([$stats, $broadcast_id]);
 
         $conn->commit();
 
@@ -263,12 +253,10 @@ if ($action === 'find_workers') {
         ]);
 
     } catch (Exception $e) {
-        $conn->rollback();
+        $conn->rollBack();
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
 }
-
-$conn->close();
 
 // ============================================================
 // SCORING ALGORITHM — 5 Worker Selection

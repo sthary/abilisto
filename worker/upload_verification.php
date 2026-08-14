@@ -1,6 +1,6 @@
 <?php
 // worker/upload_verification.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/services/DocumentAIService.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
@@ -46,17 +46,16 @@ if (isset($_POST['submit_document'])) {
             // Save extracted data
             $extracted_data = json_encode($result['data']);
             
-            $sql = "INSERT INTO verification_documents 
-                    (worker_id, document_type, file_path, extracted_data, status, uploaded_at) 
+            $sql = "INSERT INTO verification_documents
+                    (worker_id, document_type, file_path, extracted_data, status, uploaded_at)
                     VALUES (?, ?, ?, ?, 'pending', NOW())";
             $stmt = $conn->prepare($sql);
-            $stmt->bind_param("isss", $worker_id, $document_type, $target_file, $extracted_data);
-            
-            if ($stmt->execute()) {
+
+            if ($stmt->execute([$worker_id, $document_type, $target_file, $extracted_data])) {
                 $message = "Document uploaded and processed successfully! Pending verification.";
                 $message_type = "success";
             } else {
-                $message = "Database error: " . $conn->error;
+                $message = "Database error.";
                 $message_type = "danger";
             }
         } else {
@@ -64,12 +63,11 @@ if (isset($_POST['submit_document'])) {
             $message_type = "warning";
             
             // Save for manual review
-            $sql = "INSERT INTO verification_documents 
-                    (worker_id, document_type, file_path, status, uploaded_at) 
+            $sql = "INSERT INTO verification_documents
+                    (worker_id, document_type, file_path, status, uploaded_at)
                     VALUES (?, ?, ?, 'pending_review', NOW())";
             $stmt = $conn->prepare($sql);
-            $stmt->bind_param("iss", $worker_id, $document_type, $target_file);
-            $stmt->execute();
+            $stmt->execute([$worker_id, $document_type, $target_file]);
         }
     } else {
         $message = "Sorry, there was an error uploading your file.";

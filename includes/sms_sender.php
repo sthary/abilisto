@@ -1,7 +1,7 @@
 <?php
 // includes/sms_sender.php
 
-require_once __DIR__ . '/../config/env.php';
+require_once __DIR__ . '/../config/dotenv.php';
 
 define('IPROG_API_TOKEN', getenv('IPROG_API_TOKEN'));
 

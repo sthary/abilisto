@@ -1,7 +1,7 @@
 <?php
 // ============================================================
 // greenloop/admin_api.php
-// Admin-only AJAX endpoints — pure mysqli to match codebase
+// Admin-only AJAX endpoints — PDO (Postgres)
 // POST  body : JSON  { action, report_id, [rejection_reason] }
 // GET   param: ?action=list_pending|stats
 // ============================================================
@@ -13,7 +13,7 @@ ini_set('display_errors', 0);
 // Use output buffering to catch any accidental output
 ob_start();
 
-include __DIR__ . '/../db.php';          // provides $conn (mysqli)
+include __DIR__ . '/../db_connect.php';          // provides $conn (PDO)
 include __DIR__ . '/../includes/init_lang.php';
 
 session_start();
@@ -40,10 +40,6 @@ function respond(array $data, int $code = 200): void {
     exit;
 }
 
-function db_err(mysqli $conn): string {
-    return $conn->error ?: 'Database error';
-}
-
 // ── Router ────────────────────────────────────────────────────
 try {
     switch ($action) {
@@ -57,19 +53,15 @@ try {
 
             // Build WHERE clause based on filter
             $status_list = array_map('trim', explode(',', $status_filter));
-            $placeholders = implode("','", array_map(function($s) use ($conn) {
-                return $conn->real_escape_string($s);
-            }, $status_list));
-            
-            $where_clause = "r.status IN ('$placeholders')";
+            $status_placeholders = implode(',', array_fill(0, count($status_list), '?'));
+
+            $where_clause = "r.status IN ($status_placeholders)";
 
             // Count first
             $cnt_sql = "SELECT COUNT(*) FROM greenloop_reports r WHERE $where_clause";
-            $cnt = $conn->query($cnt_sql);
-            if (!$cnt) {
-                respond(['error' => 'Count query failed: ' . $conn->error], 500);
-            }
-            $total = (int)$cnt->fetch_row()[0];
+            $cnt_stmt = $conn->prepare($cnt_sql);
+            $cnt_stmt->execute($status_list);
+            $total = (int)$cnt_stmt->fetchColumn();
 
             $sql = "
                 SELECT
@@ -96,21 +88,12 @@ try {
                 LIMIT ? OFFSET ?";
 
             $stmt = $conn->prepare($sql);
-            if (!$stmt) {
-                respond(['error' => 'Prepare failed: ' . $conn->error], 500);
-            }
-            
-            $stmt->bind_param('ii', $per_page, $offset);
-            if (!$stmt->execute()) {
-                respond(['error' => 'Execute failed: ' . $stmt->error], 500);
-            }
-            
-            $res     = $stmt->get_result();
+            $stmt->execute(array_merge($status_list, [$per_page, $offset]));
+
             $reports = [];
-            while ($row = $res->fetch_assoc()) {
+            while ($row = $stmt->fetch()) {
                 $reports[] = $row;
             }
-            $stmt->close();
 
             respond([
                 'reports'     => $reports,
@@ -128,12 +111,8 @@ try {
 
             // Fetch report
             $stmt = $conn->prepare("SELECT id, status, client_id FROM greenloop_reports WHERE id = ?");
-            if (!$stmt) respond(['error' => 'Prepare failed: ' . $conn->error], 500);
-            
-            $stmt->bind_param('i', $report_id);
-            $stmt->execute();
-            $report = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
+            $stmt->execute([$report_id]);
+            $report = $stmt->fetch();
 
             if (!$report) respond(['error' => 'Report not found.'], 404);
             if (!in_array($report['status'], ['pending', 'rejected'])) {
@@ -145,18 +124,15 @@ try {
                 SET status = 'broadcasted', broadcasted_at = NOW(), rejection_reason = NULL
                 WHERE id = ?
             ");
-            if (!$stmt) respond(['error' => 'Prepare failed: ' . $conn->error], 500);
-            
-            $stmt->bind_param('i', $report_id);
-            if (!$stmt->execute()) respond(['error' => db_err($conn)], 500);
-            $stmt->close();
+            $stmt->execute([$report_id]);
 
             // Notify client
-            $msg  = $conn->real_escape_string("♻️ Your GreenLoop scrap report #{$report_id} has been approved and broadcasted to junk shops!");
-            $link = $conn->real_escape_string('greenloop/greenloop_wallet.php');
+            $msg = "♻️ Your GreenLoop scrap report #{$report_id} has been approved and broadcasted to junk shops!";
+            $link = 'greenloop/greenloop_wallet.php';
             $cid  = (int)$report['client_id'];
-            $conn->query("INSERT INTO notifications (user_id, message, link, is_read, created_at)
-                          VALUES ($cid, '$msg', '$link', 0, NOW())");
+            $notif_stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at)
+                          VALUES (?, ?, ?, 0, NOW())");
+            $notif_stmt->execute([$cid, $msg, $link]);
 
             respond(['success' => true, 'message' => "Report #{$report_id} broadcasted to all junk shops."]);
             break;
@@ -170,12 +146,8 @@ try {
             if (strlen($reason) < 5) respond(['error' => 'Rejection reason must be at least 5 characters.'], 400);
 
             $stmt = $conn->prepare("SELECT id, status, client_id FROM greenloop_reports WHERE id = ?");
-            if (!$stmt) respond(['error' => 'Prepare failed: ' . $conn->error], 500);
-            
-            $stmt->bind_param('i', $report_id);
-            $stmt->execute();
-            $report = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
+            $stmt->execute([$report_id]);
+            $report = $stmt->fetch();
 
             if (!$report) respond(['error' => 'Report not found.'], 404);
             if (in_array($report['status'], ['accepted', 'completed'])) {
@@ -185,34 +157,30 @@ try {
             $stmt = $conn->prepare("
                 UPDATE greenloop_reports SET status = 'rejected', rejection_reason = ? WHERE id = ?
             ");
-            if (!$stmt) respond(['error' => 'Prepare failed: ' . $conn->error], 500);
-            
-            $stmt->bind_param('si', $reason, $report_id);
-            if (!$stmt->execute()) respond(['error' => db_err($conn)], 500);
-            $stmt->close();
+            $stmt->execute([$reason, $report_id]);
 
             // Notify client
-            $safe_reason = $conn->real_escape_string($reason);
             $cid = (int)$report['client_id'];
-            $conn->query("INSERT INTO notifications (user_id, message, link, is_read, created_at)
-                          VALUES ($cid,
-                            '❌ Your GreenLoop report #$report_id was not approved. Reason: $safe_reason',
-                            'greenloop/greenloop_wallet.php', 0, NOW())");
+            $notif_msg = "❌ Your GreenLoop report #{$report_id} was not approved. Reason: {$reason}";
+            $notif_stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at)
+                          VALUES (?, ?, 'greenloop/greenloop_wallet.php', 0, NOW())");
+            $notif_stmt->execute([$cid, $notif_msg]);
 
             respond(['success' => true, 'message' => "Report #{$report_id} rejected."]);
             break;
 
         // ── STATS ─────────────────────────────────────────────
         case 'stats':
-            $row = $conn->query("
+            $stmt = $conn->query("
                 SELECT
-                    COALESCE(SUM(status = 'pending'), 0)     AS pending,
-                    COALESCE(SUM(status = 'broadcasted'), 0) AS broadcasted,
-                    COALESCE(SUM(status = 'accepted'), 0)    AS accepted,
-                    COALESCE(SUM(status = 'completed'), 0)   AS completed,
-                    COALESCE(SUM(status = 'rejected'), 0)    AS rejected
+                    COALESCE(SUM((status = 'pending')::int), 0)     AS pending,
+                    COALESCE(SUM((status = 'broadcasted')::int), 0) AS broadcasted,
+                    COALESCE(SUM((status = 'accepted')::int), 0)    AS accepted,
+                    COALESCE(SUM((status = 'completed')::int), 0)   AS completed,
+                    COALESCE(SUM((status = 'rejected')::int), 0)    AS rejected
                 FROM greenloop_reports
-            ")->fetch_assoc();
+            ");
+            $row = $stmt->fetch();
             respond($row);
             break;
 

@@ -2,7 +2,7 @@
 // ============================================================
 // junkshop/dashboard.php  —  GreenLoop Junk Shop Partner
 // ============================================================
-include __DIR__ . '/../db.php';   // $conn (mysqli)
+include __DIR__ . '/../db_connect.php';   // $conn (PDO)
 
 // ── Auth Guard ────────────────────────────────────────────────
 if (empty($_SESSION['junkshop_id'])) {
@@ -15,8 +15,9 @@ $js_name = htmlspecialchars($_SESSION['junkshop_name']  ?? 'My Shop');
 $js_own  = htmlspecialchars($_SESSION['junkshop_owner'] ?? '');
 
 // Fetch live shop data
-$res  = $conn->query("SELECT * FROM junkshops WHERE id = $js_id LIMIT 1");
-$shop = $res->fetch_assoc();
+$stmt = $conn->prepare("SELECT * FROM junkshops WHERE id = ? LIMIT 1");
+$stmt->execute([$js_id]);
+$shop = $stmt->fetch();
 ?>
 <!DOCTYPE html>
 <html lang="en">

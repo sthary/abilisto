@@ -1,6 +1,6 @@
 <?php
 // admin/hr_employees.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'hr') {
@@ -8,7 +8,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'hr') {
 }
 
 $hr_user_id = $_SESSION['user_id'];
-$hr_name    = $conn->query("SELECT full_name FROM users WHERE id=$hr_user_id")->fetch_assoc()['full_name'] ?? 'HR';
+$hr_stmt = $conn->prepare("SELECT full_name FROM users WHERE id=?");
+$hr_stmt->execute([$hr_user_id]);
+$hr_name = $hr_stmt->fetch()['full_name'] ?? 'HR';
 
 // ── Handle POST actions ─────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -16,49 +18,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'add' || $action === 'edit') {
         $eid        = intval($_POST['employee_id'] ?? 0);
-        $name       = $conn->real_escape_string(trim($_POST['full_name']   ?? ''));
-        $code       = $conn->real_escape_string(trim($_POST['employee_code']?? ''));
-        $email      = $conn->real_escape_string(trim($_POST['email']       ?? ''));
-        $phone      = $conn->real_escape_string(trim($_POST['phone']       ?? ''));
-        $address    = $conn->real_escape_string(trim($_POST['address']     ?? ''));
-        $position   = $conn->real_escape_string(trim($_POST['position']    ?? ''));
-        $dept       = $conn->real_escape_string($_POST['department']        ?? 'Other');
-        $emp_type   = $conn->real_escape_string($_POST['employment_type']   ?? 'Full-time');
-        $emp_status = $conn->real_escape_string($_POST['employment_status'] ?? 'Active');
-        $hired      = $conn->real_escape_string($_POST['date_hired']        ?? date('Y-m-d'));
+        $name       = trim($_POST['full_name']   ?? '');
+        $code       = trim($_POST['employee_code']?? '');
+        $email      = trim($_POST['email']       ?? '');
+        $phone      = trim($_POST['phone']       ?? '');
+        $address    = trim($_POST['address']     ?? '');
+        $position   = trim($_POST['position']    ?? '');
+        $dept       = $_POST['department']        ?? 'Other';
+        $emp_type   = $_POST['employment_type']   ?? 'Full-time';
+        $emp_status = $_POST['employment_status'] ?? 'Active';
+        $hired      = $_POST['date_hired']        ?? date('Y-m-d');
         $salary     = floatval($_POST['basic_salary'] ?? 0);
-        $pay_freq   = $conn->real_escape_string($_POST['pay_frequency']     ?? 'Monthly');
-        $sss        = $conn->real_escape_string(trim($_POST['sss_number']   ?? ''));
-        $ph         = $conn->real_escape_string(trim($_POST['philhealth_number']?? ''));
-        $pagibig    = $conn->real_escape_string(trim($_POST['pagibig_number']   ?? ''));
-        $tin        = $conn->real_escape_string(trim($_POST['tin_number']       ?? ''));
-        $bank       = $conn->real_escape_string(trim($_POST['bank_name']        ?? ''));
-        $bank_acc   = $conn->real_escape_string(trim($_POST['bank_account']     ?? ''));
-        $gcash      = $conn->real_escape_string(trim($_POST['gcash_number']     ?? ''));
-        $notes      = $conn->real_escape_string(trim($_POST['notes']            ?? ''));
+        $pay_freq   = $_POST['pay_frequency']     ?? 'Monthly';
+        $sss        = trim($_POST['sss_number']   ?? '');
+        $ph         = trim($_POST['philhealth_number']?? '');
+        $pagibig    = trim($_POST['pagibig_number']   ?? '');
+        $tin        = trim($_POST['tin_number']       ?? '');
+        $bank       = trim($_POST['bank_name']        ?? '');
+        $bank_acc   = trim($_POST['bank_account']     ?? '');
+        $gcash      = trim($_POST['gcash_number']     ?? '');
+        $notes      = trim($_POST['notes']            ?? '');
 
         if ($action === 'add') {
-            $conn->query("INSERT INTO employees
-                (employee_code,full_name,email,phone,address,position,department,employment_type,
+            $stmt = $conn->prepare("INSERT INTO employees
+                (employee_code,full_name,email,phone,address,\"position\",department,employment_type,
                  employment_status,date_hired,basic_salary,pay_frequency,
                  sss_number,philhealth_number,pagibig_number,tin_number,
                  bank_name,bank_account,gcash_number,notes,added_by)
                 VALUES
-                ('$code','$name','$email','$phone','$address','$position','$dept','$emp_type',
-                 '$emp_status','$hired',$salary,'$pay_freq',
-                 '$sss','$ph','$pagibig','$tin',
-                 '$bank','$bank_acc','$gcash','$notes',$hr_user_id)");
+                (?,?,?,?,?,?,?,?,
+                 ?,?,?,?,
+                 ?,?,?,?,
+                 ?,?,?,?,?)");
+            $stmt->execute([$code,$name,$email,$phone,$address,$position,$dept,$emp_type,
+                 $emp_status,$hired,$salary,$pay_freq,
+                 $sss,$ph,$pagibig,$tin,
+                 $bank,$bank_acc,$gcash,$notes,$hr_user_id]);
             header("Location: hr_employees.php?msg=added"); exit();
         } else {
-            $conn->query("UPDATE employees SET
-                employee_code='$code', full_name='$name', email='$email', phone='$phone',
-                address='$address', position='$position', department='$dept',
-                employment_type='$emp_type', employment_status='$emp_status',
-                date_hired='$hired', basic_salary=$salary, pay_frequency='$pay_freq',
-                sss_number='$sss', philhealth_number='$ph', pagibig_number='$pagibig',
-                tin_number='$tin', bank_name='$bank', bank_account='$bank_acc',
-                gcash_number='$gcash', notes='$notes'
-                WHERE id=$eid");
+            $stmt = $conn->prepare("UPDATE employees SET
+                employee_code=?, full_name=?, email=?, phone=?,
+                address=?, \"position\"=?, department=?,
+                employment_type=?, employment_status=?,
+                date_hired=?, basic_salary=?, pay_frequency=?,
+                sss_number=?, philhealth_number=?, pagibig_number=?,
+                tin_number=?, bank_name=?, bank_account=?,
+                gcash_number=?, notes=?
+                WHERE id=?");
+            $stmt->execute([$code,$name,$email,$phone,
+                $address,$position,$dept,
+                $emp_type,$emp_status,
+                $hired,$salary,$pay_freq,
+                $sss,$ph,$pagibig,
+                $tin,$bank,$bank_acc,
+                $gcash,$notes,
+                $eid]);
             header("Location: hr_employees.php?msg=updated"); exit();
         }
     }
@@ -66,18 +80,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete') {
         $eid = intval($_POST['employee_id']??0);
         // Check not in active payroll
-        $in_payroll = (int)$conn->query("SELECT COUNT(*) as c FROM payroll_items pi JOIN payroll_runs pr ON pr.id=pi.payroll_run_id WHERE pi.employee_id=$eid AND pr.status NOT IN ('Cancelled')")->fetch_assoc()['c'];
+        $chk_stmt = $conn->prepare("SELECT COUNT(*) as c FROM payroll_items pi JOIN payroll_runs pr ON pr.id=pi.payroll_run_id WHERE pi.employee_id=? AND pr.status NOT IN ('Cancelled')");
+        $chk_stmt->execute([$eid]);
+        $in_payroll = (int)$chk_stmt->fetch()['c'];
         if ($in_payroll > 0) {
             header("Location: hr_employees.php?error=has_payroll"); exit();
         }
-        $conn->query("DELETE FROM employees WHERE id=$eid");
+        $del_stmt = $conn->prepare("DELETE FROM employees WHERE id=?");
+        $del_stmt->execute([$eid]);
         header("Location: hr_employees.php?msg=deleted"); exit();
     }
 
     if ($action === 'toggle_status') {
         $eid    = intval($_POST['employee_id']??0);
-        $status = $conn->real_escape_string($_POST['new_status']??'Active');
-        $conn->query("UPDATE employees SET employment_status='$status' WHERE id=$eid");
+        $status = $_POST['new_status']??'Active';
+        $stmt = $conn->prepare("UPDATE employees SET employment_status=? WHERE id=?");
+        $stmt->execute([$status,$eid]);
         header("Location: hr_employees.php?msg=status_updated"); exit();
     }
 }
@@ -86,25 +104,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $edit_emp = null;
 if (isset($_GET['edit'])) {
     $eid = intval($_GET['edit']);
-    $edit_emp = $conn->query("SELECT * FROM employees WHERE id=$eid")->fetch_assoc();
+    $edit_stmt = $conn->prepare("SELECT * FROM employees WHERE id=?");
+    $edit_stmt->execute([$eid]);
+    $edit_emp = $edit_stmt->fetch();
 }
 $show_form = isset($_GET['action']) && $_GET['action']==='add' || $edit_emp;
 
 // ── Filters ─────────────────────────────────────────────────
-$search   = $conn->real_escape_string($_GET['search']  ?? '');
-$dept_f   = $conn->real_escape_string($_GET['dept']    ?? '');
-$status_f = $conn->real_escape_string($_GET['status']  ?? '');
+$search   = $_GET['search']  ?? '';
+$dept_f   = $_GET['dept']    ?? '';
+$status_f = $_GET['status']  ?? '';
 
 $where = "WHERE 1=1";
-if ($search)   $where .= " AND (full_name LIKE '%$search%' OR employee_code LIKE '%$search%' OR position LIKE '%$search%' OR email LIKE '%$search%')";
-if ($dept_f)   $where .= " AND department='$dept_f'";
-if ($status_f) $where .= " AND employment_status='$status_f'";
+$params = [];
+if ($search)   { $where .= " AND (full_name LIKE ? OR employee_code LIKE ? OR \"position\" LIKE ? OR email LIKE ?)"; $like = '%'.$search.'%'; array_push($params, $like, $like, $like, $like); }
+if ($dept_f)   { $where .= " AND department=?"; $params[] = $dept_f; }
+if ($status_f) { $where .= " AND employment_status=?"; $params[] = $status_f; }
 
-$employees = $conn->query("SELECT * FROM employees $where ORDER BY employment_status='Active' DESC, full_name ASC");
-$total = $employees ? $employees->num_rows : 0;
+$emp_stmt = $conn->prepare("SELECT * FROM employees $where ORDER BY employment_status='Active' DESC, full_name ASC");
+$emp_stmt->execute($params);
+$employees = $emp_stmt->fetchAll();
+$total = count($employees);
 
 // ── Auto-generate employee code ─────────────────────────────
-$last_code = $conn->query("SELECT employee_code FROM employees ORDER BY id DESC LIMIT 1")->fetch_assoc();
+$last_code = $conn->query("SELECT employee_code FROM employees ORDER BY id DESC LIMIT 1")->fetch();
 $last_code = $last_code['employee_code'] ?? 'EMP-000';
 preg_match('/(\d+)$/', $last_code, $m);
 $next_code = 'EMP-' . str_pad((intval($m[1]??0)+1), 3, '0', STR_PAD_LEFT);
@@ -412,8 +435,8 @@ $PAY_FREQS = ['Monthly','Semi-monthly','Weekly'];
                     </tr>
                 </thead>
                 <tbody>
-                <?php if($employees && $employees->num_rows > 0):
-                    while($e = $employees->fetch_assoc()):
+                <?php if(count($employees) > 0):
+                    foreach($employees as $e):
                         $sclass = [
                             'Active' => 'badge-active',
                             'On Leave' => 'badge-leave',
@@ -473,7 +496,7 @@ $PAY_FREQS = ['Monthly','Semi-monthly','Weekly'];
                             </div>
                         </td>
                     </tr>
-                <?php endwhile; else: ?>
+                <?php endforeach; else: ?>
                     <tr><td colspan="8" class="text-center py-16 text-slate-400">
                         <span class="material-icons-round text-3xl block mb-2 opacity-30">badge</span>
                         No employees found. <button onclick="openForm()" class="text-hr font-semibold">Add your first employee →</button>

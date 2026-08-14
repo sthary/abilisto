@@ -1,6 +1,6 @@
 <?php
 // worker/quick_match_view.php
-require_once '../db.php';
+require_once '../db_connect.php';
 
 // Check if user is logged in as worker
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
@@ -18,39 +18,32 @@ if ($session_id === 0) {
 
 // First, let's check if the broadcast exists
 $checkQuery = "
-    SELECT 
-        qmb.*, 
-        qms.*, 
-        u.full_name as client_name, 
-        u.phone, 
-        u.address, 
+    SELECT
+        qmb.*,
+        qms.*,
+        u.full_name as client_name,
+        u.phone,
+        u.address,
         u.municipality,
-        TIMESTAMPDIFF(MINUTE, NOW(), qms.expires_at) as minutes_remaining
+        EXTRACT(EPOCH FROM (qms.expires_at - NOW())) / 60 as minutes_remaining
     FROM quick_match_broadcasts qmb
     JOIN quick_match_sessions qms ON qmb.session_id = qms.id
     JOIN users u ON qms.client_id = u.id
-    WHERE qmb.session_id = ? 
+    WHERE qmb.session_id = ?
     AND qmb.worker_id = ?
 ";
 
 $stmt = $conn->prepare($checkQuery);
-$stmt->bind_param("ii", $session_id, $worker_id);
-$stmt->execute();
-$result = $stmt->get_result();
+$stmt->execute([$session_id, $worker_id]);
+$broadcast = $stmt->fetch();
 
-if ($result->num_rows === 0) {
+if (!$broadcast) {
     // Debug: Let's see what broadcasts exist for this worker
     $debugQuery = "SELECT * FROM quick_match_broadcasts WHERE worker_id = ? ORDER BY id DESC LIMIT 5";
     $debugStmt = $conn->prepare($debugQuery);
-    $debugStmt->bind_param("i", $worker_id);
-    $debugStmt->execute();
-    $debugResult = $debugStmt->get_result();
-    
-    $debugBroadcasts = [];
-    while ($row = $debugResult->fetch_assoc()) {
-        $debugBroadcasts[] = $row;
-    }
-    
+    $debugStmt->execute([$worker_id]);
+    $debugBroadcasts = $debugStmt->fetchAll();
+
     echo "<pre>";
     echo "No broadcast found for session_id: $session_id and worker_id: $worker_id\n\n";
     echo "Recent broadcasts for this worker:\n";
@@ -58,8 +51,6 @@ if ($result->num_rows === 0) {
     echo "</pre>";
     exit();
 }
-
-$broadcast = $result->fetch_assoc();
 
 // Check if expired
 if (strtotime($broadcast['expires_at']) < time()) {
@@ -69,8 +60,7 @@ if (strtotime($broadcast['expires_at']) < time()) {
 
 // Mark as viewed
 $updateStmt = $conn->prepare("UPDATE quick_match_broadcasts SET viewed_at = NOW() WHERE id = ? AND viewed_at IS NULL");
-$updateStmt->bind_param("i", $broadcast['id']);
-$updateStmt->execute();
+$updateStmt->execute([$broadcast['id']]);
 
 // Get urgency level class and icon
 $urgency_class = strtolower($broadcast['urgency_level']);

@@ -3,8 +3,8 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 0); // Turn off display but keep logging
 session_start();
-require_once '../db.php';
-require_once '../includes/functions/wallet_functions.php';
+require_once '../db_connect.php';
+require_once '../includes/functions/wallet_manager.php';
 require_once '../includes/functions/booking_functions.php';
 require_once '../config/constants.php';
 require_once '../includes/fcm_sender.php';
@@ -45,10 +45,8 @@ try {
             WHERE b.id = ? AND b.worker_id = ?";
             
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ii", $booking_id, $worker_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $booking = $result->fetch_assoc();
+    $stmt->execute([$booking_id, $worker_id]);
+    $booking = $stmt->fetch();
 
     if (!$booking) {
         throw new Exception('Booking not found or not assigned to you');
@@ -58,10 +56,11 @@ try {
     switch ($action) {
         case 'check_eligibility':
     // ── GUARD: Admin may have disabled this worker from accepting ──
-    $acceptCheck = $conn->query(
-        "SELECT can_accept_bookings FROM worker_profiles WHERE user_id = $worker_id"
+    $acceptCheck = $conn->prepare(
+        "SELECT can_accept_bookings FROM worker_profiles WHERE user_id = ?"
     );
-    $acceptRow = $acceptCheck ? $acceptCheck->fetch_assoc() : null;
+    $acceptCheck->execute([$worker_id]);
+    $acceptRow = $acceptCheck->fetch();
     if ($acceptRow && (int)$acceptRow['can_accept_bookings'] === 0) {
         $response = [
             'success' => true,  // ← Change to true
@@ -93,10 +92,11 @@ try {
             
         case 'accept':
             // ── GUARD: Admin may have disabled this worker from accepting ──
-            $acceptCheck = $conn->query(
-                "SELECT can_accept_bookings FROM worker_profiles WHERE user_id = $worker_id"
+            $acceptCheck = $conn->prepare(
+                "SELECT can_accept_bookings FROM worker_profiles WHERE user_id = ?"
             );
-            $acceptRow = $acceptCheck ? $acceptCheck->fetch_assoc() : null;
+            $acceptCheck->execute([$worker_id]);
+            $acceptRow = $acceptCheck->fetch();
             if ($acceptRow && (int)$acceptRow['can_accept_bookings'] === 0) {
                 throw new Exception('Your account has been restricted from accepting new bookings by an administrator. Please contact support for assistance.');
             }
@@ -111,14 +111,13 @@ try {
             }
             
             // Start transaction
-            $conn->begin_transaction();
-            
+            $conn->beginTransaction();
+
             try {
                 // Update booking status
                 $update_sql = "UPDATE bookings SET status = 'Accepted', updated_at = NOW() WHERE id = ?";
                 $stmt = $conn->prepare($update_sql);
-                $stmt->bind_param("i", $booking_id);
-                $stmt->execute();
+                $stmt->execute([$booking_id]);
                 
                 // For cash payments, deduct fee immediately
                 // For GCash/escrow payments, just mark as accepted - payment stays in escrow
@@ -165,14 +164,13 @@ try {
                     $notif_msg .= " Payment held in escrow. Confirm when job is done.";
                 }
                 
-                $in_app_sql = "INSERT INTO notifications (user_id, message, link, is_read, created_at) 
+                $in_app_sql = "INSERT INTO notifications (user_id, message, link, is_read, created_at)
                               VALUES (?, ?, '../client/my_bookings.php', 0, NOW())";
                 $in_app_stmt = $conn->prepare($in_app_sql);
-                $in_app_stmt->bind_param("is", $booking['client_id'], $notif_msg);
-                $in_app_stmt->execute();
-                
+                $in_app_stmt->execute([$booking['client_id'], $notif_msg]);
+
                 $conn->commit();
-                
+
                 // Get updated wallet info
                 $updated_wallet = $wallet->getWorkerWallet($worker_id);
                 
@@ -186,20 +184,19 @@ try {
                 ];
                 
             } catch (Exception $e) {
-                $conn->rollback();
+                $conn->rollBack();
                 throw new Exception('Error accepting booking: ' . $e->getMessage());
             }
             break;
-            
+
         case 'reject':
             // Handle rejection logic
-            $conn->begin_transaction();
-            
+            $conn->beginTransaction();
+
             try {
                 $update_sql = "UPDATE bookings SET status = 'Declined' WHERE id = ?";
                 $stmt = $conn->prepare($update_sql);
-                $stmt->bind_param("i", $booking_id);
-                $stmt->execute();
+                $stmt->execute([$booking_id]);
                 
                 // Refund if escrow
                 if ($booking['payment_method'] == 'Xendit' && 
@@ -247,25 +244,23 @@ try {
                 ];
                 
             } catch (Exception $e) {
-                $conn->rollback();
+                $conn->rollBack();
                 throw new Exception('Error declining booking: ' . $e->getMessage());
             }
             break;
-            
+
         case 'complete':
             // Handle completion
-            $conn->begin_transaction();
-            
+            $conn->beginTransaction();
+
             try {
                 $update_sql = "UPDATE bookings SET status = 'Completed' WHERE id = ?";
                 $stmt = $conn->prepare($update_sql);
-                $stmt->bind_param("i", $booking_id);
-                $stmt->execute();
-                
+                $stmt->execute([$booking_id]);
+
                 $update_profile = "UPDATE worker_profiles SET jobs_completed = jobs_completed + 1 WHERE user_id = ?";
                 $stmt = $conn->prepare($update_profile);
-                $stmt->bind_param("i", $worker_id);
-                $stmt->execute();
+                $stmt->execute([$worker_id]);
                 
                 // Notify client
                 // Notify client via OneSignal
@@ -303,7 +298,7 @@ try {
                 ];
                 
             } catch (Exception $e) {
-                $conn->rollback();
+                $conn->rollBack();
                 throw new Exception('Error completing job: ' . $e->getMessage());
             }
             break;
@@ -315,32 +310,30 @@ try {
     if ($_SESSION['role'] !== 'worker') {
         throw new Exception('Only workers can mark jobs as done');
     }
-    
-    $conn->begin_transaction();
-    
+
+    $conn->beginTransaction();
+
     try {
         // Get booking details
-        $booking_sql = "SELECT b.*, u.fcm_token as client_token 
+        $booking_sql = "SELECT b.*, u.fcm_token as client_token
                        FROM bookings b
                        JOIN users u ON b.client_id = u.id
                        WHERE b.id = ? AND b.worker_id = ?";
         $booking_stmt = $conn->prepare($booking_sql);
-        $booking_stmt->bind_param("ii", $booking_id, $worker_id);
-        $booking_stmt->execute();
-        $booking_data = $booking_stmt->get_result()->fetch_assoc();
-        
+        $booking_stmt->execute([$booking_id, $worker_id]);
+        $booking_data = $booking_stmt->fetch();
+
         if (!$booking_data) {
             throw new Exception('Booking not found');
         }
-        
+
         // Update booking status to pending confirmation
-        $update_sql = "UPDATE bookings SET 
-                       status = 'accepted',
+        $update_sql = "UPDATE bookings SET
+                       status = 'Accepted',
                        updated_at = NOW()
                        WHERE id = ? AND worker_id = ?";
         $stmt = $conn->prepare($update_sql);
-        $stmt->bind_param("ii", $booking_id, $worker_id);
-        $stmt->execute();
+        $stmt->execute([$booking_id, $worker_id]);
         
         // Notify client
         if (!empty($booking_data['client_token'])) {
@@ -363,21 +356,20 @@ try {
         
         // Create in-app notification for client
         $notif_msg = "✅ Your worker has marked the job as done. Please confirm completion.";
-        $in_app_sql = "INSERT INTO notifications (user_id, message, link, is_read, created_at) 
+        $in_app_sql = "INSERT INTO notifications (user_id, message, link, is_read, created_at)
                       VALUES (?, ?, '../client/my_bookings.php', 0, NOW())";
         $in_app_stmt = $conn->prepare($in_app_sql);
-        $in_app_stmt->bind_param("is", $booking_data['client_id'], $notif_msg);
-        $in_app_stmt->execute();
-        
+        $in_app_stmt->execute([$booking_data['client_id'], $notif_msg]);
+
         $conn->commit();
-        
+
         $response = [
             'success' => true,
             'message' => 'Job marked as done! Client has been notified to confirm.'
         ];
-        
+
     } catch (Exception $e) {
-        $conn->rollback();
+        $conn->rollBack();
         throw new Exception('Error marking job as done: ' . $e->getMessage());
     }
     break;

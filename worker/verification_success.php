@@ -1,6 +1,6 @@
 <?php
 // verification_success.php
-require_once '../db.php';
+require_once '../db_connect.php';
 
 // Check if user just completed verification
 if (!isset($_SESSION['verification_completed'])) {

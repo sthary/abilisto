@@ -11,13 +11,14 @@ $user_id = $_SESSION['user_id'];
 $role = $_SESSION['role'] ?? '';
 
 // Get user data
-$sql = "SELECT full_name, email, phone, address, municipality, 
+$sql = "SELECT full_name, email, phone, address, municipality,
                latitude, longitude, birthdate, profile_pic,
                is_email_verified, is_phone_verified
-        FROM users 
-        WHERE id = $user_id";
-$result = $conn->query($sql);
-$user = $result->fetch_assoc();
+        FROM users
+        WHERE id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->execute([$user_id]);
+$user = $stmt->fetch();
 
 if (!$user) {
     return;

@@ -1,46 +1,66 @@
 <?php
 // admin/hr_workers.php — Platform worker management for HR
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'hr') {
     header("Location: ../auth/login.php"); exit();
 }
 $hr_user_id = $_SESSION['user_id'];
-$hr_name    = $conn->query("SELECT full_name FROM users WHERE id=$hr_user_id")->fetch_assoc()['full_name'] ?? 'HR';
+$hr_stmt    = $conn->prepare("SELECT full_name FROM users WHERE id=?");
+$hr_stmt->execute([$hr_user_id]);
+$hr_name    = $hr_stmt->fetch()['full_name'] ?? 'HR';
 
 // ── Handle toggles (accept bookings only — HR doesn't delete) ──
 if (isset($_GET['toggle_accept']) && isset($_GET['user_id'])) {
     $uid = intval($_GET['user_id']); $val = intval($_GET['toggle_accept']);
-    if ($val===0||$val===1) $conn->query("UPDATE worker_profiles SET can_accept_bookings=$val WHERE user_id=$uid");
+    if ($val===0||$val===1) {
+        $stmt = $conn->prepare("UPDATE worker_profiles SET can_accept_bookings=? WHERE user_id=?");
+        $stmt->execute([$val, $uid]);
+    }
     header("Location: hr_workers.php?msg=updated&".http_build_query(['search'=>$_GET['search']??'','role'=>$_GET['role']??''])); exit();
 }
 
 // ── Filters ─────────────────────────────────────────────────
-$search  = $conn->real_escape_string($_GET['search']  ?? '');
-$role_f  = $conn->real_escape_string($_GET['role']    ?? '');
+$search  = trim($_GET['search']  ?? '');
+$role_f  = trim($_GET['role']    ?? '');
 $page    = max(1,intval($_GET['page']??1));
 $per_page= 25; $offset=($page-1)*$per_page;
 
 $where = "WHERE u.role IN ('worker','client','business')";
-if ($search) $where .= " AND (u.full_name LIKE '%$search%' OR u.email LIKE '%$search%' OR u.id LIKE '%$search%')";
-if ($role_f && in_array($role_f,['worker','client','business'])) $where .= " AND u.role='$role_f'";
+$params = [];
+if ($search) {
+    $where .= " AND (u.full_name LIKE ? OR u.email LIKE ? OR u.id::text LIKE ?)";
+    $like = "%$search%";
+    $params[] = $like; $params[] = $like; $params[] = $like;
+}
+if ($role_f && in_array($role_f,['worker','client','business'])) {
+    $where .= " AND u.role=?";
+    $params[] = $role_f;
+}
 
-$total_rows  = (int)$conn->query("SELECT COUNT(*) as c FROM users u $where")->fetch_assoc()['c'];
+$count_stmt = $conn->prepare("SELECT COUNT(*) as c FROM users u $where");
+$count_stmt->execute($params);
+$total_rows  = (int)$count_stmt->fetch()['c'];
 $total_pages = ceil($total_rows/$per_page);
 
-$users = $conn->query("SELECT u.id,u.full_name,u.email,u.phone,u.role,u.created_at,u.municipality,u.profile_pic,
-    COALESCE(u.cash_enabled,1) as cash_enabled,
-    COALESCE(wp.can_accept_bookings,1) as can_accept_bookings,
+$users_stmt = $conn->prepare("SELECT u.id,u.full_name,u.email,u.phone,u.role,u.created_at,u.municipality,u.profile_pic,
+    COALESCE(u.cash_enabled,TRUE) as cash_enabled,
+    COALESCE(wp.can_accept_bookings,TRUE) as can_accept_bookings,
     wp.wallet_balance, wp.verification_status, wp.jobs_completed, wp.average_rating
     FROM users u
     LEFT JOIN worker_profiles wp ON wp.user_id=u.id AND u.role='worker'
-    $where ORDER BY u.id DESC LIMIT $per_page OFFSET $offset");
+    $where ORDER BY u.id DESC LIMIT ? OFFSET ?");
+$users_stmt->execute(array_merge($params, [$per_page, $offset]));
+$user_rows = $users_stmt->fetchAll();
 
 // Stats
-$stats = $conn->query("SELECT
-    SUM(role='worker') as workers, SUM(role='client') as clients, SUM(role='business') as business,
-    COUNT(*) as total FROM users WHERE role IN ('worker','client','business')")->fetch_assoc();
+$stats_stmt = $conn->query("SELECT
+    SUM(CASE WHEN role='worker' THEN 1 ELSE 0 END) as workers,
+    SUM(CASE WHEN role='client' THEN 1 ELSE 0 END) as clients,
+    SUM(CASE WHEN role='business' THEN 1 ELSE 0 END) as business,
+    COUNT(*) as total FROM users WHERE role IN ('worker','client','business')");
+$stats = $stats_stmt->fetch();
 
 function getUserAvatar($pic,$name){if(!empty($pic)&&file_exists("../uploads/profiles/".$pic))return"../uploads/profiles/".$pic;return"https://ui-avatars.com/api/?name=".urlencode($name)."&background=8B5CF6&color=fff&size=128&bold=true";}
 $current_date=date('M d, Y');
@@ -153,7 +173,7 @@ $current_date=date('M d, Y');
                     <th class="text-right">Actions</th>
                 </tr></thead>
                 <tbody>
-                <?php if($users && $users->num_rows>0): while($r=$users->fetch_assoc()):
+                <?php if(count($user_rows)>0): foreach($user_rows as $r):
                     $avatar=getUserAvatar($r['profile_pic'],$r['full_name']);
                     $rbadge=['worker'=>'badge-worker','client'=>'badge-client','business'=>'badge-business'][$r['role']]??'badge-draft';
                     $vbadge=['Gold'=>'badge-gold','Silver'=>'badge-silver'][$r['verification_status']??'']??'';
@@ -208,7 +228,7 @@ $current_date=date('M d, Y');
                         <?php else: echo '<span class="text-[10px] text-slate-300 dark:text-slate-600">—</span>'; endif; ?>
                     </td>
                 </tr>
-                <?php endwhile; else: ?>
+                <?php endforeach; else: ?>
                 <tr><td colspan="8" class="text-center py-16 text-slate-400">
                     <span class="material-icons-round text-3xl block mb-2 opacity-30">construction</span>No users found.
                 </td></tr>

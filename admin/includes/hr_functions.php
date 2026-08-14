@@ -94,7 +94,7 @@ function getServiceCategories($conn, $selected = '') {
     $sql = "SELECT DISTINCT service_category FROM worker_profiles WHERE service_category IS NOT NULL AND service_category != ''";
     $result = $conn->query($sql);
     $html = '<option value="">All Categories</option>';
-    while ($row = $result->fetch_assoc()) {
+    while ($row = $result->fetch()) {
         $cats = explode(',', $row['service_category']);
         foreach ($cats as $cat) {
             $cat = trim($cat);
@@ -107,9 +107,9 @@ function getServiceCategories($conn, $selected = '') {
 
 // Check if user has HR role access
 function isHRAccess($conn, $user_id) {
-    $sql = "SELECT role FROM users WHERE id = $user_id";
-    $result = $conn->query($sql);
-    if ($result && $row = $result->fetch_assoc()) {
+    $stmt = $conn->prepare("SELECT role FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    if ($row = $stmt->fetch()) {
         return in_array($row['role'], ['admin', 'hr']);
     }
     return false;

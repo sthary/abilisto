@@ -21,6 +21,7 @@ private_uploads/
 # --- Database dumps ---
 *.sql
 *.sql.gz
+!schema_postgres.sql
 
 # --- Archives / stale backups ---
 *.zip

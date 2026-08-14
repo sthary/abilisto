@@ -2,7 +2,7 @@
 // worker/process_topup_xendit.php
 // Process top-up via GCash
 
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 include '../config/constants.php';
 
@@ -22,14 +22,18 @@ if ($amount < MIN_TOPUP || $amount > MAX_TOPUP) {
 }
 
 // Get worker details
-$worker = $conn->query("SELECT full_name, email FROM users WHERE id = $worker_id")->fetch_assoc();
+$worker_stmt = $conn->prepare("SELECT full_name, email FROM users WHERE id = ?");
+$worker_stmt->execute([$worker_id]);
+$worker = $worker_stmt->fetch();
 
 // Create top-up record (pending)
 $ref = "TOPUP-" . time() . "-" . rand(1000, 9999);
-$insert_sql = "INSERT INTO top_ups (worker_id, amount, payment_method, reference_number, status) 
-               VALUES ($worker_id, $amount, 'gcash', '$ref', 'pending')";
-$conn->query($insert_sql);
-$topup_id = $conn->insert_id;
+$insert_sql = "INSERT INTO top_ups (worker_id, amount, payment_method, reference_number, status)
+               VALUES (?, ?, 'gcash', ?, 'pending')
+               RETURNING id";
+$insert_stmt = $conn->prepare($insert_sql);
+$insert_stmt->execute([$worker_id, $amount, $ref]);
+$topup_id = $insert_stmt->fetchColumn();
 
 // Prepare Xendit API Data
 $external_id = 'TOPUP-' . time() . '-' . $topup_id . '-' . rand(100, 999);
@@ -74,9 +78,10 @@ $result = json_decode($response, true);
 
 if ($http_code == 200 && isset($result['invoice_url'])) {
     // Update top-up with transaction ID
-    $conn->query("UPDATE top_ups 
-                  SET reference_number = '{$result['id']}' 
-                  WHERE id = $topup_id");
+    $conn->prepare("UPDATE top_ups
+                  SET reference_number = ?
+                  WHERE id = ?")
+         ->execute([$result['id'], $topup_id]);
     
     // Redirect to Xendit checkout
     header("Location: " . $result['invoice_url']);

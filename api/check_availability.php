@@ -2,7 +2,7 @@
 // api/check_availability.php
 // Check if worker is available at selected date/time
 
-require_once '../db.php';
+require_once '../db_connect.php';
 require_once '../includes/functions/booking_functions.php';
 
 header('Content-Type: application/json');
@@ -49,14 +49,15 @@ function findNextFreeSlot($conn, $worker_id, $from_datetime) {
         $check_time->modify("+$i hours");
         $check_time_str = $check_time->format('Y-m-d H:i:s');
         
-        $check_sql = "SELECT COUNT(*) as conflict 
-                      FROM bookings 
-                      WHERE worker_id = $worker_id 
+        $check_sql = "SELECT COUNT(*) as conflict
+                      FROM bookings
+                      WHERE worker_id = ?
                       AND status IN ('Pending', 'Accepted')
-                      AND ABS(TIMESTAMPDIFF(HOUR, booking_date, '$check_time_str')) < 3";
-        
-        $result = $conn->query($check_sql);
-        $row = $result->fetch_assoc();
+                      AND ABS(EXTRACT(EPOCH FROM (booking_date - ?::timestamp)) / 3600) < 3";
+
+        $stmt = $conn->prepare($check_sql);
+        $stmt->execute([$worker_id, $check_time_str]);
+        $row = $stmt->fetch();
         
         if ($row['conflict'] == 0) {
             return $check_time->format('Y-m-d\TH:i');

@@ -8,7 +8,7 @@ error_reporting(E_ALL);
 session_start();
 header('Content-Type: application/json');
 
-include '../db.php';
+include '../db_connect.php';
 
 // Auth guard
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
@@ -38,11 +38,10 @@ $updates = [
 ];
 
 // Helper: build a safe IN() clause
-// Returns ['placeholders' => '?,?,...', 'types' => 'iii...', 'params' => [...]]
-function buildIn(array $ids, string $leadType = ''): array {
-    $ph     = implode(',', array_fill(0, count($ids), '?'));
-    $types  = $leadType . str_repeat('i', count($ids));
-    return ['placeholders' => $ph, 'types' => $types];
+// Returns ['placeholders' => '?,?,...']
+function buildIn(array $ids): array {
+    $ph = implode(',', array_fill(0, count($ids), '?'));
+    return ['placeholders' => $ph];
 }
 
 // ============================================================
@@ -50,7 +49,7 @@ function buildIn(array $ids, string $leadType = ''): array {
 //   Catches: broadcast timer ran out while still in 'searching'
 // ============================================================
 if (!empty($known_ids)) {
-    ['placeholders' => $ph, 'types' => $types] = buildIn($known_ids, 'i');
+    ['placeholders' => $ph] = buildIn($known_ids);
     $params = array_merge([$worker_id], $known_ids);
 
     $sql = "
@@ -69,10 +68,8 @@ if (!empty($known_ids)) {
 
     $stmt = $conn->prepare($sql);
     if ($stmt) {
-        $stmt->bind_param($types, ...$params);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        while ($row = $result->fetch_assoc()) {
+        $stmt->execute($params);
+        while ($row = $stmt->fetch()) {
             if (!in_array((int)$row['booking_id'], $expired_ids)) {
                 $updates['expired'][] = [
                     'booking_id'   => (int)$row['booking_id'],
@@ -81,7 +78,6 @@ if (!empty($known_ids)) {
                 ];
             }
         }
-        $stmt->close();
     }
 }
 
@@ -92,7 +88,7 @@ if (!empty($known_ids)) {
 //   (b) Client cancelled the booking    → b.status  = 'Cancelled'
 // ============================================================
 if (!empty($known_ids)) {
-    ['placeholders' => $ph, 'types' => $types] = buildIn($known_ids, 'i');
+    ['placeholders' => $ph] = buildIn($known_ids);
     $params = array_merge([$worker_id], $known_ids);
 
     $sql = "
@@ -115,10 +111,8 @@ if (!empty($known_ids)) {
 
     $stmt = $conn->prepare($sql);
     if ($stmt) {
-        $stmt->bind_param($types, ...$params);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        while ($row = $result->fetch_assoc()) {
+        $stmt->execute($params);
+        while ($row = $stmt->fetch()) {
             if (!in_array((int)$row['booking_id'], $cancelled_ids)) {
                 $updates['cancelled'][] = [
                     'booking_id'   => (int)$row['booking_id'],
@@ -127,7 +121,6 @@ if (!empty($known_ids)) {
                 ];
             }
         }
-        $stmt->close();
     }
 }
 
@@ -136,7 +129,7 @@ if (!empty($known_ids)) {
 //   Catches: broadcast won by someone else
 // ============================================================
 if (!empty($known_ids)) {
-    ['placeholders' => $ph, 'types' => $types] = buildIn($known_ids, 'i');
+    ['placeholders' => $ph] = buildIn($known_ids);
     $params = array_merge([$worker_id], $known_ids);
 
     $sql = "
@@ -153,10 +146,8 @@ if (!empty($known_ids)) {
 
     $stmt = $conn->prepare($sql);
     if ($stmt) {
-        $stmt->bind_param($types, ...$params);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        while ($row = $result->fetch_assoc()) {
+        $stmt->execute($params);
+        while ($row = $stmt->fetch()) {
             if (!in_array((int)$row['booking_id'], $accepted_ids)) {
                 $accepted_by = (int)$row['accepted_worker_id'];
                 $updates['accepted'][] = [
@@ -168,7 +159,6 @@ if (!empty($known_ids)) {
                 ];
             }
         }
-        $stmt->close();
     }
 }
 
@@ -176,12 +166,11 @@ if (!empty($known_ids)) {
 // PART 4 — NEW bookings not yet visible on screen
 // ============================================================
 if (!empty($known_ids)) {
-    ['placeholders' => $ph, 'types' => $types] = buildIn($known_ids, 'i');
+    ['placeholders' => $ph] = buildIn($known_ids);
     $exclude = "AND b.id NOT IN ($ph)";
     $params  = array_merge([$worker_id], $known_ids);
 } else {
     $exclude = '';
-    $types   = 'i';
     $params  = [$worker_id];
 }
 
@@ -205,7 +194,7 @@ $sql = "
         jb.id                                          AS broadcast_id,
         jb.expires_at                                  AS broadcast_expires_at,
         jb.status                                      AS broadcast_status,
-        TIMESTAMPDIFF(SECOND, NOW(), jb.expires_at)    AS seconds_remaining,
+        EXTRACT(EPOCH FROM (jb.expires_at - NOW()))    AS seconds_remaining,
         1                                              AS is_active_quick_match
     FROM   bookings b
     JOIN   users u   ON b.client_id     = u.id
@@ -226,10 +215,8 @@ $sql = "
 
 $stmt = $conn->prepare($sql);
 if ($stmt) {
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
-    $new_rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
+    $stmt->execute($params);
+    $new_rows = $stmt->fetchAll();
 
     if (!empty($new_rows)) {
         // Pre-load the card renderer without capturing output

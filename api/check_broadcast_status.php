@@ -1,7 +1,7 @@
 <?php
 // api/check_broadcast_status.php
 session_start();
-require_once '../db.php';
+require_once '../db_connect.php';
 
 header('Content-Type: application/json');
 
@@ -29,11 +29,9 @@ $sql = "SELECT
         WHERE b.id = ? AND b.worker_id = ?";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("ii", $booking_id, $worker_id);
-$stmt->execute();
-$result = $stmt->get_result();
+$stmt->execute([$booking_id, $worker_id]);
 
-if ($row = $result->fetch_assoc()) {
+if ($row = $stmt->fetch()) {
     if (!empty($row['broadcast_id'])) {
         // This is a quick match booking
         if ($row['broadcast_status'] === 'accepted') {

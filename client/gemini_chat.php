@@ -1,6 +1,6 @@
 <?php
 // client/gemini_chat.php
-require_once __DIR__ . '/../config/env.php';
+require_once __DIR__ . '/../config/dotenv.php';
 header('Content-Type: application/json');
 
 // 1. Get the User's Message

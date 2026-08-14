@@ -1,6 +1,6 @@
 <?php
 // admin/finance_transactions.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'finance') {
@@ -9,26 +9,29 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'finance') {
 }
 
 $fin_user_id = $_SESSION['user_id'];
-$fin_user_sql = "SELECT full_name FROM users WHERE id = $fin_user_id";
-$fin_name = $conn->query($fin_user_sql)->fetch_assoc()['full_name'] ?? 'Finance';
+$fin_user_sql = "SELECT full_name FROM users WHERE id = ?";
+$fin_stmt = $conn->prepare($fin_user_sql);
+$fin_stmt->execute([$fin_user_id]);
+$fin_name = $fin_stmt->fetch()['full_name'] ?? 'Finance';
 
 // ── Filters ────────────────────────────────────────────────
-$search     = $conn->real_escape_string($_GET['search'] ?? '');
-$date_from  = $conn->real_escape_string($_GET['date_from'] ?? '');
-$date_to    = $conn->real_escape_string($_GET['date_to'] ?? '');
-$type_f     = $conn->real_escape_string($_GET['type'] ?? '');
-$user_type_f= $conn->real_escape_string($_GET['user_type'] ?? '');
+$search     = $_GET['search'] ?? '';
+$date_from  = $_GET['date_from'] ?? '';
+$date_to    = $_GET['date_to'] ?? '';
+$type_f     = $_GET['type'] ?? '';
+$user_type_f= $_GET['user_type'] ?? '';
 $page       = max(1, intval($_GET['page'] ?? 1));
 $per_page   = 25;
 $offset     = ($page - 1) * $per_page;
 
 // ── WHERE builder ──────────────────────────────────────────
 $where = "WHERE 1=1";
-if ($search)     $where .= " AND (wt.description LIKE '%$search%' OR u.full_name LIKE '%$search%' OR u.email LIKE '%$search%')";
-if ($date_from)  $where .= " AND DATE(wt.created_at) >= '$date_from'";
-if ($date_to)    $where .= " AND DATE(wt.created_at) <= '$date_to'";
-if ($type_f)     $where .= " AND wt.transaction_type = '$type_f'";
-if ($user_type_f)$where .= " AND wt.user_type = '$user_type_f'";
+$params = [];
+if ($search)     { $where .= " AND (wt.description LIKE ? OR u.full_name LIKE ? OR u.email LIKE ?)"; $params[] = "%$search%"; $params[] = "%$search%"; $params[] = "%$search%"; }
+if ($date_from)  { $where .= " AND DATE(wt.created_at) >= ?"; $params[] = $date_from; }
+if ($date_to)    { $where .= " AND DATE(wt.created_at) <= ?"; $params[] = $date_to; }
+if ($type_f)     { $where .= " AND wt.transaction_type = ?"; $params[] = $type_f; }
+if ($user_type_f){ $where .= " AND wt.user_type = ?"; $params[] = $user_type_f; }
 
 // ── Summary stats ──────────────────────────────────────────
 $stats_sql = "SELECT
@@ -39,11 +42,15 @@ $stats_sql = "SELECT
 FROM wallet_transactions wt
 LEFT JOIN users u ON u.id = wt.user_id
 $where";
-$stats = $conn->query($stats_sql)->fetch_assoc();
+$stats_stmt = $conn->prepare($stats_sql);
+$stats_stmt->execute($params);
+$stats = $stats_stmt->fetch();
 
 // ── Paginated data ─────────────────────────────────────────
 $total_rows_sql = "SELECT COUNT(*) as cnt FROM wallet_transactions wt LEFT JOIN users u ON u.id = wt.user_id $where";
-$total_rows = (int)$conn->query($total_rows_sql)->fetch_assoc()['cnt'];
+$total_rows_stmt = $conn->prepare($total_rows_sql);
+$total_rows_stmt->execute($params);
+$total_rows = (int)$total_rows_stmt->fetch()['cnt'];
 $total_pages = ceil($total_rows / $per_page);
 
 $data_sql = "SELECT wt.*, u.full_name, u.email, u.role
@@ -51,11 +58,15 @@ $data_sql = "SELECT wt.*, u.full_name, u.email, u.role
              LEFT JOIN users u ON u.id = wt.user_id
              $where
              ORDER BY wt.created_at DESC
-             LIMIT $per_page OFFSET $offset";
-$rows = $conn->query($data_sql);
+             LIMIT ? OFFSET ?";
+$data_stmt = $conn->prepare($data_sql);
+$data_stmt->execute(array_merge($params, [$per_page, $offset]));
+$rows = $data_stmt->fetchAll();
 
 $current_date = date('M d, Y');
-$notif_count = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHERE user_id=$fin_user_id AND is_read=0")->fetch_assoc()['c'] ?? 0);
+$notif_stmt = $conn->prepare("SELECT COUNT(*) as c FROM notifications WHERE user_id=? AND is_read=0");
+$notif_stmt->execute([$fin_user_id]);
+$notif_count = (int)($notif_stmt->fetch()['c'] ?? 0);
 ?>
 <!DOCTYPE html>
 <html class="light" lang="en">
@@ -214,8 +225,8 @@ $notif_count = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHERE
                     </tr>
                 </thead>
                 <tbody>
-                <?php if($rows && $rows->num_rows > 0):
-                    while($r = $rows->fetch_assoc()):
+                <?php if(count($rows) > 0):
+                    foreach($rows as $r):
                         $sign = in_array($r['transaction_type'],['credit','fee']) ? '+' : '−';
                         $amt_color = in_array($r['transaction_type'],['credit','fee']) ? 'text-equity' : 'text-danger';
                         if($r['transaction_type']==='fee' && $r['user_type']==='worker') { $sign='−'; $amt_color='text-danger'; }
@@ -253,7 +264,7 @@ $notif_count = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHERE
                         ₱<?php echo number_format($r['balance_after'],2); ?>
                     </td>
                 </tr>
-                <?php endwhile; else: ?>
+                <?php endforeach; else: ?>
                 <tr><td colspan="8" class="text-center py-16 text-slate-400">
                     <span class="material-icons-round text-3xl block mb-2 opacity-30">swap_horiz</span>
                     No transactions found.

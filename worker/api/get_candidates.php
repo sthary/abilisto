@@ -1,7 +1,7 @@
 <?php
 // worker/api/get_candidates.php
 session_start();
-include '../../db.php';
+include '../../db_connect.php';
 
 header('Content-Type: application/json');
 
@@ -12,7 +12,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
 
 $worker_id = $_SESSION['user_id'];
 
-$sql = "SELECT 
+$sql = "SELECT
             b.*,
             u.full_name as client_name,
             u.address,
@@ -20,17 +20,14 @@ $sql = "SELECT
         FROM job_candidates jc
         JOIN job_broadcasts b ON jc.broadcast_id = b.id
         JOIN users u ON b.client_id = u.id
-        WHERE jc.worker_id = '$worker_id'
+        WHERE jc.worker_id = ?
             AND b.status = 'searching'
             AND b.expires_at > NOW()
         ORDER BY jc.score DESC, b.created_at DESC";
 
-$result = $conn->query($sql);
-$jobs = [];
-
-while ($row = $result->fetch_assoc()) {
-    $jobs[] = $row;
-}
+$stmt = $conn->prepare($sql);
+$stmt->execute([$worker_id]);
+$jobs = $stmt->fetchAll();
 
 echo json_encode(['success' => true, 'jobs' => $jobs]);
 ?>

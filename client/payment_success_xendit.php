@@ -5,9 +5,9 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
-include '../includes/functions/wallet_functions.php';
+include '../includes/functions/wallet_manager.php';
 
 // Enable detailed logging
 error_log("=== payment_success_xendit.php called ===");
@@ -54,21 +54,22 @@ if (!$booking_id) {
 }
 
 // Verify booking belongs to this client
-$check_sql = "SELECT b.*, u.full_name as client_name, u.email 
+$check_sql = "SELECT b.*, u.full_name as client_name, u.email
               FROM bookings b
               JOIN users u ON b.client_id = u.id
-              WHERE b.id = $booking_id AND b.client_id = $client_id";
+              WHERE b.id = ? AND b.client_id = ?";
 error_log("Check SQL: $check_sql");
 
-$check_res = $conn->query($check_sql);
+$check_stmt = $conn->prepare($check_sql);
+$check_stmt->execute([$booking_id, $client_id]);
+$booking = $check_stmt->fetch();
 
-if ($check_res->num_rows === 0) {
+if (!$booking) {
     error_log("Booking $booking_id not found for client $client_id");
     header("Location: dashboard.php?error=not_found");
     exit();
 }
 
-$booking = $check_res->fetch_assoc();
 error_log("Booking found: " . print_r($booking, true));
 
 $worker_id = $booking['worker_id'];
@@ -87,30 +88,32 @@ if ($amount <= 0) {
 }
 
 // Get worker info for display
-$worker_res = $conn->query("SELECT full_name, profile_pic FROM users WHERE id = $worker_id");
-$worker = $worker_res->fetch_assoc();
+$worker_stmt = $conn->prepare("SELECT full_name, profile_pic FROM users WHERE id = ?");
+$worker_stmt->execute([$worker_id]);
+$worker = $worker_stmt->fetch();
 $worker_name = $worker['full_name'] ?? 'Worker';
 $worker_pic = !empty($worker['profile_pic']) && file_exists("../uploads/profiles/".$worker['profile_pic']) 
     ? "../uploads/profiles/".$worker['profile_pic'] 
     : "https://ui-avatars.com/api/?name=" . urlencode($worker_name) . "&background=0d59f2&color=fff&size=64&bold=true";
 
 // Begin transaction
-$conn->begin_transaction();
+$conn->beginTransaction();
 
 try {
     error_log("Starting transaction for booking $booking_id");
-    
+
     // Update booking payment status
-    $update_sql = "UPDATE bookings 
-                   SET payment_status = 'Paid', 
+    $update_sql = "UPDATE bookings
+                   SET payment_status = 'Paid',
                        status = 'Pending',
-                       is_escrow = 1
-                   WHERE id = $booking_id AND client_id = $client_id";
-    
+                       is_escrow = TRUE
+                   WHERE id = ? AND client_id = ?";
+
     error_log("Update SQL: $update_sql");
-    
-    if (!$conn->query($update_sql)) {
-        throw new Exception("Failed to update booking: " . $conn->error);
+
+    $update_stmt = $conn->prepare($update_sql);
+    if (!$update_stmt->execute([$booking_id, $client_id])) {
+        throw new Exception("Failed to update booking");
     }
     error_log("Booking updated successfully");
     
@@ -328,7 +331,7 @@ try {
     <?php
     
 } catch (Exception $e) {
-    $conn->rollback();
+    $conn->rollBack();
     error_log("❌ ERROR in payment_success_xendit.php: " . $e->getMessage());
     error_log("Stack trace: " . $e->getTraceAsString());
     

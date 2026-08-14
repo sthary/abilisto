@@ -1,6 +1,6 @@
 <?php
 // settings.php
-include 'db.php';
+include 'db_connect.php';
 include 'includes/init_lang.php';
 
 // Security Check
@@ -15,9 +15,8 @@ $user_role = $_SESSION['role'];
 // Get user data
 $user_sql = "SELECT * FROM users WHERE id = ?";
 $user_stmt = $conn->prepare($user_sql);
-$user_stmt->bind_param("i", $user_id);
-$user_stmt->execute();
-$user = $user_stmt->get_result()->fetch_assoc();
+$user_stmt->execute([$user_id]);
+$user = $user_stmt->fetch();
 
 // Location sharing state (workers only)
 $location_sharing_enabled = ($user_role === 'worker') ? intval($user['location_sharing_enabled'] ?? 0) : 0;
@@ -27,20 +26,17 @@ if (isset($_POST['action']) && $_POST['action'] === 'toggle_location_sharing' &&
     header('Content-Type: application/json');
     $enabled = intval($_POST['enabled']) === 1 ? 1 : 0;
     $upd = $conn->prepare("UPDATE users SET location_sharing_enabled = ? WHERE id = ? AND role = 'worker'");
-    $upd->bind_param('ii', $enabled, $user_id);
-    echo $upd->execute()
+    echo $upd->execute([$enabled, $user_id])
         ? json_encode(['success' => true,  'enabled' => $enabled])
         : json_encode(['success' => false, 'message' => 'Database error.']);
-    $upd->close();
     exit();
 }
 
 // Get unread notifications count
 $notif_sql = "SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0";
 $notif_stmt = $conn->prepare($notif_sql);
-$notif_stmt->bind_param("i", $user_id);
-$notif_stmt->execute();
-$unread_notifications = $notif_stmt->get_result()->fetch_assoc()['count'];
+$notif_stmt->execute([$user_id]);
+$unread_notifications = $notif_stmt->fetch()['count'];
 
 // Get reports count based on role
 if ($user_role === 'client') {
@@ -57,9 +53,8 @@ if ($user_role === 'client') {
                     WHERE worker_id = ?";
 }
 $reports_stmt = $conn->prepare($reports_sql);
-$reports_stmt->bind_param("i", $user_id);
-$reports_stmt->execute();
-$reports_stats = $reports_stmt->get_result()->fetch_assoc();
+$reports_stmt->execute([$user_id]);
+$reports_stats = $reports_stmt->fetch();
 
 // Handle theme toggle
 if (isset($_POST['toggle_theme'])) {

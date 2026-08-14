@@ -1,6 +1,6 @@
 <?php
 // worker/report_user.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 // Security Check
@@ -16,10 +16,10 @@ $error_message = '';
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $reported_user_id = intval($_POST['reported_user_id'] ?? 0);
-    $report_reason = $conn->real_escape_string($_POST['report_reason'] ?? '');
-    $report_details = $conn->real_escape_string($_POST['report_details'] ?? '');
+    $report_reason = $_POST['report_reason'] ?? '';
+    $report_details = $_POST['report_details'] ?? '';
     $booking_id = !empty($_POST['booking_id']) ? intval($_POST['booking_id']) : null;
-    $reported_user_role = $conn->real_escape_string($_POST['reported_user_role'] ?? 'client');
+    $reported_user_role = $_POST['reported_user_role'] ?? 'client';
     
     // Validate required fields
     $errors = [];
@@ -55,52 +55,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Get reported user details
         $user_sql = "SELECT full_name, email, role FROM users WHERE id = ?";
         $user_stmt = $conn->prepare($user_sql);
-        $user_stmt->bind_param("i", $reported_user_id);
-        $user_stmt->execute();
-        $user_result = $user_stmt->get_result();
-        $reported_user = $user_result->fetch_assoc();
-        
+        $user_stmt->execute([$reported_user_id]);
+        $reported_user = $user_stmt->fetch();
+
         if ($reported_user) {
             // Check if already reported this user recently (within last 30 days)
-            $dup_check = $conn->prepare("SELECT id FROM reports_worker 
-                                         WHERE worker_id = ? AND reported_user_id = ? 
-                                         AND created_at > DATE_SUB(NOW(), INTERVAL 30 DAY)");
-            $dup_check->bind_param("ii", $worker_id, $reported_user_id);
-            $dup_check->execute();
-            $dup_result = $dup_check->get_result();
-            
-            if ($dup_result->num_rows > 0) {
+            $dup_check = $conn->prepare("SELECT id FROM reports_worker
+                                         WHERE worker_id = ? AND reported_user_id = ?
+                                         AND created_at > (NOW() - INTERVAL '30 days')");
+            $dup_check->execute([$worker_id, $reported_user_id]);
+            $dup_row = $dup_check->fetch();
+
+            if ($dup_row) {
                 $error_message = "You have already reported this user within the last 30 days.";
             } else {
                 // Insert the report
-                $insert_sql = "INSERT INTO reports_worker 
-                              (worker_id, reported_user_id, reported_user_role, booking_id, report_reason, report_details, proof_image, created_at) 
+                $insert_sql = "INSERT INTO reports_worker
+                              (worker_id, reported_user_id, reported_user_role, booking_id, report_reason, report_details, proof_image, created_at)
                               VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
                 $insert_stmt = $conn->prepare($insert_sql);
-                $insert_stmt->bind_param("iisisss", $worker_id, $reported_user_id, $reported_user_role, $booking_id, $report_reason, $report_details, $proof_image_filename);
-                
-                if ($insert_stmt->execute()) {
+
+                if ($insert_stmt->execute([$worker_id, $reported_user_id, $reported_user_role, $booking_id, $report_reason, $report_details, $proof_image_filename])) {
                     // Check if this user has been reported 3 or more times
-                    $report_count_sql = "SELECT COUNT(*) as report_count FROM reports_worker 
+                    $report_count_sql = "SELECT COUNT(*) as report_count FROM reports_worker
                                         WHERE reported_user_id = ? AND status != 'dismissed'";
                     $count_stmt = $conn->prepare($report_count_sql);
-                    $count_stmt->bind_param("i", $reported_user_id);
-                    $count_stmt->execute();
-                    $count_result = $count_stmt->get_result();
-                    $report_count = $count_result->fetch_assoc()['report_count'];
-                    
+                    $count_stmt->execute([$reported_user_id]);
+                    $report_count = $count_stmt->fetch()['report_count'];
+
                     // Create notification for admin
                     $notification_msg = "⚠️ New report from worker against " . $reported_user['full_name'] . " (" . $reported_user['role'] . ")";
                     if ($report_count >= 3) {
                         $notification_msg .= " - URGENT: " . $report_count . " total reports";
                     }
-                    
-                    $admin_notif = "INSERT INTO notifications (user_id, message, link, is_read, created_at) 
+
+                    $admin_notif = "INSERT INTO notifications (user_id, message, link, is_read, created_at)
                                     SELECT id, ?, 'admin/worker_reports.php', 0, NOW() FROM users WHERE role = 'admin'";
                     $notif_stmt = $conn->prepare($admin_notif);
-                    $notif_stmt->bind_param("s", $notification_msg);
-                    $notif_stmt->execute();
-                    
+                    $notif_stmt->execute([$notification_msg]);
+
                     $success_message = "Report submitted successfully. An administrator will review it shortly.";
                 } else {
                     $error_message = "Failed to submit report. Please try again.";
@@ -130,17 +123,16 @@ $clients_sql = "SELECT DISTINCT
                 ORDER BY last_booking DESC";
 
 $clients_stmt = $conn->prepare($clients_sql);
-$clients_stmt->bind_param("i", $worker_id);
-$clients_stmt->execute();
-$clients_result = $clients_stmt->get_result();
+$clients_stmt->execute([$worker_id]);
+$clients_result = $clients_stmt->fetchAll();
 
 // Get recent reports from this worker
-$reports_sql = "SELECT r.*, 
+$reports_sql = "SELECT r.*,
                        u.full_name as reported_user_name,
                        u.role as reported_user_role,
                        u.email as reported_user_email,
                        b.booking_date,
-                       DATEDIFF(NOW(), r.created_at) as days_ago
+                       (NOW()::date - r.created_at::date) as days_ago
                 FROM reports_worker r
                 JOIN users u ON r.reported_user_id = u.id
                 LEFT JOIN bookings b ON r.booking_id = b.id
@@ -149,21 +141,19 @@ $reports_sql = "SELECT r.*,
                 LIMIT 10";
 
 $reports_stmt = $conn->prepare($reports_sql);
-$reports_stmt->bind_param("i", $worker_id);
-$reports_stmt->execute();
-$reports_result = $reports_stmt->get_result();
+$reports_stmt->execute([$worker_id]);
+$reports_result = $reports_stmt->fetchAll();
 
 // Get report counts for stats
-$stats_sql = "SELECT 
+$stats_sql = "SELECT
                 COUNT(*) as total_reports,
                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_reports,
                 SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) as resolved_reports
-              FROM reports_worker 
+              FROM reports_worker
               WHERE worker_id = ?";
 $stats_stmt = $conn->prepare($stats_sql);
-$stats_stmt->bind_param("i", $worker_id);
-$stats_stmt->execute();
-$stats = $stats_stmt->get_result()->fetch_assoc();
+$stats_stmt->execute([$worker_id]);
+$stats = $stats_stmt->fetch();
 ?>
 
 <!DOCTYPE html>
@@ -306,14 +296,14 @@ $stats = $stats_stmt->get_result()->fetch_assoc();
                                 class="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
                             <option value="">-- Choose a user --</option>
                             <optgroup label="Recent Clients">
-                                <?php if ($clients_result && $clients_result->num_rows > 0): ?>
-                                    <?php while($client = $clients_result->fetch_assoc()): ?>
+                                <?php if ($clients_result && count($clients_result) > 0): ?>
+                                    <?php foreach ($clients_result as $client): ?>
                                     <option value="<?php echo $client['id']; ?>" data-role="client">
-                                        <?php echo htmlspecialchars($client['full_name']); ?> 
-                                        (<?php echo $client['total_bookings']; ?> booking(s)) 
+                                        <?php echo htmlspecialchars($client['full_name']); ?>
+                                        (<?php echo $client['total_bookings']; ?> booking(s))
                                         - Last: <?php echo date('M d, Y', strtotime($client['last_booking'])); ?>
                                     </option>
-                                    <?php endwhile; ?>
+                                    <?php endforeach; ?>
                                 <?php endif; ?>
                             </optgroup>
                             <optgroup label="Other Users">
@@ -327,16 +317,15 @@ $stats = $stats_stmt->get_result()->fetch_assoc();
                                              )
                                              LIMIT 20";
                                 $other_stmt = $conn->prepare($other_sql);
-                                $other_stmt->bind_param("i", $worker_id);
-                                $other_stmt->execute();
-                                $other_result = $other_stmt->get_result();
-                                
-                                while($other = $other_result->fetch_assoc()):
+                                $other_stmt->execute([$worker_id]);
+                                $other_result = $other_stmt->fetchAll();
+
+                                foreach ($other_result as $other):
                                 ?>
                                 <option value="<?php echo $other['id']; ?>" data-role="<?php echo $other['role']; ?>">
                                     <?php echo htmlspecialchars($other['full_name']); ?> (<?php echo $other['role']; ?>)
                                 </option>
-                                <?php endwhile; ?>
+                                <?php endforeach; ?>
                             </optgroup>
                         </select>
                         <input type="hidden" name="reported_user_role" id="reported_user_role" value="client">
@@ -359,17 +348,16 @@ $stats = $stats_stmt->get_result()->fetch_assoc();
                                            ORDER BY b.booking_date DESC
                                            LIMIT 20";
                             $booking_stmt = $conn->prepare($booking_sql);
-                            $booking_stmt->bind_param("i", $worker_id);
-                            $booking_stmt->execute();
-                            $booking_result = $booking_stmt->get_result();
-                            
-                            while($booking = $booking_result->fetch_assoc()):
+                            $booking_stmt->execute([$worker_id]);
+                            $booking_result = $booking_stmt->fetchAll();
+
+                            foreach ($booking_result as $booking):
                             ?>
                             <option value="<?php echo $booking['id']; ?>">
-                                #<?php echo $booking['id']; ?> - <?php echo $booking['client_name']; ?> 
+                                #<?php echo $booking['id']; ?> - <?php echo $booking['client_name']; ?>
                                 (<?php echo date('M d, Y', strtotime($booking['booking_date'])); ?>)
                             </option>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     
@@ -492,8 +480,8 @@ $stats = $stats_stmt->get_result()->fetch_assoc();
                 </div>
                 
                 <div class="divide-y divide-slate-100 dark:divide-slate-700 max-h-[500px] overflow-y-auto">
-                    <?php if ($reports_result && $reports_result->num_rows > 0): ?>
-                        <?php while($report = $reports_result->fetch_assoc()): 
+                    <?php if ($reports_result && count($reports_result) > 0): ?>
+                        <?php foreach ($reports_result as $report):
                             $status_colors = [
                                 'pending' => ['bg' => 'bg-amber-100 dark:bg-amber-900/20', 'text' => 'text-amber-700 dark:text-amber-400', 'icon' => 'pending'],
                                 'reviewed' => ['bg' => 'bg-blue-100 dark:bg-blue-900/20', 'text' => 'text-blue-700 dark:text-blue-400', 'icon' => 'visibility'],
@@ -530,7 +518,7 @@ $stats = $stats_stmt->get_result()->fetch_assoc();
                             </div>
                             <?php endif; ?>
                         </div>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
                     <?php else: ?>
                         <div class="p-8 text-center">
                             <div class="w-16 h-16 mx-auto mb-3 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center">
@@ -542,7 +530,7 @@ $stats = $stats_stmt->get_result()->fetch_assoc();
                     <?php endif; ?>
                 </div>
                 
-                <?php if ($reports_result && $reports_result->num_rows > 0): ?>
+                <?php if ($reports_result && count($reports_result) > 0): ?>
                 <div class="p-4 border-t border-slate-200 dark:border-slate-700">
                     <a href="#" class="text-sm text-primary hover:text-blue-700 font-medium flex items-center justify-center gap-1">
                         View All Reports

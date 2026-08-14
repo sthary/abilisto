@@ -1,5 +1,5 @@
 <?php
-require_once '../db.php';
+require_once '../db_connect.php';
 session_start();
 
 if ($_SESSION['role'] !== 'business') exit;

@@ -1,7 +1,7 @@
 <?php
 // includes/services/DocumentAIService.php
 
-require_once __DIR__ . '/../../config/env.php';
+require_once __DIR__ . '/../../config/dotenv.php';
 
 class DocumentAIService {
     private $apiKey;

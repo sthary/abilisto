@@ -1,6 +1,6 @@
 <?php
 // client/cancel_booking.php
-include '../db.php';
+include '../db_connect.php';
 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
@@ -21,13 +21,12 @@ if (!$booking_id) {
 // Verify the booking belongs to this client AND is still Pending
 // (prevents cancelling other people's bookings or already-accepted ones)
 $check = $conn->prepare(
-    "SELECT id FROM bookings 
+    "SELECT id FROM bookings
      WHERE id = ? AND client_id = ? AND status = 'Pending'"
 );
-$check->bind_param("ii", $booking_id, $client_id);
-$check->execute();
+$check->execute([$booking_id, $client_id]);
 
-if ($check->get_result()->num_rows === 0) {
+if (!$check->fetch()) {
     // Either not their booking, or no longer Pending
     $_SESSION['error'] = "This booking cannot be cancelled. It may have already been accepted or does not exist.";
     header("Location: my_bookings.php");
@@ -38,16 +37,13 @@ if ($check->get_result()->num_rows === 0) {
 $update = $conn->prepare(
     "UPDATE bookings SET status = 'Cancelled' WHERE id = ? AND client_id = ? AND status = 'Pending'"
 );
-$update->bind_param("ii", $booking_id, $client_id);
+$update->execute([$booking_id, $client_id]);
 
-if ($update->execute() && $update->affected_rows > 0) {
+if ($update->rowCount() > 0) {
     $_SESSION['success'] = "Booking #$booking_id has been cancelled successfully.";
 } else {
     $_SESSION['error'] = "Something went wrong. Please try again.";
 }
-
-$update->close();
-$conn->close();
 
 header("Location: my_bookings.php");
 exit();

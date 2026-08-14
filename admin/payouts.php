@@ -1,6 +1,6 @@
 <?php
 // admin/payouts.php
-include '../db.php';
+include '../db_connect.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') { 
     header("Location: ../auth/login.php"); 
@@ -9,33 +9,35 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 
 // Get admin info for navbar
 $admin_id = $_SESSION['user_id'];
-$admin_sql = "SELECT full_name, profile_pic FROM users WHERE id = $admin_id";
-$admin_res = $conn->query($admin_sql);
-$admin = $admin_res->fetch_assoc();
+$admin_sql = "SELECT full_name, profile_pic FROM users WHERE id = ?";
+$admin_stmt = $conn->prepare($admin_sql);
+$admin_stmt->execute([$admin_id]);
+$admin = $admin_stmt->fetch();
 $admin_name = $admin['full_name'] ?? 'Admin';
 
 // Handle payout status update
 if (isset($_POST['update_payout']) && isset($_POST['withdrawal_id']) && isset($_POST['status'])) {
     $withdrawal_id = intval($_POST['withdrawal_id']);
-    $status = $conn->real_escape_string($_POST['status']);
+    $status = $_POST['status'];
     $worker_id = intval($_POST['worker_id']);
-    
+
     // Update withdrawal status
-    $conn->query("UPDATE withdrawals SET status='$status' WHERE id=$withdrawal_id");
-    
+    $upd_stmt = $conn->prepare("UPDATE withdrawals SET status=? WHERE id=?");
+    $upd_stmt->execute([$status, $withdrawal_id]);
+
     // If status is completed, deduct from worker wallet (already deducted when requested, but just in case)
     if ($status == 'Completed') {
         // You might want to add logic here for marking as completed
     }
-    
+
     // Send notification to worker
-    $msg = $status == 'Completed' 
+    $msg = $status == 'Completed'
         ? "✅ Your withdrawal request of ₱" . number_format($_POST['amount'], 2) . " has been processed and sent to your GCash account."
         : "⚠️ Your withdrawal request has been " . strtolower($status) . ". Please contact support for details.";
-    
-    $safe_msg = $conn->real_escape_string($msg);
-    $conn->query("INSERT INTO notifications (user_id, message, link) VALUES ('$worker_id', '$safe_msg', '../worker/wallet.php')");
-    
+
+    $notif_stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link) VALUES (?, ?, '../worker/wallet.php')");
+    $notif_stmt->execute([$worker_id, $msg]);
+
     header("Location: payouts.php?msg=updated");
     exit();
 }
@@ -44,29 +46,29 @@ if (isset($_POST['update_payout']) && isset($_POST['withdrawal_id']) && isset($_
 // Total Payouts Processed (sum of all completed withdrawals)
 $total_payouts_sql = "SELECT SUM(amount) as total FROM withdrawals WHERE status='Completed'";
 $total_payouts_res = $conn->query($total_payouts_sql);
-$total_payouts = $total_payouts_res->fetch_assoc()['total'] ?? 0;
+$total_payouts = $total_payouts_res->fetch()['total'] ?? 0;
 
 // Pending withdrawal amount and count
 $pending_sql = "SELECT SUM(amount) as total, COUNT(*) as count FROM withdrawals WHERE status='Pending'";
 $pending_res = $conn->query($pending_sql);
-$pending_data = $pending_res->fetch_assoc();
+$pending_data = $pending_res->fetch();
 $pending_amount = $pending_data['total'] ?? 0;
 $pending_count = $pending_data['count'] ?? 0;
 
 // Weekly payout trend (last 7 days)
-$weekly_sql = "SELECT SUM(amount) as total FROM withdrawals 
-               WHERE status='Completed' 
-               AND request_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+$weekly_sql = "SELECT SUM(amount) as total FROM withdrawals
+               WHERE status='Completed'
+               AND request_date >= NOW() - INTERVAL '7 days'";
 $weekly_res = $conn->query($weekly_sql);
-$weekly_total = $weekly_res->fetch_assoc()['total'] ?? 0;
+$weekly_total = $weekly_res->fetch()['total'] ?? 0;
 
 // Get previous week for comparison
-$prev_week_sql = "SELECT SUM(amount) as total FROM withdrawals 
-                  WHERE status='Completed' 
-                  AND request_date >= DATE_SUB(NOW(), INTERVAL 14 DAY)
-                  AND request_date < DATE_SUB(NOW(), INTERVAL 7 DAY)";
+$prev_week_sql = "SELECT SUM(amount) as total FROM withdrawals
+                  WHERE status='Completed'
+                  AND request_date >= NOW() - INTERVAL '14 days'
+                  AND request_date < NOW() - INTERVAL '7 days'";
 $prev_week_res = $conn->query($prev_week_sql);
-$prev_week_total = $prev_week_res->fetch_assoc()['total'] ?? 0;
+$prev_week_total = $prev_week_res->fetch()['total'] ?? 0;
 
 $weekly_growth = $prev_week_total > 0 ? round((($weekly_total - $prev_week_total) / $prev_week_total) * 100, 1) : 0;
 
@@ -88,7 +90,9 @@ $sql = "SELECT w.*,
                 ELSE 3
             END,
             w.request_date DESC";
-$withdrawals = $conn->query($sql);
+$withdrawals_stmt = $conn->query($sql);
+$withdrawals = $withdrawals_stmt->fetchAll();
+$withdrawals_count = count($withdrawals);
 
 // Get current date
 $current_date = date('M d, Y');
@@ -315,8 +319,8 @@ function formatGcashNumber($number) {
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-50 dark:divide-slate-800">
-                    <?php if ($withdrawals && $withdrawals->num_rows > 0): ?>
-                        <?php while($row = $withdrawals->fetch_assoc()): 
+                    <?php if ($withdrawals && $withdrawals_count > 0): ?>
+                        <?php foreach ($withdrawals as $row):
                             $avatar = getUserAvatar($row['profile_pic'], $row['full_name']);
                             $worker_id_display = "#W-" . str_pad($row['worker_id'], 4, '0', STR_PAD_LEFT);
                             $request_date = date("M d, Y", strtotime($row['request_date']));
@@ -432,7 +436,7 @@ function formatGcashNumber($number) {
                                 <?php endif; ?>
                             </td>
                         </tr>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
                             <td colspan="5" class="px-8 py-12 text-center text-slate-400">
@@ -447,14 +451,14 @@ function formatGcashNumber($number) {
         <!-- Table Footer -->
         <div class="px-8 py-6 flex items-center justify-between border-t border-slate-50 dark:border-slate-800">
             <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                Showing <?php echo $withdrawals ? $withdrawals->num_rows : 0; ?> of <?php echo $total_payouts_sql; ?> entries
+                Showing <?php echo $withdrawals ? $withdrawals_count : 0; ?> of <?php echo $total_payouts_sql; ?> entries
             </p>
             <div class="flex items-center gap-2">
                 <button class="p-2 glass rounded-lg text-slate-400 hover:text-primary transition-all">
                     <span class="material-icons-round text-lg">chevron_left</span>
                 </button>
                 <button class="w-8 h-8 flex items-center justify-center bg-primary text-white text-xs font-bold rounded-lg shadow-lg shadow-primary/20">1</button>
-                <?php if (($withdrawals ? $withdrawals->num_rows : 0) > 10): ?>
+                <?php if (($withdrawals ? $withdrawals_count : 0) > 10): ?>
                 <button class="w-8 h-8 flex items-center justify-center text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-white transition-all">2</button>
                 <?php endif; ?>
                 <button class="p-2 glass rounded-lg text-slate-400 hover:text-primary transition-all">

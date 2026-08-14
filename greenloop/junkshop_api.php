@@ -1,7 +1,7 @@
 <?php
 // ============================================================
 // greenloop/junkshop_api.php
-// Junk Shop AJAX endpoints — pure mysqli, separate session
+// Junk Shop AJAX endpoints — PDO (Postgres), separate session
 // POST body: JSON { action, report_id }
 // GET  param: ?action=poll_feed|my_pickups
 // ============================================================
@@ -13,7 +13,7 @@ ini_set('display_errors', 0);
 // Use output buffering to catch any accidental output
 ob_start();
 
-include __DIR__ . '/../db.php';
+include __DIR__ . '/../db_connect.php';
 session_start();
 header('Content-Type: application/json');
 header('X-Content-Type-Options: nosniff');
@@ -46,7 +46,7 @@ try {
 
         // ── POLL BROADCAST FEED ───────────────────────────────
         case 'poll_feed':
-            $res = $conn->query("
+            $stmt = $conn->query("
                 SELECT
                     r.id,
                     COALESCE(cat.item_name, r.item_name_custom) AS scrap_type,
@@ -71,20 +71,19 @@ try {
                 LIMIT 50
             ");
 
-            if (!$res) {
-                respond(['error' => 'Query failed: ' . $conn->error], 500);
-            }
+            $log_stmt = $conn->prepare("INSERT INTO greenloop_broadcast_log
+                          (report_id, junkshop_id, seen_at)
+                          VALUES (?, ?, NOW())
+                          ON CONFLICT (report_id, junkshop_id) DO NOTHING");
 
             $feed = [];
-            while ($row = $res->fetch_assoc()) {
+            while ($row = $stmt->fetch()) {
                 $feed[] = $row;
-                
-                // Audit log (INSERT IGNORE = no duplicates)
+
+                // Audit log (ON CONFLICT DO NOTHING = no duplicates)
                 $rid = (int)$row['id'];
                 $safe_js_id = (int)$junkshop_id;
-                $conn->query("INSERT IGNORE INTO greenloop_broadcast_log
-                              (report_id, junkshop_id, seen_at)
-                              VALUES ($rid, $safe_js_id, NOW())");
+                $log_stmt->execute([$rid, $safe_js_id]);
             }
 
             respond(['feed' => $feed, 'timestamp' => date('c')]);
@@ -104,18 +103,10 @@ try {
                 SET status = 'accepted', junkshop_id = ?, accepted_at = NOW()
                 WHERE id = ? AND status = 'broadcasted'
             ");
-            
-            if (!$stmt) {
-                respond(['error' => 'Prepare failed: ' . $conn->error], 500);
-            }
-            
-            $stmt->bind_param('ii', $junkshop_id, $report_id);
-            if (!$stmt->execute()) {
-                respond(['error' => 'Execute failed: ' . $stmt->error], 500);
-            }
-            
-            $affected = $stmt->affected_rows;
-            $stmt->close();
+
+            $stmt->execute([$junkshop_id, $report_id]);
+
+            $affected = $stmt->rowCount();
 
             if ($affected === 0) {
                 respond([
@@ -127,21 +118,15 @@ try {
 
             // Fetch client_id for notification
             $stmt2 = $conn->prepare("SELECT client_id FROM greenloop_reports WHERE id = ?");
-            if ($stmt2) {
-                $stmt2->bind_param('i', $report_id);
-                $stmt2->execute();
-                $res2 = $stmt2->get_result();
-                $row = $res2->fetch_assoc();
-                $stmt2->close();
-                
-                if ($row) {
-                    $cid  = (int)$row['client_id'];
-                    $safe_name = $conn->real_escape_string($junkshop_name);
-                    $conn->query("INSERT INTO notifications (user_id, message, link, is_read, created_at)
-                                  VALUES ($cid,
-                                    '🚛 $safe_name has accepted your scrap pickup (Report #$report_id)! They will contact you shortly.',
-                                    'greenloop/greenloop_wallet.php', 0, NOW())");
-                }
+            $stmt2->execute([$report_id]);
+            $row = $stmt2->fetch();
+
+            if ($row) {
+                $cid = (int)$row['client_id'];
+                $notif_msg = "🚛 {$junkshop_name} has accepted your scrap pickup (Report #{$report_id})! They will contact you shortly.";
+                $notif_stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at)
+                              VALUES (?, ?, 'greenloop/greenloop_wallet.php', 0, NOW())");
+                $notif_stmt->execute([$cid, $notif_msg]);
             }
 
             respond(['success' => true, 'message' => 'Pickup accepted! Check My Pickups below.']);
@@ -177,22 +162,13 @@ try {
                 ORDER BY r.accepted_at DESC
                 LIMIT 50
             ");
-            
-            if (!$stmt) {
-                respond(['error' => 'Prepare failed: ' . $conn->error], 500);
-            }
-            
-            $stmt->bind_param('i', $junkshop_id);
-            if (!$stmt->execute()) {
-                respond(['error' => 'Execute failed: ' . $stmt->error], 500);
-            }
-            
-            $res     = $stmt->get_result();
+
+            $stmt->execute([$junkshop_id]);
+
             $pickups = [];
-            while ($row = $res->fetch_assoc()) {
+            while ($row = $stmt->fetch()) {
                 $pickups[] = $row;
             }
-            $stmt->close();
 
             respond(['pickups' => $pickups]);
             break;
@@ -212,18 +188,10 @@ try {
                 FROM greenloop_reports
                 WHERE id = ? AND junkshop_id = ? AND status = 'accepted'
             ");
-            
-            if (!$stmt) {
-                respond(['error' => 'Prepare failed: ' . $conn->error], 500);
-            }
-            
-            $stmt->bind_param('ii', $report_id, $junkshop_id);
-            if (!$stmt->execute()) {
-                respond(['error' => 'Execute failed: ' . $stmt->error], 500);
-            }
-            
-            $report = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
+
+            $stmt->execute([$report_id, $junkshop_id]);
+
+            $report = $stmt->fetch();
 
             if (!$report) {
                 respond(['error' => 'Report not found, not yours, or already completed.'], 404);
@@ -235,16 +203,8 @@ try {
                 SET status = 'completed', completed_at = NOW()
                 WHERE id = ? AND junkshop_id = ?
             ");
-            
-            if (!$stmt2) {
-                respond(['error' => 'Prepare failed: ' . $conn->error], 500);
-            }
-            
-            $stmt2->bind_param('ii', $report_id, $junkshop_id);
-            if (!$stmt2->execute()) {
-                respond(['error' => 'Execute failed: ' . $stmt2->error], 500);
-            }
-            $stmt2->close();
+
+            $stmt2->execute([$report_id, $junkshop_id]);
 
             // ================================================================
             // AWARD GREEN COINS TO CLIENT
@@ -265,36 +225,31 @@ try {
                 "Scrap pickup completed — Report #{$report_id}: {$item_name}"
             );
             
+            $notif_stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at)
+                          VALUES (?, ?, 'greenloop/greenloop_wallet.php', 0, NOW())");
+
             if ($awarded) {
                 // Update the report with actual coins awarded
                 $stmt3 = $conn->prepare("
-                    UPDATE greenloop_reports 
-                    SET actual_green_coins_awarded = ?, coins_awarded_at = NOW() 
+                    UPDATE greenloop_reports
+                    SET actual_green_coins_awarded = ?, coins_awarded_at = NOW()
                     WHERE id = ?
                 ");
-                $stmt3->bind_param('di', $coins_to_award, $report_id);
-                $stmt3->execute();
-                $stmt3->close();
-                
+                $stmt3->execute([$coins_to_award, $report_id]);
+
                 // Notify user that coins were awarded
                 $cid = (int)$client_id;
                 $coins = (int)$coins_to_award;
-                $safe_name = $conn->real_escape_string($junkshop_name);
-                $conn->query("INSERT INTO notifications (user_id, message, link, is_read, created_at)
-                              VALUES ($cid, 
-                                '🎉 You earned {$coins} Green Coins from Report #{$report_id}! The junk shop \"{$safe_name}\" has completed your pickup.',
-                                'greenloop/greenloop_wallet.php', 0, NOW())");
+                $notif_msg = "🎉 You earned {$coins} Green Coins from Report #{$report_id}! The junk shop \"{$junkshop_name}\" has completed your pickup.";
+                $notif_stmt->execute([$cid, $notif_msg]);
             } else {
                 // Log error but still mark as completed
                 error_log("Failed to award Green Coins for report #{$report_id} to user #{$client_id}");
-                
+
                 // Notify user about completion (without coins)
                 $cid = (int)$client_id;
-                $safe_name = $conn->real_escape_string($junkshop_name);
-                $conn->query("INSERT INTO notifications (user_id, message, link, is_read, created_at)
-                              VALUES ($cid,
-                                '✅ {$safe_name} has completed your scrap pickup (Report #{$report_id}).',
-                                'greenloop/greenloop_wallet.php', 0, NOW())");
+                $notif_msg = "✅ {$junkshop_name} has completed your scrap pickup (Report #{$report_id}).";
+                $notif_stmt->execute([$cid, $notif_msg]);
             }
 
             respond(['success' => true, 'message' => 'Pickup marked as completed! Coins awarded to client.']);

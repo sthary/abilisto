@@ -1,7 +1,7 @@
 <?php
 // worker/save_scan_result.php
 session_start();
-require_once '../db.php';
+require_once '../db_connect.php';
 
 header('Content-Type: application/json');
 
@@ -45,13 +45,12 @@ if (!file_put_contents($target_file, $image_binary)) {
 $extracted_json = json_encode($extracted_data);
 $status = $extracted_data ? 'pending' : 'pending_review';
 
-$sql = "INSERT INTO verification_documents 
-        (worker_id, document_type, file_path, extracted_data, status, uploaded_at) 
+$sql = "INSERT INTO verification_documents
+        (worker_id, document_type, file_path, extracted_data, status, uploaded_at)
         VALUES (?, ?, ?, ?, ?, NOW())";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("issss", $worker_id, $document_type, $target_file, $extracted_json, $status);
 
-if ($stmt->execute()) {
+if ($stmt->execute([$worker_id, $document_type, $target_file, $extracted_json, $status])) {
     echo json_encode(['success' => true]);
 } else {
     echo json_encode(['success' => false, 'message' => 'Database error']);

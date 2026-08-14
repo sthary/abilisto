@@ -12,7 +12,7 @@
 //     AFTER `id_photo_back`;
 // ============================================================
 
-require_once '../db.php';
+require_once '../db_connect.php';
 
 header('X-Frame-Options: DENY');
 header('X-Content-Type-Options: nosniff');
@@ -235,7 +235,7 @@ function save_verification(array $data, PDO $pdo): bool {
         // 2. Update worker_skills with NC data (pending admin review)
         foreach (($data['skill_nc_data'] ?? []) as $nc) {
             if (empty($nc['submitted'])) continue;
-            $upd = $pdo->prepare("UPDATE worker_skills SET nc_level=:nc_level, nc_certificate_number=:nc_cert_num, nc_certificate_image=:nc_cert_img, badge_level=:badge_level, is_verified=0, verification_notes='Pending admin review', updated_at=NOW() WHERE worker_id=:worker_id AND sub_category=:sub_category");
+            $upd = $pdo->prepare("UPDATE worker_skills SET nc_level=:nc_level, nc_certificate_number=:nc_cert_num, nc_certificate_image=:nc_cert_img, badge_level=:badge_level, is_verified=FALSE, verification_notes='Pending admin review', updated_at=NOW() WHERE worker_id=:worker_id AND sub_category=:sub_category");
             $upd->execute([':nc_level'=>$nc['nc_level'],':nc_cert_num'=>$nc['nc_certificate_number'],':nc_cert_img'=>$nc['nc_certificate_image'],':badge_level'=>$nc['badge_level'],':worker_id'=>$data['user_id'],':sub_category'=>$nc['sub_category']]);
         }
 

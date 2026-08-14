@@ -18,9 +18,9 @@
 //   or the 4% admin commission calculation. Both are based on the original amounts.
 
 session_start();
-require_once '../db.php';
+require_once '../db_connect.php';
 require_once '../includes/init_lang.php';
-require_once '../includes/functions/wallet_functions.php';
+require_once '../includes/functions/wallet_manager.php';
 require_once '../includes/fcm_sender.php';
 require_once '../config/constants.php';
 
@@ -47,9 +47,8 @@ if (!$booking_id) {
             JOIN worker_profiles wp ON wp.user_id  = b.worker_id
             WHERE b.id = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $booking_id);
-    $stmt->execute();
-    $booking = $stmt->get_result()->fetch_assoc();
+    $stmt->execute([$booking_id]);
+    $booking = $stmt->fetch();
 
     if (!$booking) {
         $error = "Booking not found.";
@@ -98,7 +97,7 @@ if (!$booking_id) {
             // ---------------------------------------------------------------
             // All good — process the payment in a single transaction
             // ---------------------------------------------------------------
-            $conn->begin_transaction();
+            $conn->beginTransaction();
 
             try {
                 $wallet = new WalletManager($conn);
@@ -138,28 +137,29 @@ if (!$booking_id) {
                 // It does NOT reduce what the worker receives — Xendit takes that fee from the client's side.
                 if ($labor_cost > 0) {
                     $upd_wallet = $conn->prepare(
-                        "UPDATE worker_profiles 
+                        "UPDATE worker_profiles
                          SET wallet_balance = wallet_balance + ?
                          WHERE user_id = ?"
                     );
-                    $upd_wallet->bind_param("di", $labor_cost, $booking['worker_id']);
-                    if (!$upd_wallet->execute()) {
-                        throw new Exception("Failed to credit worker wallet: " . $conn->error);
+                    if (!$upd_wallet->execute([$labor_cost, $booking['worker_id']])) {
+                        throw new Exception("Failed to credit worker wallet");
                     }
 
                     // Log the credit transaction
-                    $credit_desc = $conn->real_escape_string(
-                        "GCash/Maya final payment received for booking #$booking_id"
-                    );
-                    $conn->query(
+                    $credit_desc = "GCash/Maya final payment received for booking #$booking_id";
+                    $credit_stmt = $conn->prepare(
                         "INSERT INTO wallet_transactions
                              (user_id, user_type, transaction_type, amount, reference_id,
                               reference_type, description, balance_after, created_at)
-                         SELECT {$booking['worker_id']}, 'worker', 'credit', $labor_cost,
-                                $booking_id, 'final_payment', '$credit_desc', wallet_balance, NOW()
+                         SELECT ?, 'worker', 'credit', ?,
+                                ?, 'final_payment', ?, wallet_balance, NOW()
                          FROM worker_profiles
-                         WHERE user_id = {$booking['worker_id']}"
+                         WHERE user_id = ?"
                     );
+                    $credit_stmt->execute([
+                        $booking['worker_id'], $labor_cost,
+                        $booking_id, $credit_desc, $booking['worker_id']
+                    ]);
                     error_log("✅ Worker #{$booking['worker_id']} credited ₱$labor_cost for booking #$booking_id");
                 }
 
@@ -185,11 +185,12 @@ if (!$booking_id) {
                 }
 
                 // ── STEP 4: Increment worker job count ──
-                $conn->query(
-                    "UPDATE worker_profiles 
-                     SET jobs_completed = jobs_completed + 1 
-                     WHERE user_id = {$booking['worker_id']}"
+                $jobs_stmt = $conn->prepare(
+                    "UPDATE worker_profiles
+                     SET jobs_completed = jobs_completed + 1
+                     WHERE user_id = ?"
                 );
+                $jobs_stmt->execute([$booking['worker_id']]);
 
                 // ── STEP 5: Award Listo Points to worker ──
                 // +5 points per completed job; every 50 points = ₱30 free booking credit
@@ -201,14 +202,15 @@ if (!$booking_id) {
                 }
 
                 // ── STEP 6: Mark booking as Completed ──
-                $conn->query(
-                    "UPDATE bookings 
+                $complete_stmt = $conn->prepare(
+                    "UPDATE bookings
                      SET final_payment_status = 'paid',
                          final_payment_method = 'GCash',
                          status               = 'Completed',
                          updated_at           = NOW()
-                     WHERE id = $booking_id"
+                     WHERE id = ?"
                 );
+                $complete_stmt->execute([$booking_id]);
 
                 // ── STEP 7: Notify worker ──
                 $client_name = $booking['client_name'];
@@ -249,13 +251,11 @@ if (!$booking_id) {
                 }
 
                 // In-app notification for worker
-                $escaped_worker_notif = $conn->real_escape_string($worker_notif_body);
                 $notif_stmt = $conn->prepare(
                     "INSERT INTO notifications (user_id, message, link, is_read, created_at)
                      VALUES (?, ?, '../worker/wallet.php', 0, NOW())"
                 );
-                $notif_stmt->bind_param("is", $booking['worker_id'], $escaped_worker_notif);
-                $notif_stmt->execute();
+                $notif_stmt->execute([$booking['worker_id'], $worker_notif_body]);
 
                 // In-app notification for client
                 $client_notif    = "✅ Payment of ₱{$amount_fmt} sent to {$booking['worker_name']}. Job #$booking_id complete!";
@@ -263,14 +263,13 @@ if (!$booking_id) {
                     "INSERT INTO notifications (user_id, message, link, is_read, created_at)
                      VALUES (?, ?, '../client/my_bookings.php', 0, NOW())"
                 );
-                $client_notif_st->bind_param("is", $booking['client_user_id'], $client_notif);
-                $client_notif_st->execute();
+                $client_notif_st->execute([$booking['client_user_id'], $client_notif]);
 
                 $conn->commit();
                 error_log("✅ GCash final payment fully processed for booking #$booking_id. Commission: ₱{$commission_result['commission']}. Listo Points: +{$points_result['new_points']}");
 
             } catch (Exception $e) {
-                $conn->rollback();
+                $conn->rollBack();
                 $error = "Processing error: " . $e->getMessage();
                 error_log("❌ final_payment_success failed for booking #$booking_id: " . $e->getMessage());
             }

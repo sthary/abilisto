@@ -1,7 +1,7 @@
 <?php
 // worker/quick_match_jobs.php
 session_start();
-include '../db.php';
+include '../db_connect.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
     header("Location: ../auth/login.php");
@@ -11,7 +11,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
 $worker_id = $_SESSION['user_id'];
 
 // DATABASE-FIRST APPROACH: Load ALL active jobs from database
-$sql = "SELECT 
+$sql = "SELECT
             b.id as broadcast_id,
             b.category,
             b.problem_tags as problem,
@@ -21,32 +21,34 @@ $sql = "SELECT
             u.full_name as client_name,
             u.address,
             bk.id as booking_id,
-            COALESCE(bk.calculated_fee, 
-                CASE 
+            COALESCE(bk.calculated_fee,
+                CASE
                     WHEN b.urgency = 'Emergency' THEN 75
                     WHEN b.urgency = 'High' THEN 60
                     ELSE 50
                 END
             ) as fee,
-            TIMESTAMPDIFF(SECOND, NOW(), b.expires_at) as seconds_remaining
+            EXTRACT(EPOCH FROM (b.expires_at - NOW())) as seconds_remaining
         FROM job_broadcasts b
         JOIN users u ON b.client_id = u.id
-        LEFT JOIN bookings bk ON bk.client_id = b.client_id AND bk.worker_id = '$worker_id'
-        WHERE b.status = 'searching' 
+        LEFT JOIN bookings bk ON bk.client_id = b.client_id AND bk.worker_id = ?
+        WHERE b.status = 'searching'
             AND b.expires_at > NOW()
-            AND JSON_CONTAINS(b.candidate_workers, '$worker_id')
-            AND (b.declined_workers IS NULL OR NOT JSON_CONTAINS(b.declined_workers, '$worker_id'))
-        ORDER BY 
-            CASE b.urgency 
-                WHEN 'Emergency' THEN 1 
-                WHEN 'High' THEN 2 
-                ELSE 3 
+            AND b.candidate_workers::jsonb @> ?::jsonb
+            AND (b.declined_workers IS NULL OR NOT (b.declined_workers::jsonb @> ?::jsonb))
+        ORDER BY
+            CASE b.urgency
+                WHEN 'Emergency' THEN 1
+                WHEN 'High' THEN 2
+                ELSE 3
             END,
             b.created_at DESC";
 
-$result = $conn->query($sql);
+$worker_id_json = json_encode([(int)$worker_id]);
+$stmt = $conn->prepare($sql);
+$stmt->execute([$worker_id, $worker_id_json, $worker_id_json]);
 $existing_jobs = [];
-while ($row = $result->fetch_assoc()) {
+while ($row = $stmt->fetch()) {
     // Calculate expiry timestamp in milliseconds for JavaScript
     $row['expiry_timestamp'] = strtotime($row['expires_at']) * 1000;
     $existing_jobs[] = $row;

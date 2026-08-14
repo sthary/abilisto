@@ -1,69 +1,79 @@
 <?php
 // admin/hr_withdrawals.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'hr') {
     header("Location: ../auth/login.php"); exit();
 }
 $hr_user_id = $_SESSION['user_id'];
-$hr_name    = $conn->query("SELECT full_name FROM users WHERE id=$hr_user_id")->fetch_assoc()['full_name'] ?? 'HR';
+$hr_stmt    = $conn->prepare("SELECT full_name FROM users WHERE id=?");
+$hr_stmt->execute([$hr_user_id]);
+$hr_name    = $hr_stmt->fetch()['full_name'] ?? 'HR';
 
 // ── Handle approval/rejection ───────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_payout'])) {
     $wid    = intval($_POST['withdrawal_id']??0);
     $wkr    = intval($_POST['worker_id']??0);
     $amt    = floatval($_POST['amount']??0);
-    $status = $conn->real_escape_string($_POST['status']??'');
-    $note   = $conn->real_escape_string(trim($_POST['rejection_note']??''));
+    $status = $_POST['status']??'';
+    $note   = trim($_POST['rejection_note']??'');
     $allowed= ['Processing','Completed','Rejected'];
     if (!in_array($status,$allowed)) { header("Location: hr_withdrawals.php"); exit(); }
 
-    $conn->query("UPDATE withdrawals SET status='$status', approved_by=$hr_user_id, rejection_note='$note' WHERE id=$wid");
+    $upd_stmt = $conn->prepare("UPDATE withdrawals SET status=?, approved_by=?, rejection_note=? WHERE id=?");
+    $upd_stmt->execute([$status, $hr_user_id, $note, $wid]);
 
     $msg = match($status) {
         'Completed' => "✅ Your withdrawal of ₱".number_format($amt,2)." has been processed to your GCash.",
         'Rejected'  => "⚠️ Your withdrawal of ₱".number_format($amt,2)." was rejected. Reason: $note",
         default     => "🔄 Your withdrawal of ₱".number_format($amt,2)." is being processed.",
     };
-    $safe_msg = $conn->real_escape_string($msg);
-    $conn->query("INSERT INTO notifications (user_id,message,link) VALUES ($wkr,'$safe_msg','../worker/wallet.php')");
+    $notif_stmt = $conn->prepare("INSERT INTO notifications (user_id,message,link) VALUES (?,?,?)");
+    $notif_stmt->execute([$wkr, $msg, '../worker/wallet.php']);
 
     header("Location: hr_withdrawals.php?msg=updated"); exit();
 }
 
 // ── Filters ─────────────────────────────────────────────────
-$search   = $conn->real_escape_string($_GET['search']  ?? '');
-$status_f = $conn->real_escape_string($_GET['status']  ?? '');
-$date_from= $conn->real_escape_string($_GET['date_from']?? '');
-$date_to  = $conn->real_escape_string($_GET['date_to']  ?? '');
+$search   = trim($_GET['search']  ?? '');
+$status_f = trim($_GET['status']  ?? '');
+$date_from= trim($_GET['date_from']?? '');
+$date_to  = trim($_GET['date_to']  ?? '');
 $page     = max(1,intval($_GET['page']??1));
 $per_page = 20; $offset = ($page-1)*$per_page;
 
 $where = "WHERE 1=1";
-if ($search)    $where .= " AND (u.full_name LIKE '%$search%' OR u.email LIKE '%$search%' OR w.gcash_number LIKE '%$search%')";
-if ($status_f)  $where .= " AND w.status='$status_f'";
-if ($date_from) $where .= " AND DATE(w.request_date)>='$date_from'";
-if ($date_to)   $where .= " AND DATE(w.request_date)<='$date_to'";
+$params = [];
+if ($search)    { $where .= " AND (u.full_name LIKE ? OR u.email LIKE ? OR w.gcash_number LIKE ?)"; $like="%$search%"; $params[]=$like; $params[]=$like; $params[]=$like; }
+if ($status_f)  { $where .= " AND w.status=?"; $params[] = $status_f; }
+if ($date_from) { $where .= " AND DATE(w.request_date)>=?"; $params[] = $date_from; }
+if ($date_to)   { $where .= " AND DATE(w.request_date)<=?"; $params[] = $date_to; }
 
-$stats = $conn->query("SELECT
+$stats_stmt = $conn->prepare("SELECT
     COUNT(*) as total,
     SUM(w.amount) as total_requested,
     SUM(CASE WHEN w.status IN ('Completed') THEN w.amount ELSE 0 END) as paid_out,
     SUM(CASE WHEN w.status='Pending' THEN w.amount ELSE 0 END) as pending_amt,
     COUNT(CASE WHEN w.status='Pending' THEN 1 END) as pending_cnt
-FROM withdrawals w LEFT JOIN users u ON u.id=w.worker_id $where")->fetch_assoc();
+FROM withdrawals w LEFT JOIN users u ON u.id=w.worker_id $where");
+$stats_stmt->execute($params);
+$stats = $stats_stmt->fetch();
 
-$total_rows  = (int)$conn->query("SELECT COUNT(*) as c FROM withdrawals w LEFT JOIN users u ON u.id=w.worker_id $where")->fetch_assoc()['c'];
+$count_stmt = $conn->prepare("SELECT COUNT(*) as c FROM withdrawals w LEFT JOIN users u ON u.id=w.worker_id $where");
+$count_stmt->execute($params);
+$total_rows  = (int)$count_stmt->fetch()['c'];
 $total_pages = ceil($total_rows/$per_page);
 
-$rows = $conn->query("SELECT w.*, u.full_name, u.email, u.profile_pic, wp.wallet_balance, wp.verification_status
+$rows_stmt = $conn->prepare("SELECT w.*, u.full_name, u.email, u.profile_pic, wp.wallet_balance, wp.verification_status
     FROM withdrawals w
     LEFT JOIN users u ON u.id=w.worker_id
     LEFT JOIN worker_profiles wp ON wp.user_id=w.worker_id
     $where
     ORDER BY CASE WHEN w.status='Pending' THEN 0 ELSE 1 END, w.request_date DESC
-    LIMIT $per_page OFFSET $offset");
+    LIMIT ? OFFSET ?");
+$rows_stmt->execute(array_merge($params, [$per_page, $offset]));
+$withdrawal_rows = $rows_stmt->fetchAll();
 
 $current_date = date('M d, Y');
 function getUserAvatar($pic,$name){if(!empty($pic)&&file_exists("../uploads/profiles/".$pic))return"../uploads/profiles/".$pic;return"https://ui-avatars.com/api/?name=".urlencode($name)."&background=8B5CF6&color=fff&size=128&bold=true";}
@@ -215,7 +225,7 @@ function getUserAvatar($pic,$name){if(!empty($pic)&&file_exists("../uploads/prof
                     <th class="text-right">Action</th>
                 </tr></thead>
                 <tbody>
-                <?php if($rows && $rows->num_rows>0): while($r=$rows->fetch_assoc()):
+                <?php if(count($withdrawal_rows)>0): foreach($withdrawal_rows as $r):
                     $sl=strtolower($r['status']);
                     $is_pending=$r['status']==='Pending';
                 ?>
@@ -247,7 +257,7 @@ function getUserAvatar($pic,$name){if(!empty($pic)&&file_exists("../uploads/prof
                         <?php endif; ?>
                     </td>
                 </tr>
-                <?php endwhile; else: ?>
+                <?php endforeach; else: ?>
                 <tr><td colspan="7" class="text-center py-16 text-slate-400">
                     <span class="material-icons-round text-3xl block mb-2 opacity-30">account_balance_wallet</span>
                     No withdrawal requests found.

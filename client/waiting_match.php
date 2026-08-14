@@ -1,7 +1,7 @@
 <?php
 // client/waiting_match.php
 session_start();
-include '../db.php';
+include '../db_connect.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
     header("Location: ../auth/login.php");
@@ -12,9 +12,10 @@ $broadcast_id = $_GET['broadcast_id'] ?? 0;
 $client_id = $_SESSION['user_id'];
 
 // Verify this broadcast belongs to the client
-$broadcast = $conn->query("SELECT * FROM job_broadcasts 
-                          WHERE id = '$broadcast_id' AND client_id = '$client_id'")
-                          ->fetch_assoc();
+$broadcast_stmt = $conn->prepare("SELECT * FROM job_broadcasts
+                          WHERE id = ? AND client_id = ?");
+$broadcast_stmt->execute([$broadcast_id, $client_id]);
+$broadcast = $broadcast_stmt->fetch();
 
 if (!$broadcast) {
     header("Location: dashboard.php");

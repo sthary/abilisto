@@ -1,6 +1,6 @@
 <?php
 // auth/manage_phone.php
-include '../db.php';
+include '../db_connect.php';
 
 $error = '';
 $success = '';
@@ -19,9 +19,10 @@ if (empty($email)) {
 }
 
 // Get user's current phone number if exists
-$sql = "SELECT phone, is_phone_verified FROM users WHERE email = '$email'";
-$result = $conn->query($sql);
-$user = $result->fetch_assoc();
+$sql = "SELECT phone, is_phone_verified FROM users WHERE email = ?";
+$stmt = $conn->prepare($sql);
+$stmt->execute([$email]);
+$user = $stmt->fetch();
 $current_phone = $user['phone'] ?? '';
 $is_verified = $user['is_phone_verified'] ?? 0;
 
@@ -53,9 +54,10 @@ if (isset($_POST['continue_btn'])) {
         $clean_phone = '63' . substr($phone, 1);
         
         // Update phone in database
-        $update_sql = "UPDATE users SET phone = '$clean_phone', is_phone_verified = 0 WHERE email = '$email'";
-        
-        if ($conn->query($update_sql)) {
+        $update_sql = "UPDATE users SET phone = ?, is_phone_verified = FALSE WHERE email = ?";
+        $update_stmt = $conn->prepare($update_sql);
+
+        if ($update_stmt->execute([$clean_phone, $email])) {
             // Send OTP
             include '../includes/sms_sender.php';
             $otp_result = sendOTP($clean_phone);

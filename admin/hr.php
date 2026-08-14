@@ -1,6 +1,6 @@
 <?php
 // admin/hr.php
-include '../db.php';
+include '../db_connect.php';
 include '../includes/init_lang.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'hr') {
@@ -8,50 +8,54 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'hr') {
 }
 
 $hr_user_id = $_SESSION['user_id'];
-$hr_name    = $conn->query("SELECT full_name FROM users WHERE id=$hr_user_id")->fetch_assoc()['full_name'] ?? 'HR';
+$hr_stmt = $conn->prepare("SELECT full_name FROM users WHERE id=?");
+$hr_stmt->execute([$hr_user_id]);
+$hr_name = $hr_stmt->fetch()['full_name'] ?? 'HR';
 
 // ── KPIs ───────────────────────────────────────────────────
 $emp_stats = $conn->query("SELECT
     COUNT(*) as total,
     SUM(CASE WHEN employment_status='Active' THEN 1 ELSE 0 END) as active,
     SUM(CASE WHEN employment_status='On Leave' THEN 1 ELSE 0 END) as on_leave,
-    SUM(CASE WHEN employment_status='Terminated' THEN 1 ELSE 0 END) as `terminated`,
+    SUM(CASE WHEN employment_status='Terminated' THEN 1 ELSE 0 END) as terminated,
     SUM(basic_salary) as total_payroll
-FROM employees")->fetch_assoc();
+FROM employees")->fetch();
 
 $payroll_stats = $conn->query("SELECT
     COUNT(*) as total_runs,
     SUM(CASE WHEN status='Released' THEN total_net ELSE 0 END) as total_released,
     SUM(CASE WHEN status='Draft' THEN 1 ELSE 0 END) as drafts,
     SUM(CASE WHEN status='For Approval' THEN 1 ELSE 0 END) as pending_approval
-FROM payroll_runs")->fetch_assoc();
+FROM payroll_runs")->fetch();
 
 $worker_stats = $conn->query("SELECT
     COUNT(*) as total,
-    SUM(role='worker') as workers,
-    SUM(role='client') as clients
-FROM users WHERE role IN ('worker','client')")->fetch_assoc();
+    SUM(CASE WHEN role='worker' THEN 1 ELSE 0 END) as workers,
+    SUM(CASE WHEN role='client' THEN 1 ELSE 0 END) as clients
+FROM users WHERE role IN ('worker','client')")->fetch();
 
-$pending_withdrawals = (int)$conn->query("SELECT COUNT(*) as c FROM withdrawals WHERE status='Pending'")->fetch_assoc()['c'];
-$pending_verifications = (int)$conn->query("SELECT COUNT(*) as c FROM verification WHERE verification_status='pending'")->fetch_assoc()['c'];
+$pending_withdrawals = (int)$conn->query("SELECT COUNT(*) as c FROM withdrawals WHERE status='Pending'")->fetch()['c'];
+$pending_verifications = (int)$conn->query("SELECT COUNT(*) as c FROM verification WHERE verification_status='pending'")->fetch()['c'];
 
 // ── Recent employees ────────────────────────────────────────
-$recent_emps = $conn->query("SELECT * FROM employees ORDER BY created_at DESC LIMIT 5");
+$recent_emps = $conn->query("SELECT * FROM employees ORDER BY created_at DESC LIMIT 5")->fetchAll();
 
 // ── Payroll runs ────────────────────────────────────────────
 $recent_payrolls = $conn->query("SELECT pr.*, u.full_name as generated_by_name
     FROM payroll_runs pr LEFT JOIN users u ON u.id=pr.generated_by
-    ORDER BY pr.created_at DESC LIMIT 5");
+    ORDER BY pr.created_at DESC LIMIT 5")->fetchAll();
 
 // ── Dept breakdown ──────────────────────────────────────────
 $dept_res = $conn->query("SELECT department, COUNT(*) as cnt, SUM(basic_salary) as salary
     FROM employees WHERE employment_status='Active'
     GROUP BY department ORDER BY cnt DESC");
 $depts = [];
-while($d=$dept_res->fetch_assoc()) $depts[]=$d;
+while($d=$dept_res->fetch()) $depts[]=$d;
 
 $current_date = date('M d, Y');
-$notif_count  = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHERE user_id=$hr_user_id AND is_read=0")->fetch_assoc()['c']??0);
+$notif_stmt = $conn->prepare("SELECT COUNT(*) as c FROM notifications WHERE user_id=? AND is_read=0");
+$notif_stmt->execute([$hr_user_id]);
+$notif_count  = (int)($notif_stmt->fetch()['c']??0);
 ?>
 <!DOCTYPE html>
 <html class="light" lang="en">
@@ -225,8 +229,8 @@ $notif_count  = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHER
                 <a href="hr_employees.php" class="text-[10px] font-bold text-hr hover:underline uppercase tracking-wider">View All</a>
             </div>
             <div class="divide-y divide-slate-50 dark:divide-slate-800/50">
-            <?php if($recent_emps && $recent_emps->num_rows>0):
-                while($e=$recent_emps->fetch_assoc()):
+            <?php if(count($recent_emps)>0):
+                foreach($recent_emps as $e):
                     $sclass=['Active'=>'badge-active','On Leave'=>'badge-leave','Terminated'=>'badge-terminated'][$e['employment_status']]??'badge-draft';
             ?>
             <div class="px-6 py-3.5 flex items-center justify-between hover:bg-violet-50/30 dark:hover:bg-violet-900/10 transition-all">
@@ -241,7 +245,7 @@ $notif_count  = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHER
                 </div>
                 <span class="badge <?php echo $sclass; ?>"><?php echo $e['employment_status']; ?></span>
             </div>
-            <?php endwhile; else: ?>
+            <?php endforeach; else: ?>
             <div class="px-6 py-10 text-center text-slate-400 text-sm">No employees yet.</div>
             <?php endif; ?>
             </div>
@@ -257,8 +261,8 @@ $notif_count  = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHER
                 <a href="hr_payroll.php" class="text-[10px] font-bold text-hr hover:underline uppercase tracking-wider">Manage</a>
             </div>
             <div class="divide-y divide-slate-50 dark:divide-slate-800/50">
-            <?php if($recent_payrolls && $recent_payrolls->num_rows>0):
-                while($p=$recent_payrolls->fetch_assoc()):
+            <?php if(count($recent_payrolls)>0):
+                foreach($recent_payrolls as $p):
                     $ps=['Draft'=>'badge-draft','For Approval'=>'badge-approval','Released'=>'badge-released'][$p['status']]??'badge-draft';
             ?>
             <div class="px-6 py-3.5 hover:bg-violet-50/30 dark:hover:bg-violet-900/10 transition-all">
@@ -271,7 +275,7 @@ $notif_count  = (int)($conn->query("SELECT COUNT(*) as c FROM notifications WHER
                     <p class="text-[10px] font-bold text-equity">₱<?php echo number_format($p['total_net'],2); ?></p>
                 </div>
             </div>
-            <?php endwhile; else: ?>
+            <?php endforeach; else: ?>
             <div class="px-6 py-10 text-center text-slate-400 text-sm">No payroll runs yet.<br><a href="hr_payroll.php?action=new" class="text-hr font-semibold">Generate first payroll →</a></div>
             <?php endif; ?>
             </div>
