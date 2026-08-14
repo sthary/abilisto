@@ -2,10 +2,6 @@
 // worker/quick_match_view.php
 require_once '../db.php';
 
-// Turn on error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 // Check if user is logged in as worker
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
     header("Location: ../auth/login.php?error=Please login as worker");
