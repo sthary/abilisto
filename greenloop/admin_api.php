@@ -128,7 +128,7 @@ try {
 
             // Notify client
             $msg = "♻️ Your GreenLoop scrap report #{$report_id} has been approved and broadcasted to junk shops!";
-            $link = 'greenloop/greenloop_wallet.php';
+            $link = '../greenloop/greenloop_wallet.php';
             $cid  = (int)$report['client_id'];
             $notif_stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at)
                           VALUES (?, ?, ?, 0, NOW())");
@@ -163,7 +163,7 @@ try {
             $cid = (int)$report['client_id'];
             $notif_msg = "❌ Your GreenLoop report #{$report_id} was not approved. Reason: {$reason}";
             $notif_stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at)
-                          VALUES (?, ?, 'greenloop/greenloop_wallet.php', 0, NOW())");
+                          VALUES (?, ?, '../greenloop/greenloop_wallet.php', 0, NOW())");
             $notif_stmt->execute([$cid, $notif_msg]);
 
             respond(['success' => true, 'message' => "Report #{$report_id} rejected."]);

@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['redeem_reward_id']))
             $redemption_id = $pdo->lastInsertId();
             gc_spend($pdo, $client_id, $reward['green_coins_cost'], $redemption_id, "Redeemed: {$reward['reward_name']}");
             try {
-                $pdo->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at) VALUES (?, ?, 'greenloop/greenloop_wallet.php', 0, NOW())")
+                $pdo->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at) VALUES (?, ?, '../greenloop/greenloop_wallet.php', 0, NOW())")
                     ->execute([$client_id, "🎁 You redeemed \"{$reward['reward_name']}\"! Your promo code is: {$code}. Valid until " . date('M d, Y', strtotime($expires)) . "."]);
             } catch (Exception $e) {}
             $redeem_msg = ['type' => 'success', 'text' => "Reward redeemed! Your promo code: <strong>{$code}</strong> (valid {$reward['valid_days']} days)"];

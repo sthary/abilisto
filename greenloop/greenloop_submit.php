@@ -95,7 +95,7 @@ try {
     $location_note = $pickup_addr ? " Pickup location saved." : "";
     $pdo->prepare("
         INSERT INTO notifications (user_id, message, link, is_read, created_at)
-        VALUES (?, ?, 'greenloop/greenloop_wallet.php', 0, NOW())
+        VALUES (?, ?, '../greenloop/greenloop_wallet.php', 0, NOW())
     ")->execute([
         $client_id,
         "♻️ GreenLoop report submitted! Your scrap report #{$report_id} is pending review. You'll earn up to {$estimated_coins} Green Coins once collected & verified.{$location_note}"

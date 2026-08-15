@@ -132,7 +132,7 @@ try {
                  $_SESSION['full_name'] . " has paid ₱$amount via GCash.\n" .
                  "Payment is held in escrow. Accept to release payment.";
     
-    $notif_link = "../worker/view_booking.php?id=" . $booking_id;
+    $notif_link = "../worker/dashboard.php";
     
     if (function_exists('sendNotification')) {
         sendNotification($conn, $worker_id, $notif_msg, $notif_link);

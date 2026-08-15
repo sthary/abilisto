@@ -87,7 +87,7 @@ try {
         [
             'type'       => 'reschedule',
             'booking_id' => (string)$booking_id,
-            'url'        => '/abilisto/worker/view_booking.php?id=' . $booking_id
+            'url'        => '/abilisto/worker/dashboard.php'
         ]
     );
     error_log("📨 PUSH (reschedule) - Worker: $worker_id, Booking: $booking_id, Result: " .
@@ -98,7 +98,7 @@ try {
 
 // In-app notification to worker
 $notif_msg  = "📅 Booking Rescheduled!\n\n{$client_name} changed the schedule.\nFrom: {$old_date_fmt}\nTo: {$new_date_fmt}{$reason_text}";
-$notif_link = "../worker/view_booking.php?id=" . $booking_id;
+$notif_link = "../worker/dashboard.php";
 
 if (function_exists('sendNotification')) {
     sendNotification($conn, $worker_id, $notif_msg, $notif_link);
@@ -110,7 +110,7 @@ if (function_exists('sendNotification')) {
 // In-app notification to client (confirmation)
 $client_notif = "✅ Your booking has been rescheduled to {$new_date_fmt}.";
 if (function_exists('sendNotification')) {
-    sendNotification($conn, $client_id, $client_notif, "my_bookings.php");
+    sendNotification($conn, $client_id, $client_notif, "../client/my_bookings.php");
 }
 
 echo json_encode(['success' => true]);

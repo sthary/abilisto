@@ -235,7 +235,7 @@ if (isset($_POST['book_btn'])) {
                     "{$urgency_icon} New Booking: {$urgency_label}",
                     "{$client_name} needs help on {$formatted_date}. Issue: " . substr($problem_desc, 0, 60) . (strlen($problem_desc) > 60 ? '...' : ''),
                     ['type' => 'new_booking', 'booking_id' => (string)$booking_id, 'urgency' => (string)$urgency,
-                     'client_name' => (string)$client_name, 'url' => '/abilisto/worker/view_booking.php?id=' . $booking_id]
+                     'client_name' => (string)$client_name, 'url' => '/abilisto/worker/dashboard.php']
                 );
                 error_log("📨 PUSH NOTIFICATION - Worker: $worker_id, Booking: $booking_id, Result: " .
                     ($result['success'] ? 'SUCCESS' : 'FAILED: ' . (is_array($result['error']) ? json_encode($result['error']) : ($result['error'] ?? 'Unknown'))));
@@ -245,7 +245,7 @@ if (isset($_POST['book_btn'])) {
             $notif_msg  = "{$urgency_icon} {$urgency_label} Booking Request{$discount_text}!\n\n";
             $notif_msg .= "{$client_name} needs your help on {$formatted_date}\n";
             $notif_msg .= "Issue: " . substr($problem_desc, 0, 50) . (strlen($problem_desc) > 50 ? '...' : '');
-            $notif_link = "../worker/view_booking.php?id=" . $booking_id;
+            $notif_link = "../worker/dashboard.php";
 
             if (function_exists('sendNotification')) {
                 $result = sendNotification($conn, $worker_id, $notif_msg, $notif_link);
@@ -258,7 +258,7 @@ if (isset($_POST['book_btn'])) {
 
             $voucher_notif_text = $applied_voucher ? " Voucher {$applied_voucher['promo_code']} applied: -₱{$voucher_discount}." : "";
             $client_notif = "✅ Booking request sent to {$worker['full_name']} for {$formatted_date}" . (($discount_amount > 0) ? " with ₱{$discount_amount} GCash discount!" : "") . $voucher_notif_text;
-            if (function_exists('sendNotification')) { sendNotification($conn, $client_id, $client_notif, "my_bookings.php"); }
+            if (function_exists('sendNotification')) { sendNotification($conn, $client_id, $client_notif, "../client/my_bookings.php"); }
 
             $voucher_js_msg = $applied_voucher ? "\\nVoucher {$applied_voucher['promo_code']} applied: -₱{$voucher_discount}" : "";
             if ($payment_method === 'Xendit') {

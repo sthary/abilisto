@@ -190,7 +190,7 @@ if (isset($_POST['book_btn'])) {
                          date('M d, h:i A', strtotime($booking_date)) . "\n" .
                          "Fee: ₱$amount (to be paid upon service)";
             
-            sendNotification($conn, $worker_id, $notif_msg, "../worker/view_booking.php?id=$booking_id");
+            sendNotification($conn, $worker_id, $notif_msg, "../worker/dashboard.php");
             
             // Send notification to client
             sendNotification($conn, $client_id, 

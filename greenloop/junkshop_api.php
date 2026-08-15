@@ -125,7 +125,7 @@ try {
                 $cid = (int)$row['client_id'];
                 $notif_msg = "🚛 {$junkshop_name} has accepted your scrap pickup (Report #{$report_id})! They will contact you shortly.";
                 $notif_stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at)
-                              VALUES (?, ?, 'greenloop/greenloop_wallet.php', 0, NOW())");
+                              VALUES (?, ?, '../greenloop/greenloop_wallet.php', 0, NOW())");
                 $notif_stmt->execute([$cid, $notif_msg]);
             }
 
@@ -226,7 +226,7 @@ try {
             );
             
             $notif_stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at)
-                          VALUES (?, ?, 'greenloop/greenloop_wallet.php', 0, NOW())");
+                          VALUES (?, ?, '../greenloop/greenloop_wallet.php', 0, NOW())");
 
             if ($awarded) {
                 // Update the report with actual coins awarded

@@ -149,7 +149,7 @@ switch ($event) {
                     $conn,
                     $booking['worker_id'],
                     "💰 New PAID Booking! ₱" . number_format($amount, 2) . " is held in escrow. Accept to get started.",
-                    "../worker/view_booking.php?id=$booking_id"
+                    "../worker/dashboard.php"
                 );
                 error_log("✅ Escrow held for booking #$booking_id");
             } else {
