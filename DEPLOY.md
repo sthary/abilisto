@@ -1,5 +1,26 @@
 # Deploy
 
+## Database: Supabase Postgres (migrated from MySQL)
+
+The app now runs on Supabase Postgres — `db_connect.php` connects via `PG_HOST`/`PG_PORT`/
+`PG_NAME`/`PG_USER`/`PG_PASS` in `.env` (no longer `DB_*`/MySQL). Schema is hand-maintained at
+`schema_postgres.sql` in the repo root.
+
+**Required PHP extension: `pdo_pgsql`.** On Hostinger this is *not* enabled by default for
+PHP 8.3 on this account — it had to be turned on by hand by appending `extension=pgsql.so` /
+`extension=pdo_pgsql.so` to `/opt/alt/php83/link/conf/alt_php.ini` over SSH (this is the same
+file hPanel's **PHP Configuration → Extensions** page writes to for this account).
+
+**Caveat:** if `pdo_pgsql`/`pgsql` are ever unchecked and re-saved from hPanel's PHP Configuration
+UI, hPanel regenerates `alt_php.ini` from scratch and silently drops this — the site will break
+again with "Postgres connection failed: could not find driver" on every DB-touching page. If that
+happens, either re-check the extensions in hPanel, or re-append the two `extension=` lines above
+via SSH.
+
+The original Hostinger MySQL database (`u942667021_abilisto_db`) is kept intact, untouched, as a
+rollback path — it is simply no longer read by the app.
+
+
 **Status: wired up and live.** Push-to-deploy via a bare git repo + `post-receive` hook on
 Hostinger.
 
