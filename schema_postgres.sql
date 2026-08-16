@@ -24,11 +24,12 @@
 -- wallet_transactions.reference_type also had its allow-list widened
 -- beyond the original 3-value MySQL enum ('booking','withdrawal','fee'):
 -- the app's own code (wallet_manager.php, worker/wallet.php's tab filter)
--- actually writes and reads 'topup','listo_points','listo_reward', and
--- 'final_commission' too — MySQL was silently blanking these to '' on
--- every insert (a real, silent pre-existing bug), which broke the wallet
--- page's Listo Points tab filtering. Fixed going forward rather than
--- reproduced, since the data is genuinely used for display logic.
+-- actually writes and reads 'topup','listo_points','listo_reward',
+-- 'final_commission', and 'final_payment' too — MySQL was silently
+-- blanking these to '' on every insert (a real, silent pre-existing bug),
+-- which broke the wallet page's Listo Points tab filtering. Fixed going
+-- forward rather than reproduced, since the data is genuinely used for
+-- display logic.
 -- ============================================================
 
 -- ── 1. TABLES ────────────────────────────────────────────────
@@ -758,7 +759,7 @@ CREATE TABLE wallet_transactions (
   transaction_type TEXT NOT NULL CHECK (transaction_type IN ('credit','debit','fee','refund','withdrawal')),
   amount NUMERIC(10,2) NOT NULL,
   reference_id INTEGER,
-  reference_type TEXT CHECK (reference_type IS NULL OR reference_type IN ('booking','withdrawal','fee','topup','listo_points','listo_reward','final_commission','')),
+  reference_type TEXT CHECK (reference_type IS NULL OR reference_type IN ('booking','withdrawal','fee','topup','listo_points','listo_reward','final_commission','final_payment','')),
   description TEXT,
   balance_after NUMERIC(10,2),
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
