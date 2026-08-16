@@ -115,7 +115,7 @@ if ($action === 'find_workers') {
         $sql = "INSERT INTO job_broadcasts
                 (client_id, category, problem_tags, urgency, latitude, longitude,
                  status, expires_at, candidate_workers, is_quick_match, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, 'searching', ?, ?, 1, NOW())";
+                VALUES (?, ?, ?, ?, ?, ?, 'searching', ?, ?, TRUE, NOW())";
 
         $stmt = $conn->prepare($sql);
         $stmt->execute([

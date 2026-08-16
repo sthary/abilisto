@@ -105,7 +105,7 @@ try {
              client_lat, client_lng, status, expires_at, candidate_workers, is_quick_match, created_at)
             VALUES
             (?, ?, ?, ?, ?, ?,
-             ?, ?, 'searching', ?, ?, 1, NOW())";
+             ?, ?, 'searching', ?, ?, TRUE, NOW())";
 
     $stmt = $conn->prepare($sql);
     if (!$stmt->execute([$client_id, $category, $problems, $urgency, $lat, $lng,

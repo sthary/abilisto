@@ -58,7 +58,7 @@ if (isset($_POST['register_btn'])) {
         "INSERT INTO users (
             full_name, email, password, phone, address, municipality, role,
             latitude, longitude, verification_token, is_email_verified, is_phone_verified
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)"
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, FALSE)"
     );
 
     try {

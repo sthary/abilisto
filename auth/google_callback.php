@@ -90,7 +90,7 @@ if (isset($_GET['code'])) {
         // FIX ISSUE 2: use $role from state param, not hardcoded 'client'
         $stmt_insert = $conn->prepare(
             "INSERT INTO users (full_name, email, google_id, avatar, role, password, is_email_verified, is_phone_verified)
-             VALUES (?, ?, ?, ?, ?, NULL, 1, 0)"
+             VALUES (?, ?, ?, ?, ?, NULL, TRUE, FALSE)"
         );
 
         if ($stmt_insert->execute([$g_name, $g_email, $g_id, $g_picture, $role])) {
