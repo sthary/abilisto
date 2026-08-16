@@ -553,6 +553,8 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             border-radius: 24px;
             padding: 28px 28px 22px;
             width: min(360px, calc(100vw - 32px));
+            max-height: calc(100vh - 24px);
+            overflow-y: auto;
             box-shadow: 0 32px 80px -12px rgba(43,47,52,0.22), 0 0 0 1px rgba(20,106,245,0.08);
             pointer-events: all;
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -1645,13 +1647,43 @@ setTimeout(function() {
 
     /* ── State ── */
     let step = 0;
+    let lastRect = null, lastPos = 'center';
 
     /* ── Helpers ── */
+
+    // The mobile bottom nav is position:fixed and permanently covers the
+    // bottom of the viewport — getBoundingClientRect()/window.innerHeight
+    // know nothing about it, so every positioning calc below has to treat
+    // its height as a "safe area" inset or the ring/card can end up
+    // partly hidden behind it on phones.
+    function navInset() {
+        const nav = document.querySelector('.mobile-bottom-nav');
+        if (!nav) return 0;
+        const cs = getComputedStyle(nav);
+        if (cs.display === 'none' || cs.position !== 'fixed') return 0;
+        return nav.offsetHeight;
+    }
 
     function scrollAndRect(el) {
         return new Promise(resolve => {
             el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-            setTimeout(() => resolve(el.getBoundingClientRect()), 400);
+            setTimeout(() => {
+                let rect = el.getBoundingClientRect();
+                const inset = navInset();
+                const visibleBottom = window.innerHeight - inset;
+                // Corrective nudge if the target still ends up (partly) behind
+                // the fixed bottom nav, or off the top — mobile browsers also
+                // resize their address bar mid-scroll, which can throw off a
+                // single scrollIntoView call.
+                if (rect.bottom > visibleBottom) {
+                    window.scrollBy({ top: rect.bottom - visibleBottom + 16, behavior: 'auto' });
+                    rect = el.getBoundingClientRect();
+                } else if (rect.top < 0) {
+                    window.scrollBy({ top: rect.top - 16, behavior: 'auto' });
+                    rect = el.getBoundingClientRect();
+                }
+                resolve(rect);
+            }, 500); // mobile smooth-scroll settles slower than desktop
         });
     }
 
@@ -1662,22 +1694,24 @@ setTimeout(function() {
             ring.style.opacity = '0';
             return;
         }
+        const maxHeight = (window.innerHeight - navInset()) - (rect.top - P);
+        const h = Math.max(0, Math.min(rect.height + P * 2, maxHeight));
         cutout.setAttribute('x',      rect.left   - P);
         cutout.setAttribute('y',      rect.top    - P);
         cutout.setAttribute('width',  rect.width  + P * 2);
-        cutout.setAttribute('height', rect.height + P * 2);
-        ring.style.cssText += `opacity:1;left:${rect.left - P}px;top:${rect.top - P}px;width:${rect.width + P*2}px;height:${rect.height + P*2}px;`;
+        cutout.setAttribute('height', h);
+        ring.style.cssText += `opacity:1;left:${rect.left - P}px;top:${rect.top - P}px;width:${rect.width + P*2}px;height:${h}px;`;
     }
 
     function placeCard(rect, pos) {
         const PAD = 14, EDGE = 12;
-        const vw = window.innerWidth, vh = window.innerHeight;
+        const vw = window.innerWidth, vh = window.innerHeight - navInset();
         const cw = card.offsetWidth || 360, ch = card.offsetHeight || 260;
         let top, left;
 
         if (!rect || pos === 'center') {
-            top  = (vh - ch) / 2;
-            left = (vw - cw) / 2;
+            top  = Math.max(EDGE, (vh - ch) / 2);
+            left = Math.max(EDGE, (vw - cw) / 2);
         } else {
             if (pos === 'bottom') { top = rect.bottom + PAD; left = rect.left + (rect.width - cw) / 2; }
             else if (pos === 'top')   { top = rect.top - ch - PAD; left = rect.left + (rect.width - cw) / 2; }
@@ -1743,10 +1777,31 @@ setTimeout(function() {
             if (el) rect = await scrollAndRect(el);
         }
 
+        lastRect = rect;
+        lastPos  = s.position;
         setCutout(rect);
         // two rAF ticks so card has rendered height before positioning
         requestAnimationFrame(() => requestAnimationFrame(() => placeCard(rect, s.position)));
     }
+
+    // Mobile browsers resize the viewport (address bar show/hide) and can be
+    // rotated mid-tour — re-measure the current target fresh rather than
+    // trusting the stale rect, since the page layout may have reflowed.
+    let resizeTimer = null;
+    function handleViewportChange() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            const s = STEPS[step];
+            if (s && s.target) {
+                const el = document.querySelector(s.target);
+                if (el) lastRect = el.getBoundingClientRect();
+            }
+            setCutout(lastRect);
+            placeCard(lastRect, lastPos);
+        }, 150);
+    }
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('orientationchange', handleViewportChange);
 
     function next() {
         step++;
@@ -1755,6 +1810,9 @@ setTimeout(function() {
     }
 
     function finish() {
+        window.removeEventListener('resize', handleViewportChange);
+        window.removeEventListener('orientationchange', handleViewportChange);
+
         // fade out
         [overlay, card, ring].forEach(el => {
             el.style.transition = 'opacity 0.3s';
