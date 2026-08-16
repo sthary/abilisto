@@ -1771,6 +1771,12 @@ setTimeout(function() {
         }
         renderCard(i);
 
+        // Set before the scroll starts, not after — the scroll listener
+        // below fires mid-transition (during the scrollIntoView animation)
+        // and needs the correct position rule for this step immediately,
+        // not the previous step's.
+        lastPos = s.position;
+
         let rect = null;
         if (s.target) {
             const el = document.querySelector(s.target);
@@ -1778,7 +1784,6 @@ setTimeout(function() {
         }
 
         lastRect = rect;
-        lastPos  = s.position;
         setCutout(rect);
         // two rAF ticks so card has rendered height before positioning
         requestAnimationFrame(() => requestAnimationFrame(() => placeCard(rect, s.position)));
@@ -1803,6 +1808,31 @@ setTimeout(function() {
     window.addEventListener('resize', handleViewportChange);
     window.addEventListener('orientationchange', handleViewportChange);
 
+    // The ring/cutout are position:fixed, set once per step from a snapshot
+    // rect — they never move again unless something explicitly re-measures
+    // and repositions them. Nothing was doing that on scroll, so the
+    // highlight visibly detaches from its target and floats in place the
+    // moment the page scrolls (both the tour's own scrollIntoView animation
+    // and any manual scroll the user makes, since the tour doesn't lock
+    // page scroll). rAF-throttled so it tracks smoothly without doing this
+    // work more than once per frame.
+    let scrollTicking = false;
+    function handleScroll() {
+        if (scrollTicking) return;
+        scrollTicking = true;
+        requestAnimationFrame(() => {
+            const s = STEPS[step];
+            if (s && s.target) {
+                const el = document.querySelector(s.target);
+                if (el) lastRect = el.getBoundingClientRect();
+            }
+            setCutout(lastRect);
+            placeCard(lastRect, lastPos);
+            scrollTicking = false;
+        });
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
     function next() {
         step++;
         if (step >= STEPS.length) finish();
@@ -1812,6 +1842,7 @@ setTimeout(function() {
     function finish() {
         window.removeEventListener('resize', handleViewportChange);
         window.removeEventListener('orientationchange', handleViewportChange);
+        window.removeEventListener('scroll', handleScroll);
 
         // fade out
         [overlay, card, ring].forEach(el => {
