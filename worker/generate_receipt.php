@@ -353,9 +353,18 @@ if ($remaining_balance == 0 && $booking['status'] === 'Completed') {
                     <span class="font-semibold">₱<?php echo number_format($labor_materials, 2); ?></span>
                 </div>
                 
-                <div class="flex justify-between items-center pt-8">
+                <div class="flex justify-between items-center pt-8 pb-4">
                     <span class="text-xl font-display font-bold">Total Cost</span>
                     <span class="text-3xl font-display font-extrabold text-slate-900 dark:text-white">₱<?php echo number_format($total_cost, 2); ?></span>
+                </div>
+
+                <div class="flex justify-between items-center py-3 border-t border-slate-100 dark:border-slate-800 text-sm">
+                    <span class="text-slate-400 dark:text-slate-500">Abilisto Platform Commission (<?php echo number_format($booking['admin_fee_percentage'] ?? ADMIN_COMMISSION_PERCENT, 0); ?>% of labor fee)</span>
+                    <span class="text-slate-400 dark:text-slate-500">− ₱<?php echo number_format($admin_fee, 2); ?></span>
+                </div>
+                <div class="flex justify-between items-center py-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl px-4 -mx-4">
+                    <span class="text-lg font-display font-bold text-emerald-700 dark:text-emerald-400">You'll Receive</span>
+                    <span class="text-2xl font-display font-extrabold text-emerald-700 dark:text-emerald-400">₱<?php echo number_format($worker_gets, 2); ?></span>
                 </div>
             </div>
             
@@ -543,6 +552,36 @@ function notifyCashPayment(bookingId) {
         btn.innerHTML = originalText;
     });
 }
+
+// ── Auto-close: poll for payment completion (cash confirmed by client, or
+// QR/Xendit scanned and paid) and redirect back to the dashboard once the
+// booking is actually Completed — the worker shouldn't have to sit on this
+// page or manually refresh to find out the client paid. ──
+<?php if (!isset($zero_balance) && $booking['status'] !== 'Completed'): ?>
+(function () {
+    const bookingId = <?php echo (int)$booking_id; ?>;
+    const poll = setInterval(() => {
+        fetch(`../api/check_final_payment_status.php?booking_id=${bookingId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.completed) {
+                    clearInterval(poll);
+                    const banner = document.createElement('div');
+                    banner.className = 'fixed inset-0 bg-emerald-600/95 flex items-center justify-center z-50 text-white text-center px-6';
+                    banner.innerHTML = `
+                        <div>
+                            <span class="material-symbols-outlined text-6xl mb-4 block">check_circle</span>
+                            <p class="text-2xl font-display font-bold mb-2">Payment Received!</p>
+                            <p class="text-emerald-100">Redirecting to your dashboard...</p>
+                        </div>`;
+                    document.body.appendChild(banner);
+                    setTimeout(() => { window.location.href = 'dashboard.php'; }, 2000);
+                }
+            })
+            .catch(() => {}); // silent — just try again next tick
+    }, 5000);
+})();
+<?php endif; ?>
 
 // Dark mode preference
 if (localStorage.getItem('darkMode') === 'true') {

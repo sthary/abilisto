@@ -115,11 +115,12 @@ if (!$booking_id) {
                 // ── STEP 1: Release mobilization escrow to worker (if mobilization was paid via GCash) ──
                 // When mobilization was paid via Xendit, the ₱calculated_fee was held in admin escrow.
                 // Now that the job is done, release it to the worker.
-                if (
+                $mobilization_released = (
                     $booking['payment_method']  === 'Xendit' &&
                     $booking['payment_status']   === 'Paid'  &&
                     intval($booking['is_escrow']) === 1
-                ) {
+                );
+                if ($mobilization_released) {
                     $release = $wallet->releaseEscrowPayment(
                         $booking_id,
                         $booking['worker_id'],
@@ -131,22 +132,32 @@ if (!$booking_id) {
                     error_log("✅ Mobilization escrow released: ₱{$booking['calculated_fee']} → worker #{$booking['worker_id']}");
                 }
 
-                // ── STEP 2: Credit worker wallet with labor+materials amount ──
-                // The client paid labor_materials_cost via GCash. Credit this to worker now.
+                // ── STEP 2: Credit worker wallet with the rest of what's owed ──
+                // If mobilization was already released via escrow above, this payment is
+                // just labor+materials. Otherwise mobilization was never collected
+                // separately (e.g. it was set up as Cash and never paid), so
+                // total_final_cost already bundles it in — same condition
+                // complete_job.php used when deciding what to invoice for. Crediting
+                // labor_cost alone in that case would silently drop the worker's
+                // mobilization pay.
                 // Note: The 2.3% Xendit convenience fee was paid by the CLIENT on top of this amount.
                 // It does NOT reduce what the worker receives — Xendit takes that fee from the client's side.
-                if ($labor_cost > 0) {
+                $step2_credit = $mobilization_released ? $labor_cost : $total_final_cost;
+
+                if ($step2_credit > 0) {
                     $upd_wallet = $conn->prepare(
                         "UPDATE worker_profiles
                          SET wallet_balance = wallet_balance + ?
                          WHERE user_id = ?"
                     );
-                    if (!$upd_wallet->execute([$labor_cost, $booking['worker_id']])) {
+                    if (!$upd_wallet->execute([$step2_credit, $booking['worker_id']])) {
                         throw new Exception("Failed to credit worker wallet");
                     }
 
                     // Log the credit transaction
-                    $credit_desc = "GCash/Maya final payment received for booking #$booking_id";
+                    $credit_desc = $mobilization_released
+                        ? "GCash/Maya final payment received for booking #$booking_id"
+                        : "GCash/Maya final payment received for booking #$booking_id (includes mobilization fee, not paid separately)";
                     $credit_stmt = $conn->prepare(
                         "INSERT INTO wallet_transactions
                              (user_id, user_type, transaction_type, amount, reference_id,
@@ -157,10 +168,10 @@ if (!$booking_id) {
                          WHERE user_id = ?"
                     );
                     $credit_stmt->execute([
-                        $booking['worker_id'], $labor_cost,
+                        $booking['worker_id'], $step2_credit,
                         $booking_id, $credit_desc, $booking['worker_id']
                     ]);
-                    error_log("✅ Worker #{$booking['worker_id']} credited ₱$labor_cost for booking #$booking_id");
+                    error_log("✅ Worker #{$booking['worker_id']} credited ₱$step2_credit for booking #$booking_id");
                 }
 
                 // ── STEP 3: Deduct 4% admin commission from worker, credit admin ──
@@ -214,7 +225,7 @@ if (!$booking_id) {
 
                 // ── STEP 7: Notify worker ──
                 $client_name = $booking['client_name'];
-                $amount_fmt  = number_format($labor_cost, 2);
+                $amount_fmt  = number_format($step2_credit, 2);
                 $total_fmt   = number_format($total_final_cost, 2);
 
                 $worker_notif_title = $points_result['milestone']
@@ -346,16 +357,36 @@ if (!$booking_id) {
                         <span class="text-slate-500">Worker</span>
                         <span class="font-semibold"><?php echo htmlspecialchars($booking['worker_name']); ?></span>
                     </div>
+                    <?php
+                        // Derived purely from stored booking columns so this renders
+                        // identically whether we just processed this payment or the
+                        // page was reloaded afterward. total_final_cost already bundles
+                        // in the mobilization fee when it wasn't collected separately
+                        // (same rule complete_job.php used when it set these columns),
+                        // so it's always the correct "amount actually invoiced" base —
+                        // using labor_materials_cost alone here was the bug: it silently
+                        // dropped the mobilization fee from both the displayed total and
+                        // the convenience-fee calculation whenever it was bundled in.
+                        $display_labor    = floatval($booking['labor_materials_cost']);
+                        $display_total    = floatval($booking['total_final_cost']);
+                        $display_mob      = max(0, round($display_total - $display_labor, 2));
+                        $mobilization_bundled = $display_mob > 0.01;
+                        $convenience_fee  = round($display_total * 0.023, 2);
+                    ?>
                     <div class="flex justify-between text-sm">
                         <span class="text-slate-500">Labor &amp; Materials</span>
                         <span class="font-bold text-emerald-600 text-base">
-                            ₱<?php echo number_format(floatval($booking['labor_materials_cost']), 2); ?>
+                            ₱<?php echo number_format($display_labor, 2); ?>
                         </span>
                     </div>
-                    <?php
-                        // Show the convenience fee the client actually paid to Xendit
-                        $convenience_fee = round(floatval($booking['labor_materials_cost']) * 0.023, 2);
-                    ?>
+                    <?php if ($mobilization_bundled): ?>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500">Mobilization Fee <span class="text-xs">(included, not paid separately)</span></span>
+                        <span class="font-bold text-emerald-600 text-base">
+                            ₱<?php echo number_format($display_mob, 2); ?>
+                        </span>
+                    </div>
+                    <?php endif; ?>
                     <div class="flex justify-between text-sm">
                         <span class="text-slate-500">Convenience Fee (2.3%)</span>
                         <span class="font-medium text-slate-600">₱<?php echo number_format($convenience_fee, 2); ?></span>
@@ -363,7 +394,7 @@ if (!$booking_id) {
                     <div class="flex justify-between text-sm border-t pt-3">
                         <span class="text-slate-500 font-semibold">Total Charged to You</span>
                         <span class="font-bold text-slate-800 text-base">
-                            ₱<?php echo number_format(floatval($booking['labor_materials_cost']) + $convenience_fee, 2); ?>
+                            ₱<?php echo number_format($display_total + $convenience_fee, 2); ?>
                         </span>
                     </div>
                     <div class="flex justify-between text-sm border-t pt-3">

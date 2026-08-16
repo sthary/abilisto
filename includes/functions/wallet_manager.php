@@ -501,15 +501,23 @@ class WalletManager {
             }
 
             // Prevent double-charging: check if commission already processed
-            $check = $this->conn->prepare("SELECT final_commission_deducted FROM bookings WHERE id = ?");
+            $check = $this->conn->prepare("SELECT final_commission_deducted, admin_fee_amount FROM bookings WHERE id = ?");
             $check->execute([$booking_id]);
             $brow = $check->fetch();
             if ($brow && !empty($brow['final_commission_deducted'])) {
                 return ['success' => true, 'message' => 'Commission already processed', 'commission' => 0];
             }
 
-            // Calculate commission — see config/constants.php (ADMIN_COMMISSION_PERCENT)
-            $commission = round($total_final_cost * (ADMIN_COMMISSION_PERCENT / 100), 2);
+            // Commission — use the amount complete_job.php already computed and stored
+            // (4% of labor fee ONLY, not materials or mobilization). Recomputing
+            // 4% of $total_final_cost here would tax materials and any bundled
+            // mobilization fee too, diverging from what was shown to the worker
+            // at job-completion time and overcharging them.
+            $commission = floatval($brow['admin_fee_amount'] ?? 0);
+            if ($commission <= 0) {
+                // Fallback for bookings that somehow never got admin_fee_amount stored
+                $commission = round($total_final_cost * (ADMIN_COMMISSION_PERCENT / 100), 2);
+            }
 
             // Fetch worker wallet
             $worker = $this->getWorkerWallet($worker_id);
