@@ -178,7 +178,7 @@ WHERE transaction_type = 'fee'
   AND user_id = 1
   AND user_type = 'admin'
   AND created_at >= NOW() - INTERVAL '6 months'
-GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+GROUP BY TO_CHAR(created_at, 'YYYY-MM'), TO_CHAR(created_at, 'Mon YYYY')
 ORDER BY TO_CHAR(created_at, 'YYYY-MM') ASC";
 
 $chart_income_res = $conn->query($chart_income_sql);
@@ -193,7 +193,7 @@ $chart_expenses_sql = "SELECT
     SUM(amount) as total
 FROM admin_expenses
 WHERE expense_date >= NOW() - INTERVAL '6 months'
-GROUP BY TO_CHAR(expense_date, 'YYYY-MM')
+GROUP BY TO_CHAR(expense_date, 'YYYY-MM'), TO_CHAR(expense_date, 'Mon YYYY')
 ORDER BY TO_CHAR(expense_date, 'YYYY-MM') ASC";
 
 $chart_expenses_res = $conn->query($chart_expenses_sql);
