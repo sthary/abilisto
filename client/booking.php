@@ -36,15 +36,17 @@ $worker_id = intval($_GET['worker_id']);
 $client_id = intval($_SESSION['user_id']);
 
 // ── Client first-time tour, part 2 of 2 (continued from worker_details.php) ──
-// Shows whenever has_seen_tour is still false — whether they arrived via
+// Shows whenever has_seen_booking_tour is still false — whether they arrived via
 // the worker_details.php tour (?tour=1) or landed here directly without
 // ever seeing part 1. This is the leg that actually marks it seen.
+// Uses its own flag, separate from has_seen_tour (owned by client/dashboard.php's
+// pre-existing mandatory tour) — see the note in worker_details.php for why.
 if (isset($_GET['mark_tour_seen']) && $_GET['mark_tour_seen'] == '1') {
-    $conn->prepare("UPDATE users SET has_seen_tour = TRUE WHERE id = ?")->execute([$client_id]);
+    $conn->prepare("UPDATE users SET has_seen_booking_tour = TRUE WHERE id = ?")->execute([$client_id]);
 }
-$tour_chk = $conn->prepare("SELECT has_seen_tour FROM users WHERE id = ?");
+$tour_chk = $conn->prepare("SELECT has_seen_booking_tour FROM users WHERE id = ?");
 $tour_chk->execute([$client_id]);
-$show_client_tour = empty($tour_chk->fetch()['has_seen_tour']);
+$show_client_tour = empty($tour_chk->fetch()['has_seen_booking_tour']);
 
 // ============================================
 // 2.5 FETCH CLIENT LOCATION

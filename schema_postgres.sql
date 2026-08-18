@@ -619,6 +619,7 @@ CREATE TABLE users (
   cash_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   location_sharing_enabled BOOLEAN NOT NULL DEFAULT FALSE,
   has_seen_tour BOOLEAN DEFAULT FALSE,
+  has_seen_booking_tour BOOLEAN DEFAULT FALSE,
   google_temp_token VARCHAR(64),
   google_temp_token_expires TIMESTAMP,
   is_flagged BOOLEAN NOT NULL DEFAULT FALSE,

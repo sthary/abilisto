@@ -11,17 +11,21 @@ if (!isset($_GET['id'])) {
 // ── Client first-time tour, part 1 of 2 (continues on booking.php) ────────
 // This page is viewable without login, so the tour only applies to an
 // actually-logged-in client who hasn't completed it yet.
+// Uses its own has_seen_booking_tour flag (NOT has_seen_tour) — client/dashboard.php
+// has its own separate, pre-existing "mandatory tour" (Intro.js) that already owns
+// has_seen_tour and marks it TRUE on completion. Sharing that flag meant this tour
+// never got a turn: the dashboard tour fires first on login and consumes it.
 // "Skip tour" pings this same page with ?mark_tour_seen=1, same pattern as
 // worker/dashboard.php's tour.
 if (isset($_GET['mark_tour_seen']) && $_GET['mark_tour_seen'] == '1' && isset($_SESSION['user_id'])) {
-    $conn->prepare("UPDATE users SET has_seen_tour = TRUE WHERE id = ?")->execute([$_SESSION['user_id']]);
+    $conn->prepare("UPDATE users SET has_seen_booking_tour = TRUE WHERE id = ?")->execute([$_SESSION['user_id']]);
 }
 
 $show_client_tour = false;
 if (isset($_SESSION['user_id']) && ($_SESSION['role'] ?? '') === 'client') {
-    $tour_chk = $conn->prepare("SELECT has_seen_tour FROM users WHERE id = ?");
+    $tour_chk = $conn->prepare("SELECT has_seen_booking_tour FROM users WHERE id = ?");
     $tour_chk->execute([$_SESSION['user_id']]);
-    $show_client_tour = empty($tour_chk->fetch()['has_seen_tour']);
+    $show_client_tour = empty($tour_chk->fetch()['has_seen_booking_tour']);
 }
 
 $worker_id = intval($_GET['id']);
