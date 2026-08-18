@@ -35,6 +35,17 @@ if (!isset($_GET['worker_id']) || !is_numeric($_GET['worker_id'])) {
 $worker_id = intval($_GET['worker_id']);
 $client_id = intval($_SESSION['user_id']);
 
+// ── Client first-time tour, part 2 of 2 (continued from worker_details.php) ──
+// Shows whenever has_seen_tour is still false — whether they arrived via
+// the worker_details.php tour (?tour=1) or landed here directly without
+// ever seeing part 1. This is the leg that actually marks it seen.
+if (isset($_GET['mark_tour_seen']) && $_GET['mark_tour_seen'] == '1') {
+    $conn->prepare("UPDATE users SET has_seen_tour = TRUE WHERE id = ?")->execute([$client_id]);
+}
+$tour_chk = $conn->prepare("SELECT has_seen_tour FROM users WHERE id = ?");
+$tour_chk->execute([$client_id]);
+$show_client_tour = empty($tour_chk->fetch()['has_seen_tour']);
+
 // ============================================
 // 2.5 FETCH CLIENT LOCATION
 // ============================================
@@ -301,6 +312,8 @@ $initials = getInitials($worker['full_name']);
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+    <link href="../includes/tour_engine.css" rel="stylesheet"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
@@ -377,7 +390,7 @@ $initials = getInitials($worker['full_name']);
                     </div>
                 </div>
             </div>
-            <div class="glass-card p-3 md:p-5 rounded-xl md:rounded-2xl min-w-full md:min-w-[200px]">
+            <div id="tour-price-card" class="glass-card p-3 md:p-5 rounded-xl md:rounded-2xl min-w-full md:min-w-[200px]">
                 <p class="text-white/70 text-[10px] md:text-xs font-medium uppercase tracking-wider mb-0.5 md:mb-1">Estimated Total</p>
                 <div class="text-2xl md:text-3xl font-extrabold mb-2 md:mb-3" id="priceDisplay">₱<?php echo $initial_fee; ?></div>
                 <div class="space-y-1 text-[10px] md:text-xs text-white/80 border-t border-white/10 pt-2 md:pt-3" id="urgencyNote">
@@ -563,7 +576,7 @@ $initials = getInitials($worker['full_name']);
             </div>
 
             <!-- Payment Method -->
-            <div class="space-y-4">
+            <div id="tour-payment-method" class="space-y-4">
                 <label class="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200">
                     <span class="material-symbols-outlined text-primary text-xl">payments</span>
                     Payment Method <span class="text-red-500">*</span>
@@ -1016,5 +1029,46 @@ document.addEventListener('DOMContentLoaded', function(){ updatePrice(); });
 @keyframes slideInRight{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
 .animate-slideInRight{animation:slideInRight .3s ease}
 </style>
+
+<!-- ══════════════════════════════════════════
+     CLIENT FIRST-LOGIN TOUR — part 2 of 2
+     Picks up here whether the client arrived via worker_details.php's
+     tour or landed directly on this page. This leg marks the whole
+     tour seen, whether finished or skipped.
+══════════════════════════════════════════ -->
+<?php if ($show_client_tour): ?>
+<script src="../includes/tour_engine.js"></script>
+<script>
+AbiTour.run({
+    steps: [
+        {
+            target: '#tour-price-card', position: 'bottom',
+            icon: 'payments', iconColor: '#146af5',
+            title: 'Your Estimated Total',
+            body: 'This updates live as you fill in the details below — travel distance, urgency, and any voucher you apply.',
+        },
+        {
+            target: '#tour-payment-method', position: 'top',
+            icon: 'account_balance_wallet', iconColor: '#16a34a',
+            title: 'Choose How to Pay',
+            body: 'Pay cash on service, or pay online via Xendit and save 10% instantly.',
+        },
+        {
+            target: '#submitBtn', position: 'top',
+            icon: 'send', iconColor: '#146af5',
+            title: 'You\'re Ready! 🚀',
+            body: 'Fill in the job details above, then hit this button to send your booking request.',
+        },
+    ],
+    onSkip: function () {
+        fetch('booking.php?worker_id=<?php echo (int)$worker_id; ?>&mark_tour_seen=1', { method: 'POST' }).catch(() => {});
+    },
+    onComplete: function () {
+        fetch('booking.php?worker_id=<?php echo (int)$worker_id; ?>&mark_tour_seen=1', { method: 'POST' }).catch(() => {});
+    }
+});
+</script>
+<?php endif; ?>
+
 </body>
 </html>

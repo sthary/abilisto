@@ -1,0 +1,105 @@
+/* ══════════════════════════════════════════
+   Abilisto tour styles — shared by worker/dashboard.php,
+   client/worker_details.php, and client/booking.php.
+   Paired with includes/tour_engine.js.
+══════════════════════════════════════════ */
+#abi-tour-overlay {
+    position: fixed; inset: 0;
+    z-index: 99990;
+    pointer-events: none;
+}
+#abi-tour-svg-mask {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: all;
+}
+#abi-tour-card {
+    position: fixed;
+    z-index: 99999;
+    background: #fff;
+    border-radius: 24px;
+    padding: 28px 28px 22px;
+    width: min(360px, calc(100vw - 32px));
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    box-shadow: 0 32px 80px -12px rgba(43,47,52,0.22), 0 0 0 1px rgba(20,106,245,0.08);
+    pointer-events: all;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    animation: abiTourPop 0.32s cubic-bezier(.4,0,.2,1) forwards;
+}
+@keyframes abiTourPop {
+    from { opacity: 0; transform: scale(0.94) translateY(6px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+#abi-tour-card.abi-reposition {
+    animation: abiTourSlide 0.26s cubic-bezier(.4,0,.2,1) forwards;
+}
+@keyframes abiTourSlide {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0);   }
+}
+.abi-tour-header {
+    display: flex; align-items: flex-start; gap: 14px; margin-bottom: 14px;
+}
+.abi-tour-icon-wrap {
+    width: 42px; height: 42px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.abi-tour-icon-wrap .material-symbols-rounded {
+    font-size: 22px;
+    font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+}
+.abi-tour-title {
+    font-size: 17px; font-weight: 800; color: #2b2f34;
+    letter-spacing: -0.01em; line-height: 1.3; padding-top: 2px;
+}
+.abi-tour-body {
+    font-size: 14px; color: #585c62; line-height: 1.65; margin-bottom: 20px;
+}
+.abi-tour-dots {
+    display: flex; gap: 6px; align-items: center; margin-bottom: 18px;
+}
+.abi-tour-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #d8dde7; transition: all 0.2s;
+}
+.abi-tour-dot.abi-active {
+    width: 20px; border-radius: 3px; background: #146af5;
+}
+.abi-tour-dot.abi-done { background: #aaadb4; }
+.abi-tour-actions { display: flex; gap: 10px; align-items: center; }
+.abi-tour-btn-next {
+    flex: 1; padding: 12px 20px; border-radius: 14px;
+    font-size: 14px; font-weight: 700; color: #fff;
+    border: none; cursor: pointer;
+    background: linear-gradient(135deg, #146af5, #6229f1);
+    box-shadow: 0 8px 20px -4px rgba(20,106,245,0.4);
+    transition: transform 0.15s, box-shadow 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.abi-tour-btn-next:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -4px rgba(20,106,245,0.45);
+}
+.abi-tour-btn-skip {
+    font-size: 13px; font-weight: 600; color: #aaadb4;
+    background: none; border: none; cursor: pointer;
+    padding: 12px 6px; transition: color 0.15s;
+    white-space: nowrap;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.abi-tour-btn-skip:hover { color: #585c62; }
+#abi-tour-ring {
+    position: fixed; border-radius: 20px;
+    border: 2.5px solid rgba(20,106,245,0.7);
+    box-shadow: 0 0 0 4px rgba(20,106,245,0.12), 0 0 0 8px rgba(20,106,245,0.05);
+    pointer-events: none; z-index: 99995;
+    transition: all 0.35s cubic-bezier(.4,0,.2,1);
+    animation: abiRingPulse 2.2s ease infinite;
+}
+@keyframes abiRingPulse {
+    0%,100% { box-shadow: 0 0 0 4px rgba(20,106,245,0.12), 0 0 0 8px  rgba(20,106,245,0.05); }
+    50%     { box-shadow: 0 0 0 6px rgba(20,106,245,0.18), 0 0 0 14px rgba(20,106,245,0.06); }
+}

@@ -203,6 +203,7 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+    <link href="../includes/tour_engine.css" rel="stylesheet">
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
@@ -533,109 +534,8 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             box-shadow: 0 0 0 2px #fff, 0 0 0 3px #16a34a;
         }
 
-        /* ══════════════════════════════════════════
-           TOUR STYLES
-        ══════════════════════════════════════════ */
-        #abi-tour-overlay {
-            position: fixed; inset: 0;
-            z-index: 99990;
-            pointer-events: none;
-        }
-        #abi-tour-svg-mask {
-            position: absolute; inset: 0;
-            width: 100%; height: 100%;
-            pointer-events: all;
-        }
-        #abi-tour-card {
-            position: fixed;
-            z-index: 99999;
-            background: #fff;
-            border-radius: 24px;
-            padding: 28px 28px 22px;
-            width: min(360px, calc(100vw - 32px));
-            max-height: calc(100vh - 24px);
-            overflow-y: auto;
-            box-shadow: 0 32px 80px -12px rgba(43,47,52,0.22), 0 0 0 1px rgba(20,106,245,0.08);
-            pointer-events: all;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            animation: abiTourPop 0.32s cubic-bezier(.4,0,.2,1) forwards;
-        }
-        @keyframes abiTourPop {
-            from { opacity: 0; transform: scale(0.94) translateY(6px); }
-            to   { opacity: 1; transform: scale(1)    translateY(0);   }
-        }
-        #abi-tour-card.abi-reposition {
-            animation: abiTourSlide 0.26s cubic-bezier(.4,0,.2,1) forwards;
-        }
-        @keyframes abiTourSlide {
-            from { opacity: 0; transform: translateY(8px); }
-            to   { opacity: 1; transform: translateY(0);   }
-        }
-        .abi-tour-header {
-            display: flex; align-items: flex-start; gap: 14px; margin-bottom: 14px;
-        }
-        .abi-tour-icon-wrap {
-            width: 42px; height: 42px; border-radius: 14px;
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0;
-        }
-        .abi-tour-icon-wrap .material-symbols-rounded {
-            font-size: 22px;
-            font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
-        }
-        .abi-tour-title {
-            font-size: 17px; font-weight: 800; color: #2b2f34;
-            letter-spacing: -0.01em; line-height: 1.3; padding-top: 2px;
-        }
-        .abi-tour-body {
-            font-size: 14px; color: #585c62; line-height: 1.65; margin-bottom: 20px;
-        }
-        .abi-tour-dots {
-            display: flex; gap: 6px; align-items: center; margin-bottom: 18px;
-        }
-        .abi-tour-dot {
-            width: 6px; height: 6px; border-radius: 50%;
-            background: #d8dde7; transition: all 0.2s;
-        }
-        .abi-tour-dot.abi-active {
-            width: 20px; border-radius: 3px; background: #146af5;
-        }
-        .abi-tour-dot.abi-done { background: #aaadb4; }
-        .abi-tour-actions { display: flex; gap: 10px; align-items: center; }
-        .abi-tour-btn-next {
-            flex: 1; padding: 12px 20px; border-radius: 14px;
-            font-size: 14px; font-weight: 700; color: #fff;
-            border: none; cursor: pointer;
-            background: linear-gradient(135deg, #146af5, #6229f1);
-            box-shadow: 0 8px 20px -4px rgba(20,106,245,0.4);
-            transition: transform 0.15s, box-shadow 0.15s;
-            display: flex; align-items: center; justify-content: center; gap: 6px;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-        .abi-tour-btn-next:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 28px -4px rgba(20,106,245,0.45);
-        }
-        .abi-tour-btn-skip {
-            font-size: 13px; font-weight: 600; color: #aaadb4;
-            background: none; border: none; cursor: pointer;
-            padding: 12px 6px; transition: color 0.15s;
-            white-space: nowrap;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-        .abi-tour-btn-skip:hover { color: #585c62; }
-        #abi-tour-ring {
-            position: fixed; border-radius: 20px;
-            border: 2.5px solid rgba(20,106,245,0.7);
-            box-shadow: 0 0 0 4px rgba(20,106,245,0.12), 0 0 0 8px rgba(20,106,245,0.05);
-            pointer-events: none; z-index: 99995;
-            transition: all 0.35s cubic-bezier(.4,0,.2,1);
-            animation: abiRingPulse 2.2s ease infinite;
-        }
-        @keyframes abiRingPulse {
-            0%,100% { box-shadow: 0 0 0 4px rgba(20,106,245,0.12), 0 0 0 8px  rgba(20,106,245,0.05); }
-            50%     { box-shadow: 0 0 0 6px rgba(20,106,245,0.18), 0 0 0 14px rgba(20,106,245,0.06); }
-        }
+        /* Tour styles moved to includes/tour_engine.css (shared with the
+           client-side tour on worker_details.php / booking.php). */
     </style>
 </head>
 <body class="text-on-surface antialiased min-h-screen overflow-x-hidden">
@@ -1554,11 +1454,10 @@ setTimeout(function() {
      ?mark_tour_seen=1 so $conn marks has_seen_tour=1.
 ══════════════════════════════════════════ -->
 <?php if (!$has_seen_tour): ?>
+<script src="../includes/tour_engine.js"></script>
 <script>
-(function () {
-
-    /* ── Tour steps ── */
-    const STEPS = [
+AbiTour.run({
+    steps: [
         {
             target   : null,
             position : 'center',
@@ -1599,274 +1498,17 @@ setTimeout(function() {
             title    : 'You\'re All Set! 🚀',
             body     : 'Your dashboard updates in real time. New booking requests will pop up automatically — go get those jobs!',
         },
-    ];
-
-    /* ── Build DOM ── */
-
-    // Overlay + SVG cutout backdrop
-    const overlay = document.createElement('div');
-    overlay.id = 'abi-tour-overlay';
-
-    const svgNS = 'http://www.w3.org/2000/svg';
-    const svg   = document.createElementNS(svgNS, 'svg');
-    svg.id = 'abi-tour-svg-mask';
-    svg.setAttribute('xmlns', svgNS);
-
-    const defs     = document.createElementNS(svgNS, 'defs');
-    const mask     = document.createElementNS(svgNS, 'mask');
-    mask.id        = 'abi-cutout-mask';
-    const mFill    = document.createElementNS(svgNS, 'rect');
-    mFill.setAttribute('x','0'); mFill.setAttribute('y','0');
-    mFill.setAttribute('width','100%'); mFill.setAttribute('height','100%');
-    mFill.setAttribute('fill','white');
-    const cutout   = document.createElementNS(svgNS, 'rect');
-    cutout.id      = 'abi-tour-cutout';
-    cutout.setAttribute('fill','black');
-    cutout.setAttribute('rx','20');
-    mask.appendChild(mFill); mask.appendChild(cutout);
-    defs.appendChild(mask); svg.appendChild(defs);
-
-    const backdrop = document.createElementNS(svgNS, 'rect');
-    backdrop.setAttribute('x','0'); backdrop.setAttribute('y','0');
-    backdrop.setAttribute('width','100%'); backdrop.setAttribute('height','100%');
-    backdrop.setAttribute('fill','rgba(15,23,42,0.5)');
-    backdrop.setAttribute('mask','url(#abi-cutout-mask)');
-    svg.appendChild(backdrop);
-    overlay.appendChild(svg);
-    document.body.appendChild(overlay);
-
-    // Highlight ring
-    const ring = document.createElement('div');
-    ring.id = 'abi-tour-ring';
-    document.body.appendChild(ring);
-
-    // Tooltip card
-    const card = document.createElement('div');
-    card.id = 'abi-tour-card';
-    document.body.appendChild(card);
-
-    /* ── State ── */
-    let step = 0;
-    let lastRect = null, lastPos = 'center';
-
-    /* ── Helpers ── */
-
-    // The mobile bottom nav is position:fixed and permanently covers the
-    // bottom of the viewport — getBoundingClientRect()/window.innerHeight
-    // know nothing about it, so every positioning calc below has to treat
-    // its height as a "safe area" inset or the ring/card can end up
-    // partly hidden behind it on phones.
-    function navInset() {
-        const nav = document.querySelector('.mobile-bottom-nav');
-        if (!nav) return 0;
-        const cs = getComputedStyle(nav);
-        if (cs.display === 'none' || cs.position !== 'fixed') return 0;
-        return nav.offsetHeight;
-    }
-
-    function scrollAndRect(el) {
-        return new Promise(resolve => {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-            setTimeout(() => {
-                let rect = el.getBoundingClientRect();
-                const inset = navInset();
-                const visibleBottom = window.innerHeight - inset;
-                // Corrective nudge if the target still ends up (partly) behind
-                // the fixed bottom nav, or off the top — mobile browsers also
-                // resize their address bar mid-scroll, which can throw off a
-                // single scrollIntoView call.
-                if (rect.bottom > visibleBottom) {
-                    window.scrollBy({ top: rect.bottom - visibleBottom + 16, behavior: 'auto' });
-                    rect = el.getBoundingClientRect();
-                } else if (rect.top < 0) {
-                    window.scrollBy({ top: rect.top - 16, behavior: 'auto' });
-                    rect = el.getBoundingClientRect();
-                }
-                resolve(rect);
-            }, 500); // mobile smooth-scroll settles slower than desktop
-        });
-    }
-
-    function setCutout(rect) {
-        const P = 10;
-        if (!rect) {
-            cutout.setAttribute('width','0'); cutout.setAttribute('height','0');
-            ring.style.opacity = '0';
-            return;
-        }
-        const maxHeight = (window.innerHeight - navInset()) - (rect.top - P);
-        const h = Math.max(0, Math.min(rect.height + P * 2, maxHeight));
-        cutout.setAttribute('x',      rect.left   - P);
-        cutout.setAttribute('y',      rect.top    - P);
-        cutout.setAttribute('width',  rect.width  + P * 2);
-        cutout.setAttribute('height', h);
-        ring.style.cssText += `opacity:1;left:${rect.left - P}px;top:${rect.top - P}px;width:${rect.width + P*2}px;height:${h}px;`;
-    }
-
-    function placeCard(rect, pos) {
-        const PAD = 14, EDGE = 12;
-        const vw = window.innerWidth, vh = window.innerHeight - navInset();
-        const cw = card.offsetWidth || 360, ch = card.offsetHeight || 260;
-        let top, left;
-
-        if (!rect || pos === 'center') {
-            top  = Math.max(EDGE, (vh - ch) / 2);
-            left = Math.max(EDGE, (vw - cw) / 2);
-        } else {
-            if (pos === 'bottom') { top = rect.bottom + PAD; left = rect.left + (rect.width - cw) / 2; }
-            else if (pos === 'top')   { top = rect.top - ch - PAD; left = rect.left + (rect.width - cw) / 2; }
-            else if (pos === 'right') { top = rect.top + (rect.height - ch) / 2; left = rect.right + PAD; }
-            else                      { top = rect.top + (rect.height - ch) / 2; left = rect.left - cw - PAD; }
-
-            left = Math.max(EDGE, Math.min(left, vw - cw - EDGE));
-            top  = Math.max(EDGE, Math.min(top,  vh - ch - EDGE));
-            // flip bottom→top if overflows
-            if (pos === 'bottom' && top + ch > vh - EDGE) top = Math.max(EDGE, rect.top - ch - PAD);
-            if (pos === 'top'    && top < EDGE)           top = rect.bottom + PAD;
-        }
-        card.style.top  = top  + 'px';
-        card.style.left = left + 'px';
-    }
-
-    function renderCard(i) {
-        const s = STEPS[i], total = STEPS.length, isLast = i === total - 1;
-        const tint = s.iconColor + '1a';
-        const dots = STEPS.map((_,d) => {
-            let c = 'abi-tour-dot';
-            if (d === i) c += ' abi-active';
-            else if (d < i) c += ' abi-done';
-            return `<span class="${c}"></span>`;
-        }).join('');
-
-        card.innerHTML = `
-            <div class="abi-tour-header">
-                <div class="abi-tour-icon-wrap" style="background:${tint}">
-                    <span class="material-symbols-rounded" style="color:${s.iconColor}">${s.icon}</span>
-                </div>
-                <div class="abi-tour-title">${s.title}</div>
-            </div>
-            <div class="abi-tour-body">${s.body}</div>
-            <div class="abi-tour-dots">${dots}</div>
-            <div class="abi-tour-actions">
-                <button class="abi-tour-btn-next" id="abi-next">
-                    ${isLast
-                        ? '<span class="material-symbols-rounded" style="font-size:16px;font-variation-settings:\'FILL\' 1">rocket_launch</span> Get Started'
-                        : 'Next <span class="material-symbols-rounded" style="font-size:16px">arrow_forward</span>'}
-                </button>
-                ${!isLast ? '<button class="abi-tour-btn-skip" id="abi-skip">Skip tour</button>' : ''}
-            </div>
-        `;
-        document.getElementById('abi-next').addEventListener('click', next);
-        const skipBtn = document.getElementById('abi-skip');
-        if (skipBtn) skipBtn.addEventListener('click', finish);
-    }
-
-    /* ── Navigation ── */
-
-    async function showStep(i) {
-        const s = STEPS[i];
-        if (i > 0) {
-            card.classList.add('abi-reposition');
-            setTimeout(() => card.classList.remove('abi-reposition'), 280);
-        }
-        renderCard(i);
-
-        // Set before the scroll starts, not after — the scroll listener
-        // below fires mid-transition (during the scrollIntoView animation)
-        // and needs the correct position rule for this step immediately,
-        // not the previous step's.
-        lastPos = s.position;
-
-        let rect = null;
-        if (s.target) {
-            const el = document.querySelector(s.target);
-            if (el) rect = await scrollAndRect(el);
-        }
-
-        lastRect = rect;
-        setCutout(rect);
-        // two rAF ticks so card has rendered height before positioning
-        requestAnimationFrame(() => requestAnimationFrame(() => placeCard(rect, s.position)));
-    }
-
-    // Mobile browsers resize the viewport (address bar show/hide) and can be
-    // rotated mid-tour — re-measure the current target fresh rather than
-    // trusting the stale rect, since the page layout may have reflowed.
-    let resizeTimer = null;
-    function handleViewportChange() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => {
-            const s = STEPS[step];
-            if (s && s.target) {
-                const el = document.querySelector(s.target);
-                if (el) lastRect = el.getBoundingClientRect();
-            }
-            setCutout(lastRect);
-            placeCard(lastRect, lastPos);
-        }, 150);
-    }
-    window.addEventListener('resize', handleViewportChange);
-    window.addEventListener('orientationchange', handleViewportChange);
-
-    // The ring/cutout are position:fixed, set once per step from a snapshot
-    // rect — they never move again unless something explicitly re-measures
-    // and repositions them. Nothing was doing that on scroll, so the
-    // highlight visibly detaches from its target and floats in place the
-    // moment the page scrolls (both the tour's own scrollIntoView animation
-    // and any manual scroll the user makes, since the tour doesn't lock
-    // page scroll). rAF-throttled so it tracks smoothly without doing this
-    // work more than once per frame.
-    let scrollTicking = false;
-    function handleScroll() {
-        if (scrollTicking) return;
-        scrollTicking = true;
-        requestAnimationFrame(() => {
-            const s = STEPS[step];
-            if (s && s.target) {
-                const el = document.querySelector(s.target);
-                if (el) lastRect = el.getBoundingClientRect();
-            }
-            setCutout(lastRect);
-            placeCard(lastRect, lastPos);
-            scrollTicking = false;
-        });
-    }
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
-    function next() {
-        step++;
-        if (step >= STEPS.length) finish();
-        else showStep(step);
-    }
-
-    function finish() {
-        window.removeEventListener('resize', handleViewportChange);
-        window.removeEventListener('orientationchange', handleViewportChange);
-        window.removeEventListener('scroll', handleScroll);
-
-        // fade out
-        [overlay, card, ring].forEach(el => {
-            el.style.transition = 'opacity 0.3s';
-            el.style.opacity    = '0';
-        });
-        card.style.transform = 'scale(0.95)';
-        setTimeout(() => { overlay.remove(); card.remove(); ring.remove(); }, 320);
-
+    ],
+    onSkip: function () {
         // Mark seen — POST to this same page with a flag; PHP handles it at the top
         fetch('dashboard.php?mark_tour_seen=1', { method: 'POST' }).catch(() => {});
 
-        // CHANGE 2: Show the unverified modal (if present) after the tour finishes/is skipped.
-        // The modal was hidden on page load so it wouldn't overlap the tour.
+        // Show the unverified modal (if present) after the tour finishes/is
+        // skipped — it was hidden on page load so it wouldn't overlap the tour.
         const unverifiedModal = document.getElementById('unverified-modal');
         if (unverifiedModal) unverifiedModal.style.display = '';
     }
-
-    /* ── Kick off after page settles ── */
-    function launch() { setTimeout(() => showStep(0), 800); }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', launch);
-    else launch();
-
-})();
+});
 </script>
 <?php endif; ?>
 

@@ -8,6 +8,22 @@ if (!isset($_GET['id'])) {
     exit();
 }
 
+// ── Client first-time tour, part 1 of 2 (continues on booking.php) ────────
+// This page is viewable without login, so the tour only applies to an
+// actually-logged-in client who hasn't completed it yet.
+// "Skip tour" pings this same page with ?mark_tour_seen=1, same pattern as
+// worker/dashboard.php's tour.
+if (isset($_GET['mark_tour_seen']) && $_GET['mark_tour_seen'] == '1' && isset($_SESSION['user_id'])) {
+    $conn->prepare("UPDATE users SET has_seen_tour = TRUE WHERE id = ?")->execute([$_SESSION['user_id']]);
+}
+
+$show_client_tour = false;
+if (isset($_SESSION['user_id']) && ($_SESSION['role'] ?? '') === 'client') {
+    $tour_chk = $conn->prepare("SELECT has_seen_tour FROM users WHERE id = ?");
+    $tour_chk->execute([$_SESSION['user_id']]);
+    $show_client_tour = empty($tour_chk->fetch()['has_seen_tour']);
+}
+
 $worker_id = intval($_GET['id']);
 
 // 1. Fetch Worker Profile with skills
@@ -222,6 +238,8 @@ $minRate = number_format($worker['minimum_standard_rate'], 2);
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+    <link href="../includes/tour_engine.css" rel="stylesheet"/>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -415,7 +433,7 @@ $minRate = number_format($worker['minimum_standard_rate'], 2);
                     <!-- Desktop Action Buttons -->
                     <div class="hidden lg:block mt-8">
                         <?php if ($worker['availability_status'] == 'Available'): ?>
-                            <a href="booking.php?worker_id=<?php echo $worker_id; ?>" class="flex w-full py-4 gradient-bg text-white font-bold rounded-xl shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all items-center justify-center gap-2">
+                            <a href="booking.php?worker_id=<?php echo $worker_id; ?>" id="tour-book-desktop" class="flex w-full py-4 gradient-bg text-white font-bold rounded-xl shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-all items-center justify-center gap-2">
                                 <span class="material-icons-round text-xl">event_available</span>
                                 Book This Worker
                             </a>
@@ -469,7 +487,7 @@ $minRate = number_format($worker['minimum_standard_rate'], 2);
         <div class="w-full lg:w-2/3 space-y-6 lg:space-y-8">
             
             <!-- Stats Row -->
-            <div class="grid grid-cols-3 gap-3 md:gap-6">
+            <div id="tour-stats" class="grid grid-cols-3 gap-3 md:gap-6">
                 <div class="bg-white/80 dark:bg-slate-900/80 glass p-3 lg:p-6 rounded-2xl lg:rounded-3xl shadow-sm border border-slate-200/50 dark:border-slate-800/50 text-center flex flex-col items-center">
                     <div class="w-8 h-8 lg:w-12 lg:h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg lg:rounded-2xl flex items-center justify-center mb-2 lg:mb-4">
                         <span class="material-icons-round text-primary text-lg lg:text-2xl">star</span>
@@ -522,7 +540,7 @@ $minRate = number_format($worker['minimum_standard_rate'], 2);
             </div>
             
             <!-- About Section -->
-            <section class="bg-white dark:bg-slate-900 rounded-3xl p-6 lg:p-8 shadow-ambient border border-slate-200/50 dark:border-slate-800/50">
+            <section id="tour-about" class="bg-white dark:bg-slate-900 rounded-3xl p-6 lg:p-8 shadow-ambient border border-slate-200/50 dark:border-slate-800/50">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="w-9 h-9 lg:w-10 lg:h-10 rounded-full bg-blue-50 dark:bg-blue-900/20 text-primary flex items-center justify-center">
                         <span class="material-icons-round text-lg lg:text-xl">person</span>
@@ -665,10 +683,10 @@ $minRate = number_format($worker['minimum_standard_rate'], 2);
 </main>
 
 <!-- Mobile Sticky Booking Bar -->
-<div class="fixed bottom-0 left-0 right-0 p-4 lg:hidden z-50">
+<div class="js-tour-bottom-inset fixed bottom-0 left-0 right-0 p-4 lg:hidden z-50">
     <div class="glass border border-white/20 rounded-2xl p-2 shadow-2xl">
         <?php if ($worker['availability_status'] == 'Available'): ?>
-            <a href="booking.php?worker_id=<?php echo $worker_id; ?>" class="w-full py-4 gradient-bg text-white font-bold rounded-xl shadow-glow active:scale-95 transition-transform flex items-center justify-center gap-2">
+            <a href="booking.php?worker_id=<?php echo $worker_id; ?>" id="tour-book-mobile" class="w-full py-4 gradient-bg text-white font-bold rounded-xl shadow-glow active:scale-95 transition-transform flex items-center justify-center gap-2">
                 <span class="material-icons-round">bolt</span>
                 Book This Worker
             </a>
@@ -779,6 +797,55 @@ $minRate = number_format($worker['minimum_standard_rate'], 2);
         localStorage.setItem('darkMode', isDark);
     });
 </script>
+
+<!-- ══════════════════════════════════════════
+     CLIENT FIRST-LOGIN TOUR — part 1 of 2
+     Continues on booking.php once "Continue" is clicked below.
+     "Skip tour" ends it here and marks it seen immediately.
+══════════════════════════════════════════ -->
+<?php if ($show_client_tour): ?>
+<script src="../includes/tour_engine.js"></script>
+<script>
+AbiTour.run({
+    bottomInsetSelectors: ['.js-tour-bottom-inset'],
+    steps: [
+        {
+            target: null, position: 'center',
+            icon: 'waving_hand', iconColor: '#146af5',
+            title: 'Welcome to Abilisto! 👋',
+            body: 'Let\'s quickly show you how to check out a worker and book the right one for your job.',
+        },
+        {
+            target: '#tour-stats', position: 'bottom',
+            icon: 'star', iconColor: '#f59e0b',
+            title: 'Check Their Track Record',
+            body: 'Rating, jobs completed, and reviews — everything you need to decide if they\'re a good fit.',
+        },
+        {
+            target: '#tour-about', position: 'bottom',
+            icon: 'person', iconColor: '#146af5',
+            title: 'About & Skills',
+            body: 'Read their bio and see their skill certifications before reaching out.',
+        },
+        {
+            target: ['#tour-book-desktop', '#tour-book-mobile'], position: 'top',
+            icon: 'event_available', iconColor: '#16a34a',
+            title: 'Ready to Book?',
+            body: 'When you\'re happy with what you see, this button starts your booking — let\'s walk through it together.',
+            ctaLabel: 'Continue <span class="material-symbols-rounded" style="font-size:16px">arrow_forward</span>',
+        },
+    ],
+    onSkip: function () {
+        fetch('worker_details.php?id=<?php echo (int)$worker_id; ?>&mark_tour_seen=1', { method: 'POST' }).catch(() => {});
+    },
+    onComplete: function () {
+        // Don't mark has_seen_tour yet — part 2 on booking.php does that,
+        // once the client has actually seen the whole continuous tour.
+        window.location.href = 'booking.php?worker_id=<?php echo (int)$worker_id; ?>&tour=1';
+    }
+});
+</script>
+<?php endif; ?>
 
 </body>
 </html>
