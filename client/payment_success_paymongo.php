@@ -5,11 +5,11 @@
 //
 // SECURITY: this URL proves nothing on its own — anyone logged in as a
 // client can navigate here for any of their own booking ids without ever
-// paying. Every credit below is gated on paymongoRetrieveLink() confirming
-// the Link is actually paid, and fails CLOSED (credits nothing) if that
-// verification can't be confirmed. holdEscrowPayment() is additionally
-// idempotent, so this is safe to run whether or not the webhook already
-// processed the same payment.
+// paying. Every credit below is gated on paymongoRetrieveCheckoutSession()
+// confirming the session is actually paid, and fails CLOSED (credits
+// nothing) if that verification can't be confirmed. holdEscrowPayment() is
+// additionally idempotent, so this is safe to run whether or not the
+// webhook already processed the same payment.
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -56,13 +56,13 @@ if ($amount <= 0) {
     // Already processed (very likely by the webhook, possibly by an earlier
     // hit of this same page) — nothing to verify or credit again.
 } else {
-    // ── Verify with PayMongo that the Link is actually PAID ───────────────
+    // ── Verify with PayMongo that the Checkout Session is actually PAID ───
     $link_id = $booking['transaction_id'] ?? null;
 
     if (!$link_id) {
         $error = "Payment reference missing. Please contact support.";
     } else {
-        $verify = paymongoRetrieveLink($link_id);
+        $verify = paymongoRetrieveCheckoutSession($link_id);
 
         if (!$verify['success'] || !$verify['paid']) {
             // Fail CLOSED — do not credit anything on a failed/uncertain check.

@@ -1,16 +1,28 @@
 <?php
 // includes/functions/paymongo_client.php
-// Shared PayMongo Payment Links helper — replaces the curl boilerplate that
-// used to be duplicated across process_payment_xendit.php,
+// Shared PayMongo Checkout Sessions helper — replaces the curl boilerplate
+// that used to be duplicated across process_payment_xendit.php,
 // process_topup_xendit.php, and generate_receipt.php.
 //
-// API reference verified against the official paymongo/paymongo-php SDK
-// source (docs.paymongo.com's pages were broken/restructured at the time
-// this was written): Basic auth with the secret key, JSON:API request
-// wrapping ({"data":{"attributes":{...}}}), amounts in integer centavos.
+// Uses Checkout Sessions (not Payment Links) specifically because Links
+// don't support a post-payment redirect — PayMongo silently drops any
+// redirect-shaped field passed to POST /v1/links (confirmed empirically
+// against the live API, since it's undocumented behavior either way).
+// Checkout Sessions have first-class success_url/cancel_url support.
+//
+// Every endpoint here was verified empirically against the real PayMongo
+// sandbox API with test keys, because docs.paymongo.com was largely
+// 404/restructured at the time this was written and gave inconsistent
+// answers. Ground truth confirmed live:
+//   - Create:   POST https://api.paymongo.com/v2/checkout_sessions
+//   - Retrieve: GET  https://api.paymongo.com/v1/checkout_sessions/{id}
+//               (yes, different version than create — confirmed by the v2
+//               path 404ing with "route does not exist" and v1 working)
+// Basic auth with the secret key, JSON:API request wrapping
+// ({"data":{"attributes":{...}}}), amounts in integer centavos.
 
 /**
- * Create a PayMongo Payment Link.
+ * Create a PayMongo Checkout Session.
  *
  * @param  float  $amountPesos     Amount in PESOS (converted to centavos here —
  *                                  do NOT pre-convert at the call site).
@@ -19,10 +31,13 @@
  * @param  array  $metadata        Structured correlation data (booking_id, type, ...).
  *                                  This is the PRIMARY correlation key read back
  *                                  from webhook payloads — reference_number is a
- *                                  secondary, human-readable label only.
+ *                                  secondary, human-readable label only. Confirmed
+ *                                  it round-trips correctly on retrieve.
+ * @param  string $successUrl      Where the client lands after paying.
+ * @param  string $cancelUrl       Where the client lands if they back out.
  * @return array  ['success'=>bool, 'id'=>string|null, 'checkout_url'=>string|null, 'message'=>string]
  */
-function paymongoCreateLink($amountPesos, $description, $referenceNumber, $metadata = []) {
+function paymongoCreateCheckoutSession($amountPesos, $description, $referenceNumber, $metadata, $successUrl, $cancelUrl) {
     $amountPesos = floatval($amountPesos);
     if ($amountPesos <= 0) {
         return ['success' => false, 'id' => null, 'checkout_url' => null, 'message' => 'Invalid amount'];
@@ -30,7 +45,7 @@ function paymongoCreateLink($amountPesos, $description, $referenceNumber, $metad
 
     $secret_key = getenv('PAYMONGO_SECRET_KEY');
     if (!$secret_key) {
-        error_log('paymongoCreateLink: PAYMONGO_SECRET_KEY is not set');
+        error_log('paymongoCreateCheckoutSession: PAYMONGO_SECRET_KEY is not set');
         return ['success' => false, 'id' => null, 'checkout_url' => null, 'message' => 'Payment gateway not configured'];
     }
 
@@ -40,16 +55,24 @@ function paymongoCreateLink($amountPesos, $description, $referenceNumber, $metad
     $payload = [
         'data' => [
             'attributes' => [
-                'amount'           => $amountCentavos,
-                'currency'         => 'PHP',
-                'description'      => $description,
-                'reference_number' => $referenceNumber,
-                'metadata'         => $metadata,
+                'line_items' => [[
+                    'name'     => $description,
+                    'amount'   => $amountCentavos,
+                    'currency' => 'PHP',
+                    'quantity' => 1,
+                ]],
+                'payment_method_types' => ['gcash', 'card', 'paymaya'],
+                'description'           => $description,
+                'reference_number'      => $referenceNumber,
+                'metadata'              => $metadata,
+                'success_url'           => $successUrl,
+                'cancel_url'            => $cancelUrl,
+                'send_email_receipt'    => false,
             ],
         ],
     ];
 
-    $ch = curl_init('https://api.paymongo.com/v1/links');
+    $ch = curl_init('https://api.paymongo.com/v2/checkout_sessions');
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
@@ -65,7 +88,7 @@ function paymongoCreateLink($amountPesos, $description, $referenceNumber, $metad
     curl_close($ch);
 
     if ($curl_err) {
-        error_log("paymongoCreateLink: cURL error: $curl_err");
+        error_log("paymongoCreateCheckoutSession: cURL error: $curl_err");
         return ['success' => false, 'id' => null, 'checkout_url' => null, 'message' => 'Connection error to payment gateway'];
     }
 
@@ -81,26 +104,29 @@ function paymongoCreateLink($amountPesos, $description, $referenceNumber, $metad
     }
 
     $err_msg = $result['errors'][0]['detail'] ?? "HTTP $http_code";
-    error_log("paymongoCreateLink: API error ($http_code): " . $response);
+    error_log("paymongoCreateCheckoutSession: API error ($http_code): " . $response);
     return ['success' => false, 'id' => null, 'checkout_url' => null, 'message' => $err_msg];
 }
 
 /**
- * Retrieve a Payment Link and its payment status. Used by the browser-
+ * Retrieve a Checkout Session and its payment status. Used by the browser-
  * redirect landing pages to verify a payment server-side before crediting
  * anything — the landing page URL itself proves nothing (anyone can visit
- * it without paying), so this call is what actually confirms payment.
+ * it without paying, success_url or not), so this call is what actually
+ * confirms payment.
  *
- * @param  string $linkId
+ * @param  string $sessionId
  * @return array  ['success'=>bool, 'paid'=>bool, 'status'=>string|null, 'message'=>string]
  */
-function paymongoRetrieveLink($linkId) {
+function paymongoRetrieveCheckoutSession($sessionId) {
     $secret_key = getenv('PAYMONGO_SECRET_KEY');
-    if (!$secret_key || !$linkId) {
+    if (!$secret_key || !$sessionId) {
         return ['success' => false, 'paid' => false, 'status' => null, 'message' => 'Missing gateway id or key'];
     }
 
-    $ch = curl_init('https://api.paymongo.com/v1/links/' . urlencode($linkId));
+    // Note: retrieval is on the v1 path even though creation is v2 —
+    // confirmed empirically (v2 GET 404s with "route does not exist").
+    $ch = curl_init('https://api.paymongo.com/v1/checkout_sessions/' . urlencode($sessionId));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Authorization: Basic ' . base64_encode($secret_key . ':'),
@@ -112,20 +138,28 @@ function paymongoRetrieveLink($linkId) {
     curl_close($ch);
 
     if ($http_code !== 200) {
-        error_log("paymongoRetrieveLink: HTTP $http_code for link $linkId: $response");
+        error_log("paymongoRetrieveCheckoutSession: HTTP $http_code for session $sessionId: $response");
         return ['success' => false, 'paid' => false, 'status' => null, 'message' => "HTTP $http_code"];
     }
 
     $result = json_decode($response, true);
-    $status = $result['data']['attributes']['status'] ?? null;
+    $attrs  = $result['data']['attributes'] ?? [];
+    $status = $attrs['status'] ?? null;
 
-    // A Link's own status becomes 'paid' once fully paid; belt-and-suspenders,
-    // also treat a non-empty payments[] with any 'paid' entry as paid.
-    $paid = ($status === 'paid');
-    if (!$paid && !empty($result['data']['attributes']['payments'])) {
-        foreach ($result['data']['attributes']['payments'] as $p) {
+    // Don't rely on a single terminal status string (unconfirmed exact
+    // wording once paid) — check every independent signal the session
+    // carries: a 'paid' entry in payments[], or a succeeded payment_intent.
+    $paid = false;
+    if (!empty($attrs['payments'])) {
+        foreach ($attrs['payments'] as $p) {
             if (($p['attributes']['status'] ?? '') === 'paid') { $paid = true; break; }
         }
+    }
+    if (!$paid && !empty($attrs['payment_intent']['attributes']['status'])) {
+        $paid = ($attrs['payment_intent']['attributes']['status'] === 'succeeded');
+    }
+    if (!$paid && $status === 'paid') {
+        $paid = true;
     }
 
     return ['success' => true, 'paid' => $paid, 'status' => $status, 'message' => 'OK'];

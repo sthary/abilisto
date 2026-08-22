@@ -1,7 +1,7 @@
 <?php
 // client/process_payment_paymongo.php
 // Creates the mobilization-fee booking (Cash or PayMongo) and, for
-// PayMongo, redirects the client to a hosted PayMongo Payment Link.
+// PayMongo, redirects the client to a hosted PayMongo Checkout Session.
 
 include '../db_connect.php';
 include '../includes/init_lang.php';
@@ -47,7 +47,7 @@ if (isset($_GET['booking_id'])) {
     }
 
     // Already has a checkout link? Just send them back to it instead of
-    // creating a duplicate PayMongo Link for the same booking.
+    // creating a duplicate PayMongo Checkout Session for the same booking.
     if (!empty($booking['transaction_id']) && !empty($booking['checkout_url'])) {
         header("Location: " . $booking['checkout_url']);
         exit();
@@ -55,11 +55,13 @@ if (isset($_GET['booking_id'])) {
 
     $reference_number = 'INV-' . time() . '-' . $booking_id . '-' . rand(100, 999);
 
-    $link = paymongoCreateLink(
+    $link = paymongoCreateCheckoutSession(
         $amount,
         'Mobilization Fee for Booking #' . $booking_id,
         $reference_number,
-        ['booking_id' => $booking_id, 'client_id' => $client_id, 'worker_id' => $worker_id, 'type' => 'mobilization']
+        ['booking_id' => $booking_id, 'client_id' => $client_id, 'worker_id' => $worker_id, 'type' => 'mobilization'],
+        'https://abilisto.site/client/payment_success_paymongo.php?booking_id=' . $booking_id,
+        'https://abilisto.site/client/booking.php?worker_id=' . $worker_id
     );
 
     if ($link['success']) {

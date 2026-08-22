@@ -1,7 +1,7 @@
 <?php
 // worker/process_topup_paymongo.php
 // Creates a pending top_ups row and redirects the worker to a PayMongo
-// Payment Link for it.
+// Checkout Session for it.
 
 include '../db_connect.php';
 include '../includes/init_lang.php';
@@ -36,11 +36,13 @@ $topup_id = $insert_stmt->fetchColumn();
 
 $reference_number = 'TOPUP-' . time() . '-' . $topup_id . '-' . rand(100, 999);
 
-$link = paymongoCreateLink(
+$link = paymongoCreateCheckoutSession(
     $amount,
     'Wallet Top-Up for Worker #' . $worker_id,
     $reference_number,
-    ['topup_id' => $topup_id, 'worker_id' => $worker_id, 'type' => 'wallet_topup']
+    ['topup_id' => $topup_id, 'worker_id' => $worker_id, 'type' => 'wallet_topup'],
+    'https://abilisto.site/worker/topup_success.php?topup_id=' . $topup_id,
+    'https://abilisto.site/worker/wallet.php?failed=1'
 );
 
 if ($link['success']) {

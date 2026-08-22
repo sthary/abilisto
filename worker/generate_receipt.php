@@ -70,14 +70,14 @@ $worker_gets = $total_cost - $admin_fee;
 error_log("Mobilization paid: " . ($mobilization_paid ? 'YES' : 'NO'));
 error_log("Remaining balance: ₱$remaining_balance");
 
-// Generate a PayMongo Payment Link for the remaining balance
+// Generate a PayMongo Checkout Session for the remaining balance
 $qr_code_url = null;
 $paymongo_link_id = null;
 $qr_error = null;
 
 if ($remaining_balance > 0 && $booking['final_payment_status'] != 'paid') {
 
-    error_log("Attempting to generate PayMongo link for ₱$remaining_balance");
+    error_log("Attempting to generate PayMongo checkout session for ₱$remaining_balance");
 
     // Validate minimum amount
     if ($remaining_balance < 1.00) {
@@ -86,11 +86,13 @@ if ($remaining_balance > 0 && $booking['final_payment_status'] != 'paid') {
     } else {
         $reference_number = 'FINAL-' . time() . '-' . $booking_id . '-' . rand(100, 999);
 
-        $link = paymongoCreateLink(
+        $link = paymongoCreateCheckoutSession(
             $remaining_balance,
             'Final Payment for Booking #' . $booking_id,
             $reference_number,
-            ['booking_id' => $booking_id, 'worker_id' => $worker_id, 'type' => 'final_payment']
+            ['booking_id' => $booking_id, 'worker_id' => $worker_id, 'type' => 'final_payment'],
+            'https://abilisto.site/client/final_payment_success.php?booking_id=' . $booking_id,
+            'https://abilisto.site/worker/dashboard.php'
         );
 
         if ($link['success']) {

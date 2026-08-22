@@ -56,8 +56,8 @@ if (!$booking_id) {
         error_log("Booking #$booking_id already marked paid — skipping re-processing.");
     } else {
         // ---------------------------------------------------------------
-        // Verify with PayMongo that the Link is actually PAID. Fail
-        // CLOSED — this URL alone proves nothing (anyone can visit it
+        // Verify with PayMongo that the Checkout Session is actually PAID.
+        // Fail CLOSED — this URL alone proves nothing (anyone can visit it
         // without paying), so an unconfirmed/erroring check must credit
         // nothing rather than assume success.
         // ---------------------------------------------------------------
@@ -65,7 +65,7 @@ if (!$booking_id) {
         $gateway_paid = false;
 
         if ($link_id) {
-            $verify = paymongoRetrieveLink($link_id);
+            $verify = paymongoRetrieveCheckoutSession($link_id);
             $gateway_paid = $verify['success'] && $verify['paid'];
             if (!$gateway_paid) {
                 error_log("Final payment verification failed for booking #$booking_id, link $link_id: " . ($verify['message'] ?? ''));

@@ -5,8 +5,8 @@
 //
 // SECURITY: this URL proves nothing on its own — anyone logged in as this
 // worker can navigate here with their own topup_id without ever paying.
-// The credit below is gated on paymongoRetrieveLink() confirming the Link
-// is actually paid, and fails CLOSED if that can't be confirmed.
+// The credit below is gated on paymongoRetrieveCheckoutSession() confirming
+// the session is actually paid, and fails CLOSED if that can't be confirmed.
 // WalletManager::processTopUp() is additionally idempotent (atomically
 // claims the 'pending' row), so this is safe to run whether or not the
 // webhook already processed the same payment, and safe against reload/back-
@@ -46,9 +46,9 @@ if ($topup['status'] === 'completed') {
     // Already processed — just show the success screen below.
     $result = ['success' => true];
 } else {
-    // ── Verify with PayMongo that the Link is actually PAID ───────────────
-    $link_id = $topup['reference_number'] ?? null; // holds the PayMongo Link id after creation
-    $verify  = $link_id ? paymongoRetrieveLink($link_id) : ['success' => false, 'paid' => false, 'message' => 'Missing gateway reference'];
+    // ── Verify with PayMongo that the Checkout Session is actually PAID ───
+    $link_id = $topup['reference_number'] ?? null; // holds the PayMongo checkout session id after creation
+    $verify  = $link_id ? paymongoRetrieveCheckoutSession($link_id) : ['success' => false, 'paid' => false, 'message' => 'Missing gateway reference'];
 
     if (!$verify['success'] || !$verify['paid']) {
         // Fail CLOSED — do not credit anything on a failed/uncertain check.
