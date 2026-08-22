@@ -52,6 +52,10 @@ $resource   = $event['data']['attributes']['data'] ?? null;
 $attrs      = $resource['attributes'] ?? [];
 $metadata   = $attrs['metadata'] ?? [];
 $amount     = isset($attrs['amount']) ? floatval($attrs['amount']) / 100 : 0; // centavos -> pesos
+// PayMongo deducts its own processing fee before depositing to us — these
+// are both present directly on the Payment object's own attributes.
+$gateway_fee = isset($attrs['fee']) ? floatval($attrs['fee']) / 100 : 0;
+$net_amount  = isset($attrs['net_amount']) ? floatval($attrs['net_amount']) / 100 : ($amount - $gateway_fee);
 
 $booking_id = intval($metadata['booking_id'] ?? 0);
 $topup_id   = intval($metadata['topup_id'] ?? 0);
@@ -127,7 +131,7 @@ if ($type === 'mobilization' && $booking_id) {
         exit('OK - booking not found');
     }
 
-    $result = $wallet->holdEscrowPayment($booking_id, $booking['worker_id'], $amount);
+    $result = $wallet->holdEscrowPayment($booking_id, $booking['worker_id'], $amount, $gateway_fee);
 
     if ($result['success']) {
         sendNotification(
@@ -167,7 +171,7 @@ if ($type === 'mobilization' && $booking_id) {
     $mobilization_amount = $mobilization_released ? floatval($booking['calculated_fee']) : 0;
     $credit_amount        = $mobilization_released ? $labor_cost : $total_final_cost;
 
-    $credit_result = $wallet->creditOnlineFinalPayment($booking_id, $booking['worker_id'], $mobilization_amount, $credit_amount);
+    $credit_result = $wallet->creditOnlineFinalPayment($booking_id, $booking['worker_id'], $mobilization_amount, $credit_amount, $gateway_fee);
     if (!$credit_result['success']) {
         error_log("⚠️ creditOnlineFinalPayment failed for booking #$booking_id: " . $credit_result['message']);
     }
@@ -219,14 +223,17 @@ if ($type === 'mobilization' && $booking_id) {
         exit('OK - topup not found');
     }
 
-    $result = $wallet->processTopUp($topup['worker_id'], $topup['amount'], $topup_id, $resource['id'] ?? null);
+    // Top-up is the worker's own money going into their own wallet, so
+    // (unlike mobilization/final payment) they receive the NET amount —
+    // same convention as topup_success.php's redirect-path handling.
+    $topup_net = $net_amount > 0 ? $net_amount : floatval($topup['amount']);
+    $result = $wallet->processTopUp($topup['worker_id'], $topup_net, $topup_id, $resource['id'] ?? null);
 
     if ($result['success']) {
-        sendNotification(
-            $conn, $topup['worker_id'],
-            "💰 Wallet Top-Up Successful!\n\n₱" . number_format($topup['amount'], 2) . " has been added to your wallet.",
-            "../worker/wallet.php"
-        );
+        $notif_msg = $gateway_fee > 0
+            ? "💰 Wallet Top-Up Successful!\n\n₱" . number_format($topup_net, 2) . " has been added to your wallet (₱" . number_format($gateway_fee, 2) . " PayMongo processing fee deducted from your ₱" . number_format($topup['amount'], 2) . " top-up)."
+            : "💰 Wallet Top-Up Successful!\n\n₱" . number_format($topup_net, 2) . " has been added to your wallet.";
+        sendNotification($conn, $topup['worker_id'], $notif_msg, "../worker/wallet.php");
         error_log("✅ Top-up #$topup_id processed (webhook)");
     } else {
         error_log("❌ Top-up #$topup_id failed: " . $result['message']);

@@ -191,22 +191,39 @@ class WalletManager {
      * what makes it safe for BOTH the webhook and the redirect page to call
      * this unconditionally, instead of relying on every caller remembering
      * to check first.
+     *
+     * @param float $gatewayFee  What PayMongo kept from this payment (pesos).
+     *              admin_wallet is credited the NET amount (what we actually
+     *              received), not the gross the client was charged — the
+     *              platform absorbs the processing fee rather than the
+     *              worker, since releaseEscrowPayment() still pays out the
+     *              full gross amount later. The gap between what's credited
+     *              here and what's later released is exactly this fee,
+     *              coming out of the admin's accumulated commission pool.
      */
-    public function holdEscrowPayment($booking_id, $worker_id, $amount) {
+    public function holdEscrowPayment($booking_id, $worker_id, $amount, $gatewayFee = 0.0) {
         $owns_tx = $this->beginTx();
 
         try {
-            $booking_id = intval($booking_id);
-            $worker_id  = intval($worker_id);
-            $amount     = floatval($amount);
+            $booking_id  = intval($booking_id);
+            $worker_id   = intval($worker_id);
+            $amount      = floatval($amount);
+            $gatewayFee  = max(0.0, floatval($gatewayFee));
+            $netAmount   = round($amount - $gatewayFee, 2);
 
             if ($booking_id <= 0 || $worker_id <= 0 || $amount <= 0) {
                 throw new Exception("Invalid parameters: booking_id=$booking_id, worker_id=$worker_id, amount=$amount");
             }
 
+            // is_escrow alone isn't a one-way guard — it goes back to FALSE
+            // once released (worker accepted), so a late/replayed webhook
+            // for the same original payment arriving AFTER accept+release
+            // would look identical to "never held" and re-credit a second
+            // time. payment_status IS one-way (this call sets it 'Paid' and
+            // nothing ever resets it), so require both.
             $claim = $this->conn->prepare("UPDATE bookings
                           SET is_escrow = TRUE, payment_status = 'Paid'
-                          WHERE id = ? AND is_escrow = FALSE");
+                          WHERE id = ? AND is_escrow = FALSE AND payment_status != 'Paid'");
             $claim->execute([$booking_id]);
 
             if ($claim->rowCount() === 0) {
@@ -218,14 +235,16 @@ class WalletManager {
             $this->ensureAdminWalletExists();
 
             $update_admin = $this->conn->prepare("UPDATE admin_wallet SET balance = balance + ? WHERE id = 1 RETURNING balance");
-            $update_admin->execute([$amount]);
+            $update_admin->execute([$netAmount]);
             $new_admin_balance = floatval($update_admin->fetchColumn());
 
-            $description = "Escrow hold for booking #$booking_id";
+            $description = $gatewayFee > 0
+                ? "Escrow hold for booking #$booking_id (₱" . number_format($amount, 2) . " gross, ₱" . number_format($gatewayFee, 2) . " PayMongo fee absorbed by platform)"
+                : "Escrow hold for booking #$booking_id";
             $tx = $this->conn->prepare("INSERT INTO wallet_transactions
                       (user_id, user_type, transaction_type, amount, reference_id, reference_type, description, balance_after, created_at)
                       VALUES (1, 'admin', 'credit', ?, ?, 'booking', ?, ?, NOW())");
-            $tx->execute([$amount, $booking_id, $description, $new_admin_balance]);
+            $tx->execute([$netAmount, $booking_id, $description, $new_admin_balance]);
 
             $this->commitTx($owns_tx);
             error_log("✅ Escrow hold successful for booking #$booking_id");
@@ -552,7 +571,7 @@ class WalletManager {
      * claim in processFinalPaymentCommission, which callers should invoke
      * right after this.
      */
-    public function creditOnlineFinalPayment($booking_id, $worker_id, $mobilization_release_amount, $credit_amount) {
+    public function creditOnlineFinalPayment($booking_id, $worker_id, $mobilization_release_amount, $credit_amount, $gatewayFee = 0.0) {
         $owns_tx = $this->beginTx();
 
         try {
@@ -560,6 +579,7 @@ class WalletManager {
             $worker_id  = intval($worker_id);
             $mobilization_release_amount = floatval($mobilization_release_amount);
             $credit_amount = floatval($credit_amount);
+            $gatewayFee    = max(0.0, floatval($gatewayFee));
 
             $claim = $this->conn->prepare("UPDATE bookings
                           SET wallet_credited = TRUE
@@ -578,6 +598,10 @@ class WalletManager {
             }
 
             if ($credit_amount > 0) {
+                // Worker gets the FULL gross amount — the fee is the
+                // platform's cost, not deducted from their payout. It comes
+                // out of admin_wallet as an explicit debit below instead,
+                // same principle as the voucher-subsidy absorption.
                 $upd = $this->conn->prepare("UPDATE worker_profiles
                            SET wallet_balance = wallet_balance + ?
                            WHERE user_id = ? RETURNING wallet_balance");
@@ -590,6 +614,20 @@ class WalletManager {
                     'description' => "Online final payment received for booking #$booking_id",
                     'balance_after' => $new_balance,
                 ]);
+
+                if ($gatewayFee > 0) {
+                    $this->ensureAdminWalletExists();
+                    $upd_admin = $this->conn->prepare("UPDATE admin_wallet SET balance = balance - ? WHERE id = 1 RETURNING balance");
+                    $upd_admin->execute([$gatewayFee]);
+                    $new_admin_balance = floatval($upd_admin->fetchColumn());
+
+                    $this->addTransaction([
+                        'user_id' => 1, 'user_type' => 'admin', 'type' => 'debit', 'amount' => $gatewayFee,
+                        'ref_id' => $booking_id, 'ref_type' => 'booking',
+                        'description' => "PayMongo processing fee absorbed by platform for booking #$booking_id final payment",
+                        'balance_after' => $new_admin_balance,
+                    ]);
+                }
             }
 
             $this->commitTx($owns_tx);

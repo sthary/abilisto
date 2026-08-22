@@ -370,13 +370,6 @@ if ($remaining_balance == 0 && $booking['status'] === 'Completed') {
                 Scan to Pay
             </h3>
 
-            <!-- Convenience fee note -->
-            <div class="w-full mb-6 flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl px-4 py-3 text-left">
-                <span class="material-symbols-outlined text-amber-500 text-base shrink-0 mt-0.5">info</span>
-                <p class="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-                    <span class="font-bold">Note:</span> A <span class="font-bold">2.3% convenience fee</span> is charged by PayMongo for online payments. This is on top of the amount shown above.
-                </p>
-            </div>
             
             <?php if ($qr_error): ?>
                 <div class="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl text-red-600 dark:text-red-400 mb-4">

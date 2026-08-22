@@ -71,7 +71,7 @@ if ($amount <= 0) {
         } else {
             $conn->beginTransaction();
             try {
-                $escrow_result = $wallet->holdEscrowPayment($booking_id, $worker_id, $amount);
+                $escrow_result = $wallet->holdEscrowPayment($booking_id, $worker_id, $amount, $verify['fee'] ?? 0);
                 if (!$escrow_result['success']) {
                     throw new Exception("Escrow failed: " . ($escrow_result['message'] ?? 'Unknown error'));
                 }

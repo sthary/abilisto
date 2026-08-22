@@ -94,7 +94,7 @@ if (!$booking_id) {
             $credit_result = $wallet_credit_result = null;
             $wallet = new WalletManager($conn);
 
-            $credit_result = $wallet->creditOnlineFinalPayment($booking_id, $booking['worker_id'], $mobilization_amount, $step2_credit);
+            $credit_result = $wallet->creditOnlineFinalPayment($booking_id, $booking['worker_id'], $mobilization_amount, $step2_credit, $verify['fee'] ?? 0);
             if (!$credit_result['success']) {
                 $error = "Processing error: " . $credit_result['message'];
                 error_log("❌ creditOnlineFinalPayment failed for booking #$booking_id: " . $credit_result['message']);
@@ -243,11 +243,15 @@ if (!$booking_id) {
                         <span class="font-semibold"><?php echo htmlspecialchars($booking['worker_name']); ?></span>
                     </div>
                     <?php
+                        // PayMongo deducts its processing fee from what WE
+                        // receive, not as a surcharge added to what the
+                        // CLIENT is charged (that was Xendit's model, not
+                        // PayMongo's) — so the client's total is exactly
+                        // $display_total, nothing added on top.
                         $display_labor    = floatval($booking['labor_materials_cost']);
                         $display_total    = floatval($booking['total_final_cost']);
                         $display_mob      = max(0, round($display_total - $display_labor, 2));
                         $mobilization_bundled = $display_mob > 0.01;
-                        $convenience_fee  = round($display_total * 0.023, 2);
                     ?>
                     <div class="flex justify-between text-sm">
                         <span class="text-slate-500">Labor &amp; Materials</span>
@@ -263,14 +267,10 @@ if (!$booking_id) {
                         </span>
                     </div>
                     <?php endif; ?>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-slate-500">Convenience Fee (est. 2.3%)</span>
-                        <span class="font-medium text-slate-600">₱<?php echo number_format($convenience_fee, 2); ?></span>
-                    </div>
                     <div class="flex justify-between text-sm border-t pt-3">
                         <span class="text-slate-500 font-semibold">Total Charged to You</span>
                         <span class="font-bold text-slate-800 text-base">
-                            ₱<?php echo number_format($display_total + $convenience_fee, 2); ?>
+                            ₱<?php echo number_format($display_total, 2); ?>
                         </span>
                     </div>
                     <div class="flex justify-between text-sm border-t pt-3">

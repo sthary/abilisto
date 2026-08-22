@@ -116,7 +116,12 @@ function paymongoCreateCheckoutSession($amountPesos, $description, $referenceNum
  * confirms payment.
  *
  * @param  string $sessionId
- * @return array  ['success'=>bool, 'paid'=>bool, 'status'=>string|null, 'message'=>string]
+ * @return array  ['success'=>bool, 'paid'=>bool, 'status'=>string|null,
+ *                 'grossAmount'=>float, 'fee'=>float, 'netAmount'=>float, 'message'=>string]
+ *                 gross/fee/net are in PESOS (converted from the gateway's
+ *                 centavos), read from the matching payment's own attributes
+ *                 — confirmed present directly on the checkout session's
+ *                 payments[] entries, no extra API call needed.
  */
 function paymongoRetrieveCheckoutSession($sessionId) {
     $secret_key = getenv('PAYMONGO_SECRET_KEY');
@@ -150,9 +155,23 @@ function paymongoRetrieveCheckoutSession($sessionId) {
     // wording once paid) — check every independent signal the session
     // carries: a 'paid' entry in payments[], or a succeeded payment_intent.
     $paid = false;
+    $grossAmount = 0.0;
+    $fee = 0.0;
+    $netAmount = 0.0;
     if (!empty($attrs['payments'])) {
         foreach ($attrs['payments'] as $p) {
-            if (($p['attributes']['status'] ?? '') === 'paid') { $paid = true; break; }
+            if (($p['attributes']['status'] ?? '') === 'paid') {
+                $paid = true;
+                // PayMongo deducts its own processing fee before depositing
+                // to us — 'amount' is what the client was charged, 'fee' is
+                // what PayMongo kept, 'net_amount' is what we actually receive.
+                $grossAmount = floatval($p['attributes']['amount'] ?? 0) / 100;
+                $fee         = floatval($p['attributes']['fee'] ?? 0) / 100;
+                $netAmount   = isset($p['attributes']['net_amount'])
+                    ? floatval($p['attributes']['net_amount']) / 100
+                    : ($grossAmount - $fee);
+                break;
+            }
         }
     }
     if (!$paid && !empty($attrs['payment_intent']['attributes']['status'])) {
@@ -162,7 +181,15 @@ function paymongoRetrieveCheckoutSession($sessionId) {
         $paid = true;
     }
 
-    return ['success' => true, 'paid' => $paid, 'status' => $status, 'message' => 'OK'];
+    return [
+        'success'     => true,
+        'paid'        => $paid,
+        'status'      => $status,
+        'grossAmount' => $grossAmount,
+        'fee'         => $fee,
+        'netAmount'   => $netAmount,
+        'message'     => 'OK',
+    ];
 }
 
 /**

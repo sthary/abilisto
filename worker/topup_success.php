@@ -57,16 +57,24 @@ if ($topup['status'] === 'completed') {
         exit();
     }
 
-    $result = $wallet->processTopUp($worker_id, $topup['amount'], $topup_id, $link_id);
+    // A top-up is the worker's own money going into their own wallet — not
+    // a client-service payment — so unlike mobilization/final payment
+    // (where the platform absorbs PayMongo's fee), the worker receives the
+    // NET amount here, same as topping up any e-wallet: what PayMongo
+    // actually deposited, not the gross amount they intended to add.
+    $net_amount = $verify['netAmount'] > 0 ? $verify['netAmount'] : $topup['amount'];
+    $result = $wallet->processTopUp($worker_id, $net_amount, $topup_id, $link_id);
 }
 
-$amount = $topup['amount'];
+$amount     = $topup['amount'];
+$fee        = isset($verify['fee']) ? $verify['fee'] : 0;
+$net_amount = isset($net_amount) ? $net_amount : $amount;
 
 if ($result['success']) {
-    sendNotification($conn, $worker_id,
-        "💰 Wallet Top-Up Successful!\n\n₱$amount has been added to your wallet.",
-        "wallet.php"
-    );
+    $notif_msg = $fee > 0
+        ? "💰 Wallet Top-Up Successful!\n\n₱" . number_format($net_amount, 2) . " has been added to your wallet (₱" . number_format($fee, 2) . " PayMongo processing fee deducted from your ₱" . number_format($amount, 2) . " top-up)."
+        : "💰 Wallet Top-Up Successful!\n\n₱" . number_format($net_amount, 2) . " has been added to your wallet.";
+    sendNotification($conn, $worker_id, $notif_msg, "wallet.php");
     ?>
     <!DOCTYPE html>
     <html>
@@ -88,7 +96,12 @@ if ($result['success']) {
             <div class="success-icon">✅</div>
             <h1>Top-Up Successful!</h1>
             <p>The following amount has been added to your wallet:</p>
-            <div class="amount-highlight">₱<?php echo number_format($amount, 2); ?></div>
+            <div class="amount-highlight">₱<?php echo number_format($net_amount, 2); ?></div>
+            <?php if ($fee > 0): ?>
+            <p style="color: #6c757d; font-size: 0.9rem;">
+                (₱<?php echo number_format($amount, 2); ?> top-up minus ₱<?php echo number_format($fee, 2); ?> PayMongo processing fee)
+            </p>
+            <?php endif; ?>
 
             <div style="margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 10px;">
                 <p><strong>New Balance:</strong> ₱<?php
