@@ -159,7 +159,7 @@ if (isset($_POST['book_btn'])) {
         $urgency          = $_POST['urgency'];
         $payment_method   = isset($_POST['payment_method']) ? $_POST['payment_method'] : 'Cash';
 
-        if ($payment_method === 'Cash' && !$cash_enabled) { $payment_method = 'Xendit'; }
+        if ($payment_method === 'Cash' && !$cash_enabled) { $payment_method = 'PayMongo'; }
 
         $urgency_fees = ['Normal' => 0, 'High' => 15, 'Emergency' => 25];
         $urgency_fee  = $urgency_fees[$urgency] ?? 0;
@@ -171,7 +171,7 @@ if (isset($_POST['book_btn'])) {
                      : $initial_distance;
 
         $subtotal         = 20 + ($distance * 5) + $urgency_fee;
-        $calculated_fee   = ($payment_method === 'Xendit') ? round($subtotal * 0.9, 2) : $subtotal;
+        $calculated_fee   = ($payment_method === 'PayMongo') ? round($subtotal * 0.9, 2) : $subtotal;
         $discount_amount  = $subtotal - $calculated_fee;
         $client_name      = $_SESSION['full_name'];
 
@@ -203,11 +203,11 @@ if (isset($_POST['book_btn'])) {
 
         $insert_stmt = $conn->prepare("INSERT INTO bookings (
             client_id, worker_id, problem_desc, booking_date, urgency_level,
-            payment_method, payment_status, status, calculated_fee,
+            payment_method, payment_status, status, calculated_fee, voucher_discount,
             latitude, longitude, location_address, created_at
         ) VALUES (
             ?, ?, ?, ?, ?,
-            ?, 'Pending', 'Pending', ?,
+            ?, 'Pending', 'Pending', ?, ?,
             ?, ?, ?, NOW()
         )");
 
@@ -216,7 +216,7 @@ if (isset($_POST['book_btn'])) {
         try {
             $insert_stmt->execute([
                 $client_id, $worker_id, $problem_desc, $booking_datetime, $urgency,
-                $payment_method, $calculated_fee,
+                $payment_method, $calculated_fee, $voucher_discount,
                 ($booking_lat ?: null), ($booking_lng ?: null), $location_address
             ]);
             $booking_id     = $conn->lastInsertId('bookings_id_seq');
@@ -274,8 +274,8 @@ if (isset($_POST['book_btn'])) {
             if (function_exists('sendNotification')) { sendNotification($conn, $client_id, $client_notif, "../client/my_bookings.php"); }
 
             $voucher_js_msg = $applied_voucher ? "\\nVoucher {$applied_voucher['promo_code']} applied: -₱{$voucher_discount}" : "";
-            if ($payment_method === 'Xendit') {
-                echo "<script>alert('✅ Booking Created with 10% GCash Discount!\\n\\nOriginal: ₱{$subtotal}\\nDiscounted: ₱{$calculated_fee}\\nYou saved: ₱{$discount_amount}{$voucher_js_msg}\\n\\nYou will now be redirected to payment.');window.location.href='process_payment_xendit.php?booking_id=$booking_id&amount=$calculated_fee';</script>";
+            if ($payment_method === 'PayMongo') {
+                echo "<script>alert('✅ Booking Created with 10% GCash Discount!\\n\\nOriginal: ₱{$subtotal}\\nDiscounted: ₱{$calculated_fee}\\nYou saved: ₱{$discount_amount}{$voucher_js_msg}\\n\\nYou will now be redirected to payment.');window.location.href='process_payment_paymongo.php?booking_id=$booking_id&amount=$calculated_fee';</script>";
             } else {
                 $cash_msg = ($discount_amount > 0) ? "Note: You could have saved ₱{$discount_amount} by paying with GCash!" : "";
                 echo "<script>alert('✅ Booking Request Sent Successfully!\\n\\n{$urgency_icon} Urgency: {$urgency_label}\\nTotal: ₱{$calculated_fee}{$voucher_js_msg}\\n{$cash_msg}\\nThe worker will be notified immediately.');window.location.href='my_bookings.php';</script>";
@@ -610,7 +610,7 @@ $initials = getInitials($worker['full_name']);
                     </div>
 
                     <div class="relative group cursor-pointer">
-                        <input type="radio" class="peer hidden" id="gcash" name="payment_method" value="Xendit"
+                        <input type="radio" class="peer hidden" id="gcash" name="payment_method" value="PayMongo"
                                <?php echo !$cash_enabled ? 'checked' : ''; ?>
                                onchange="updatePrice()">
                         <label for="gcash" class="flex items-center gap-4 p-4 md:p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 peer-checked:border-emerald-500 peer-checked:bg-emerald-500/5 transition-all block cursor-pointer">
@@ -619,7 +619,7 @@ $initials = getInitials($worker['full_name']);
                             </div>
                             <div class="flex-1">
                                 <div class="flex items-center justify-between mb-1">
-                                    <h3 class="font-bold text-sm md:text-base text-slate-900 dark:text-slate-100">Xendit</h3>
+                                    <h3 class="font-bold text-sm md:text-base text-slate-900 dark:text-slate-100">GCash / Maya / Card</h3>
                                     <span class="bg-emerald-500 text-white text-[8px] md:text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-emerald-200 dark:shadow-none">SAVE 10%</span>
                                 </div>
                                 <div class="flex items-center gap-3" id="onlineText">
@@ -970,8 +970,8 @@ function updatePrice() {
     var lat=document.getElementById('latitude').value, lng=document.getElementById('longitude').value;
     var urgency=document.getElementById("urgencySelect").value, urgencyFee=urgencyFees[urgency]||0;
     var pmEl=document.querySelector('input[name="payment_method"]:checked');
-    var pm=pmEl?pmEl.value:(cashEnabled?'Cash':'Xendit');
-    if(!cashEnabled) pm='Xendit';
+    var pm=pmEl?pmEl.value:(cashEnabled?'Cash':'PayMongo');
+    if(!cashEnabled) pm='PayMongo';
     var dist=0, distFee=0, base=20;
     if(lat&&lng&&workerLat&&workerLng){
         dist=calculateDistanceJS(parseFloat(lat),parseFloat(lng),workerLat,workerLng);
@@ -979,7 +979,7 @@ function updatePrice() {
         var dd=document.getElementById('distanceDisplay');
         if(dd) dd.innerHTML='<span class="material-symbols-outlined text-[14px] md:text-sm">location_on</span> '+dist.toFixed(2)+' km';
     }
-    var sub=base+distFee+urgencyFee, total=pm==='Xendit'?Math.round(sub*0.9*100)/100:sub, disc=sub-total;
+    var sub=base+distFee+urgencyFee, total=pm==='PayMongo'?Math.round(sub*0.9*100)/100:sub, disc=sub-total;
 
     var voucherEl=document.getElementById('voucherSelect'), voucherRaw=0, voucherLabel='';
     if(voucherEl && voucherEl.value!=='0'){
@@ -1053,7 +1053,7 @@ AbiTour.run({
             target: '#tour-payment-method', position: 'top',
             icon: 'account_balance_wallet', iconColor: '#16a34a',
             title: 'Choose How to Pay',
-            body: 'Pay cash on service, or pay online via Xendit and save 10% instantly.',
+            body: 'Pay cash on service, or pay online via PayMongo and save 10% instantly.',
         },
         {
             target: '#submitBtn', position: 'top',

@@ -166,7 +166,7 @@ $history_rows = $history_stmt->fetchAll();
 $escrow_sql = "SELECT COUNT(*) as count, SUM(calculated_fee) as total
                FROM bookings
                WHERE worker_id = ?
-               AND payment_method = 'Xendit'
+               AND payment_method = 'PayMongo'
                AND payment_status = 'Paid'
                AND is_escrow = TRUE
                AND status = 'Pending'";

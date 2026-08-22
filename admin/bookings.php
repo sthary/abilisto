@@ -100,7 +100,7 @@ $stats_sql = "SELECT
     SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending_bookings,
     SUM(CASE WHEN status = 'Cancelled' THEN 1 ELSE 0 END) as cancelled_bookings,
     SUM(CASE WHEN status = 'Accepted' THEN 1 ELSE 0 END) as accepted_bookings,
-    SUM(CASE WHEN payment_method = 'Xendit' THEN 1 ELSE 0 END) as xendit_payments
+    SUM(CASE WHEN payment_method = 'PayMongo' THEN 1 ELSE 0 END) as xendit_payments
 FROM bookings";
 $stats_stmt = $conn->prepare($stats_sql);
 $stats_stmt->execute([$today]);
@@ -458,7 +458,7 @@ function buildQuery($overrides = []) {
                                 case 'Cancelled': $statusClass = 'bg-red-50/50 text-red-600 dark:text-red-400 border-red-100';          $statusIcon = 'cancel';        break;
                                 default:          $statusClass = 'bg-slate-50/50 text-slate-600 dark:text-slate-400 border-slate-100';  $statusIcon = 'help';
                             }
-                            $paymentClass = $row['payment_method'] == 'Xendit' ? 'text-purple-600 dark:text-purple-400' : 'text-emerald-600 dark:text-emerald-400';
+                            $paymentClass = $row['payment_method'] == 'PayMongo' ? 'text-purple-600 dark:text-purple-400' : 'text-emerald-600 dark:text-emerald-400';
                         ?>
                         <tr class="hover:bg-slate-50/30 dark:hover:bg-slate-800/20 transition-all group">
                             <td class="px-6 py-5">

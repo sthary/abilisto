@@ -37,6 +37,16 @@ class WalletManager {
     }
 
     /**
+     * Guarantee admin_wallet's single row (id=1) exists, race-safely.
+     * ON CONFLICT DO NOTHING means two concurrent first-ever callers never
+     * collide (unlike the old SELECT-then-INSERT pattern this replaces).
+     */
+    private function ensureAdminWalletExists() {
+        $this->conn->exec("INSERT INTO admin_wallet (id, balance, total_earned, total_withdrawn)
+                            VALUES (1, 0, 0, 0) ON CONFLICT (id) DO NOTHING");
+    }
+
+    /**
      * Initialize new worker with free credits
      */
     public function initNewWorker($worker_id) {
@@ -171,7 +181,16 @@ class WalletManager {
     }
 
     /**
-     * Process GCash payment - HOLD in admin wallet (escrow)
+     * Process GCash/PayMongo payment - HOLD in admin wallet (escrow).
+     *
+     * Idempotent: the UPDATE ... WHERE is_escrow = FALSE clause atomically
+     * claims the booking for escrow-hold. If another caller already claimed
+     * it (webhook vs. browser redirect landing page both call this for the
+     * same payment — that's normal, not a bug), zero rows are affected and
+     * we return success without moving any money a second time. This is
+     * what makes it safe for BOTH the webhook and the redirect page to call
+     * this unconditionally, instead of relying on every caller remembering
+     * to check first.
      */
     public function holdEscrowPayment($booking_id, $worker_id, $amount) {
         $owns_tx = $this->beginTx();
@@ -185,32 +204,28 @@ class WalletManager {
                 throw new Exception("Invalid parameters: booking_id=$booking_id, worker_id=$worker_id, amount=$amount");
             }
 
-            error_log("holdEscrowPayment: Starting with booking_id=$booking_id, worker_id=$worker_id, amount=$amount");
+            $claim = $this->conn->prepare("UPDATE bookings
+                          SET is_escrow = TRUE, payment_status = 'Paid'
+                          WHERE id = ? AND is_escrow = FALSE");
+            $claim->execute([$booking_id]);
 
-            $admin_check = $this->conn->prepare("SELECT * FROM admin_wallet WHERE id = 1");
-            $admin_check->execute();
-
-            if (!$admin_check->fetch()) {
-                $this->conn->exec("INSERT INTO admin_wallet (id, balance, total_earned, total_withdrawn) VALUES (1, 0, 0, 0)");
+            if ($claim->rowCount() === 0) {
+                error_log("holdEscrowPayment: booking #$booking_id already escrowed — no-op");
+                $this->commitTx($owns_tx);
+                return ['success' => true, 'message' => 'Payment already held in escrow (no-op)'];
             }
 
-            $admin_res = $this->conn->prepare("SELECT balance FROM admin_wallet WHERE id = 1");
-            $admin_res->execute();
-            $admin_row     = $admin_res->fetch();
-            $admin_balance = floatval($admin_row['balance']);
+            $this->ensureAdminWalletExists();
 
-            $new_admin_balance = $admin_balance + $amount;
-            $update_admin = $this->conn->prepare("UPDATE admin_wallet SET balance = ? WHERE id = 1");
-            $update_admin->execute([$new_admin_balance]);
+            $update_admin = $this->conn->prepare("UPDATE admin_wallet SET balance = balance + ? WHERE id = 1 RETURNING balance");
+            $update_admin->execute([$amount]);
+            $new_admin_balance = floatval($update_admin->fetchColumn());
 
             $description = "Escrow hold for booking #$booking_id";
             $tx = $this->conn->prepare("INSERT INTO wallet_transactions
                       (user_id, user_type, transaction_type, amount, reference_id, reference_type, description, balance_after, created_at)
                       VALUES (1, 'admin', 'credit', ?, ?, 'booking', ?, ?, NOW())");
             $tx->execute([$amount, $booking_id, $description, $new_admin_balance]);
-
-            $update_booking = $this->conn->prepare("UPDATE bookings SET is_escrow = TRUE, payment_status = 'Paid' WHERE id = ?");
-            $update_booking->execute([$booking_id]);
 
             $this->commitTx($owns_tx);
             error_log("✅ Escrow hold successful for booking #$booking_id");
@@ -224,7 +239,8 @@ class WalletManager {
     }
 
     /**
-     * Release escrow payment to worker (when they accept)
+     * Release escrow payment to worker (when they accept).
+     * Idempotent via the same atomic-claim pattern as holdEscrowPayment.
      */
     public function releaseEscrowPayment($booking_id, $worker_id, $amount) {
         $owns_tx = $this->beginTx();
@@ -236,23 +252,29 @@ class WalletManager {
 
             if ($booking_id <= 0 || $worker_id <= 0 || $amount <= 0) throw new Exception("Invalid parameters");
 
-            $booking_check = $this->conn->prepare("SELECT is_escrow, fee_deducted FROM bookings WHERE id = ?");
-            $booking_check->execute([$booking_id]);
-            $booking = $booking_check->fetch();
-            if (!$booking['is_escrow']) throw new Exception("Payment not in escrow");
+            // Atomically claim the release (is_escrow TRUE -> FALSE). Zero rows
+            // affected means it's either not in escrow or already released —
+            // either way, no-op rather than erroring, so double-calls are safe.
+            $claim = $this->conn->prepare("UPDATE bookings
+                          SET is_escrow = FALSE, escrow_released_at = NOW()
+                          WHERE id = ? AND is_escrow = TRUE");
+            $claim->execute([$booking_id]);
 
-            $worker        = $this->getWorkerWallet($worker_id);
-            $admin         = $this->getAdminWallet();
-            $worker_balance = floatval($worker['wallet_balance']);
-            $admin_balance  = floatval($admin['balance']);
+            if ($claim->rowCount() === 0) {
+                error_log("releaseEscrowPayment: booking #$booking_id not in escrow — no-op");
+                $this->commitTx($owns_tx);
+                return ['success' => true, 'message' => 'Payment not in escrow (no-op)'];
+            }
 
-            $new_admin_balance = $admin_balance - $amount;
-            $update_admin = $this->conn->prepare("UPDATE admin_wallet SET balance = ? WHERE id = 1");
-            $update_admin->execute([$new_admin_balance]);
+            $this->ensureAdminWalletExists();
 
-            $new_worker_balance = $worker_balance + $amount;
-            $update_worker = $this->conn->prepare("UPDATE worker_profiles SET wallet_balance = ? WHERE user_id = ?");
-            $update_worker->execute([$new_worker_balance, $worker_id]);
+            $upd_admin = $this->conn->prepare("UPDATE admin_wallet SET balance = balance - ? WHERE id = 1 RETURNING balance");
+            $upd_admin->execute([$amount]);
+            $new_admin_balance = floatval($upd_admin->fetchColumn());
+
+            $upd_worker = $this->conn->prepare("UPDATE worker_profiles SET wallet_balance = wallet_balance + ? WHERE user_id = ? RETURNING wallet_balance");
+            $upd_worker->execute([$amount, $worker_id]);
+            $new_worker_balance = floatval($upd_worker->fetchColumn());
 
             $worker_desc = "Payment released from escrow for booking #$booking_id";
             $admin_desc  = "Escrow released for booking #$booking_id";
@@ -267,8 +289,9 @@ class WalletManager {
                 'ref_id' => $booking_id, 'ref_type' => 'booking', 'description' => $admin_desc, 'balance_after' => $new_admin_balance
             ]);
 
-            $update_booking = $this->conn->prepare("UPDATE bookings SET is_escrow = FALSE, escrow_released_at = NOW() WHERE id = ?");
-            $update_booking->execute([$booking_id]);
+            $booking_check = $this->conn->prepare("SELECT fee_deducted FROM bookings WHERE id = ?");
+            $booking_check->execute([$booking_id]);
+            $booking = $booking_check->fetch();
 
             if (!$booking['fee_deducted']) {
                 $fee_result = $this->deductAdminFee($booking_id, $worker_id);
@@ -286,7 +309,8 @@ class WalletManager {
     }
 
     /**
-     * Refund escrow payment (when worker rejects)
+     * Refund escrow payment (when worker rejects). Idempotent via the same
+     * atomic-claim pattern.
      */
     public function refundEscrowPayment($booking_id, $client_id, $amount) {
         $owns_tx = $this->beginTx();
@@ -298,21 +322,28 @@ class WalletManager {
 
             if ($booking_id <= 0 || $client_id <= 0 || $amount <= 0) throw new Exception("Invalid parameters");
 
-            $admin         = $this->getAdminWallet();
-            $admin_balance = floatval($admin['balance']);
-            $new_admin_balance = $admin_balance - $amount;
+            $claim = $this->conn->prepare("UPDATE bookings
+                          SET is_escrow = FALSE, payment_status = 'Refunded'
+                          WHERE id = ? AND is_escrow = TRUE");
+            $claim->execute([$booking_id]);
 
-            $update_admin = $this->conn->prepare("UPDATE admin_wallet SET balance = ? WHERE id = 1");
-            $update_admin->execute([$new_admin_balance]);
+            if ($claim->rowCount() === 0) {
+                error_log("refundEscrowPayment: booking #$booking_id not in escrow — no-op");
+                $this->commitTx($owns_tx);
+                return ['success' => true, 'message' => 'Payment not in escrow (no-op)'];
+            }
+
+            $this->ensureAdminWalletExists();
+
+            $upd_admin = $this->conn->prepare("UPDATE admin_wallet SET balance = balance - ? WHERE id = 1 RETURNING balance");
+            $upd_admin->execute([$amount]);
+            $new_admin_balance = floatval($upd_admin->fetchColumn());
 
             $description = "Refunded to client for booking #$booking_id";
             $this->addTransaction([
                 'user_id' => 1, 'user_type' => 'admin', 'type' => 'refund', 'amount' => $amount,
                 'ref_id' => $booking_id, 'ref_type' => 'booking', 'description' => $description, 'balance_after' => $new_admin_balance
             ]);
-
-            $update_booking = $this->conn->prepare("UPDATE bookings SET is_escrow = FALSE, payment_status = 'Refunded' WHERE id = ?");
-            $update_booking->execute([$booking_id]);
 
             $this->commitTx($owns_tx);
             return ['success' => true, 'message' => 'Payment refunded'];
@@ -325,7 +356,8 @@ class WalletManager {
     }
 
     /**
-     * Deduct admin fee from worker wallet (₱30)
+     * Deduct admin fee from worker wallet (₱30). Each branch is a single
+     * atomic conditional UPDATE (no separate read-then-write race window).
      */
     public function deductAdminFee($booking_id, $worker_id) {
         $owns_tx = $this->beginTx();
@@ -333,32 +365,42 @@ class WalletManager {
         try {
             $booking_id = intval($booking_id);
             $worker_id  = intval($worker_id);
-            $worker     = $this->getWorkerWallet($worker_id);
             $fee        = ADMIN_FEE_PER_BOOKING;
 
             $booking_check = $this->conn->prepare("SELECT payment_method FROM bookings WHERE id = ?");
             $booking_check->execute([$booking_id]);
             $booking = $booking_check->fetch();
 
-            $description       = "Admin fee for booking #$booking_id";
-            $new_balance       = floatval($worker['wallet_balance']);
-            $new_free_credits  = floatval($worker['free_credits']);
-            $new_free_bookings = intval($worker['free_bookings_used']);
+            $description  = "Admin fee for booking #$booking_id";
+            $new_balance  = null;
 
-            if ($booking['payment_method'] == 'Cash' && $worker['free_credits'] >= $fee) {
-                $new_free_credits  = $worker['free_credits'] - $fee;
-                $new_free_bookings = $worker['free_bookings_used'] + 1;
-                $description      .= " (used free credit)";
-                $update_worker = $this->conn->prepare("UPDATE worker_profiles
-                                   SET free_credits = ?,
-                                       free_bookings_used = ?
-                                   WHERE user_id = ?");
-                $update_worker->execute([$new_free_credits, $new_free_bookings, $worker_id]);
-            } else {
-                if ($worker['wallet_balance'] < $fee) throw new Exception(ERR_INSUFFICIENT_FUNDS);
-                $new_balance   = $worker['wallet_balance'] - $fee;
-                $update_worker = $this->conn->prepare("UPDATE worker_profiles SET wallet_balance = ? WHERE user_id = ?");
-                $update_worker->execute([$new_balance, $worker_id]);
+            if ($booking['payment_method'] == 'Cash') {
+                // Try free credits first, atomically (only succeeds if enough is available).
+                $upd_credits = $this->conn->prepare("UPDATE worker_profiles
+                                   SET free_credits = free_credits - ?,
+                                       free_bookings_used = free_bookings_used + 1
+                                   WHERE user_id = ? AND free_credits >= ?
+                                   RETURNING free_credits, wallet_balance");
+                $upd_credits->execute([$fee, $worker_id, $fee]);
+                $credit_row = $upd_credits->fetch();
+
+                if ($credit_row) {
+                    $description .= " (used free credit)";
+                    $new_balance  = floatval($credit_row['wallet_balance']);
+                }
+            }
+
+            if ($new_balance === null) {
+                // Either not Cash, or free credits were insufficient — fall back to wallet_balance.
+                $upd_wallet = $this->conn->prepare("UPDATE worker_profiles
+                                  SET wallet_balance = wallet_balance - ?
+                                  WHERE user_id = ? AND wallet_balance >= ?
+                                  RETURNING wallet_balance");
+                $upd_wallet->execute([$fee, $worker_id, $fee]);
+                $wallet_row = $upd_wallet->fetch();
+
+                if (!$wallet_row) throw new Exception(ERR_INSUFFICIENT_FUNDS);
+                $new_balance = floatval($wallet_row['wallet_balance']);
             }
 
             $this->addTransaction([
@@ -366,11 +408,13 @@ class WalletManager {
                 'ref_id' => $booking_id, 'ref_type' => 'booking', 'description' => $description, 'balance_after' => $new_balance
             ]);
 
-            $admin              = $this->getAdminWallet();
-            $new_admin_balance  = floatval($admin['balance']) + $fee;
-            $new_total_earned   = floatval($admin['total_earned']) + $fee;
-            $update_admin = $this->conn->prepare("UPDATE admin_wallet SET balance = ?, total_earned = ? WHERE id = 1");
-            $update_admin->execute([$new_admin_balance, $new_total_earned]);
+            $this->ensureAdminWalletExists();
+
+            $upd_admin = $this->conn->prepare("UPDATE admin_wallet
+                          SET balance = balance + ?, total_earned = total_earned + ?
+                          WHERE id = 1 RETURNING balance");
+            $upd_admin->execute([$fee, $fee]);
+            $new_admin_balance = floatval($upd_admin->fetchColumn());
 
             $admin_desc = "Admin fee from booking #$booking_id";
             $this->addTransaction([
@@ -401,31 +445,42 @@ class WalletManager {
     }
 
     /**
-     * Process worker top-up
+     * Process a worker top-up. $topup_id MUST be the id of the 'pending'
+     * top_ups row created before redirecting to the payment gateway — this
+     * function atomically flips it to 'completed', which is what makes it
+     * idempotent (WHERE status = 'pending' guard). Callers must already have
+     * verified the payment with the gateway before calling this — this
+     * function trusts its caller completely, it does not re-verify.
      */
-    public function processTopUp($worker_id, $amount, $payment_method, $reference = null) {
+    public function processTopUp($worker_id, $amount, $topup_id, $reference = null) {
         $owns_tx = $this->beginTx();
 
         try {
             $worker_id = intval($worker_id);
             $amount    = floatval($amount);
-            if ($worker_id <= 0 || $amount <= 0) throw new Exception("Invalid parameters");
+            $topup_id  = intval($topup_id);
+            if ($worker_id <= 0 || $amount <= 0 || $topup_id <= 0) throw new Exception("Invalid parameters");
 
-            $insert_topup = $this->conn->prepare("INSERT INTO top_ups
-                (worker_id, amount, payment_method, reference_number, status, completed_at)
-                VALUES (?, ?, ?, ?, 'completed', NOW())");
-            $insert_topup->execute([$worker_id, $amount, $payment_method, $reference]);
+            $claim = $this->conn->prepare("UPDATE top_ups
+                SET status = 'completed', completed_at = NOW(), reference_number = ?
+                WHERE id = ? AND worker_id = ? AND status = 'pending'");
+            $claim->execute([$reference, $topup_id, $worker_id]);
 
-            $top_up_id   = $this->conn->lastInsertId('top_ups_id_seq');
-            $worker      = $this->getWorkerWallet($worker_id);
-            $new_balance = floatval($worker['wallet_balance']) + $amount;
+            if ($claim->rowCount() === 0) {
+                error_log("processTopUp: top_up #$topup_id already completed or not found — no-op");
+                $this->commitTx($owns_tx);
+                return ['success' => true, 'message' => 'Top-up already processed (no-op)'];
+            }
 
-            $update_wallet = $this->conn->prepare("UPDATE worker_profiles SET wallet_balance = ? WHERE user_id = ?");
-            $update_wallet->execute([$new_balance, $worker_id]);
+            $upd_wallet = $this->conn->prepare("UPDATE worker_profiles
+                              SET wallet_balance = wallet_balance + ?
+                              WHERE user_id = ? RETURNING wallet_balance");
+            $upd_wallet->execute([$amount, $worker_id]);
+            $new_balance = floatval($upd_wallet->fetchColumn());
 
             $this->addTransaction([
                 'user_id' => $worker_id, 'user_type' => 'worker', 'type' => 'credit', 'amount' => $amount,
-                'ref_id' => $top_up_id, 'ref_type' => 'topup', 'description' => 'Wallet Top-up', 'balance_after' => $new_balance
+                'ref_id' => $topup_id, 'ref_type' => 'topup', 'description' => 'Wallet Top-up', 'balance_after' => $new_balance
             ]);
 
             $this->commitTx($owns_tx);
@@ -439,21 +494,27 @@ class WalletManager {
     }
 
     /**
-     * Process withdrawal request
+     * Process withdrawal request. Balance check + debit happen in one
+     * atomic conditional UPDATE — no stale read used for the write.
      */
     public function requestWithdrawal($worker_id, $amount, $gcash_number) {
-        $worker = $this->getWorkerWallet($worker_id);
         if ($amount < MIN_WITHDRAWAL) return ['success' => false, 'message' => ERR_MIN_WITHDRAWAL];
-        if ($worker['wallet_balance'] < $amount) return ['success' => false, 'message' => ERR_INSUFFICIENT_FUNDS];
 
         $owns_tx = $this->beginTx();
 
         try {
-            $worker_id     = intval($worker_id);
-            $amount        = floatval($amount);
-            $new_balance   = floatval($worker['wallet_balance']) - $amount;
-            $update_wallet = $this->conn->prepare("UPDATE worker_profiles SET wallet_balance = ? WHERE user_id = ?");
-            $update_wallet->execute([$new_balance, $worker_id]);
+            $worker_id = intval($worker_id);
+            $amount    = floatval($amount);
+
+            $upd_wallet = $this->conn->prepare("UPDATE worker_profiles
+                              SET wallet_balance = wallet_balance - ?
+                              WHERE user_id = ? AND wallet_balance >= ?
+                              RETURNING wallet_balance");
+            $upd_wallet->execute([$amount, $worker_id, $amount]);
+            $row = $upd_wallet->fetch();
+
+            if (!$row) throw new Exception(ERR_INSUFFICIENT_FUNDS);
+            $new_balance = floatval($row['wallet_balance']);
 
             $insert_withdrawal = $this->conn->prepare("INSERT INTO withdrawals
                 (worker_id, amount, gcash_number, status, request_date)
@@ -478,14 +539,83 @@ class WalletManager {
     }
 
     /**
-     * Process final payment commission (4% of total_final_cost)
-     * Called after cash confirmation or after successful GCash/Xendit final payment.
-     * Deducts 4% from worker wallet_balance and credits admin wallet.
+     * Credit the worker for an ONLINE (GCash/PayMongo) final payment —
+     * releases any escrowed mobilization fee and/or credits the
+     * labor+materials portion just paid. Cash final payments never call
+     * this: the worker already holds the physical cash, there's nothing to
+     * credit — only the commission (processFinalPaymentCommission) applies.
+     *
+     * Idempotent via bookings.wallet_credited, claimed atomically — safe to
+     * call from both the webhook and the browser-redirect landing page for
+     * the same payment; whichever runs first wins, the other no-ops. This
+     * is independent from (and safe to interleave with) the commission
+     * claim in processFinalPaymentCommission, which callers should invoke
+     * right after this.
+     */
+    public function creditOnlineFinalPayment($booking_id, $worker_id, $mobilization_release_amount, $credit_amount) {
+        $owns_tx = $this->beginTx();
+
+        try {
+            $booking_id = intval($booking_id);
+            $worker_id  = intval($worker_id);
+            $mobilization_release_amount = floatval($mobilization_release_amount);
+            $credit_amount = floatval($credit_amount);
+
+            $claim = $this->conn->prepare("UPDATE bookings
+                          SET wallet_credited = TRUE
+                          WHERE id = ? AND wallet_credited = FALSE");
+            $claim->execute([$booking_id]);
+
+            if ($claim->rowCount() === 0) {
+                error_log("creditOnlineFinalPayment: booking #$booking_id already credited — no-op");
+                $this->commitTx($owns_tx);
+                return ['success' => true, 'message' => 'Already credited (no-op)'];
+            }
+
+            if ($mobilization_release_amount > 0) {
+                $release = $this->releaseEscrowPayment($booking_id, $worker_id, $mobilization_release_amount);
+                if (!$release['success']) throw new Exception("Escrow release failed: " . $release['message']);
+            }
+
+            if ($credit_amount > 0) {
+                $upd = $this->conn->prepare("UPDATE worker_profiles
+                           SET wallet_balance = wallet_balance + ?
+                           WHERE user_id = ? RETURNING wallet_balance");
+                $upd->execute([$credit_amount, $worker_id]);
+                $new_balance = floatval($upd->fetchColumn());
+
+                $this->addTransaction([
+                    'user_id' => $worker_id, 'user_type' => 'worker', 'type' => 'credit', 'amount' => $credit_amount,
+                    'ref_id' => $booking_id, 'ref_type' => 'final_payment',
+                    'description' => "Online final payment received for booking #$booking_id",
+                    'balance_after' => $new_balance,
+                ]);
+            }
+
+            $this->commitTx($owns_tx);
+            return ['success' => true, 'message' => 'Credited'];
+
+        } catch (Exception $e) {
+            $this->rollbackTx($owns_tx);
+            error_log("❌ creditOnlineFinalPayment failed: " . $e->getMessage());
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Process final payment commission (4% of labor fee, stored as
+     * admin_fee_amount by complete_job.php). Deducts from worker
+     * wallet_balance and credits admin wallet. Runs exactly once per
+     * booking (guarded by final_commission_deducted) regardless of whether
+     * the final payment was Cash or GCash/PayMongo — which makes this the
+     * single right place to also apply the GreenLoop voucher top-up (see
+     * below): every booking passes through here exactly once at final
+     * settlement, whether or not it ever touched escrow.
      *
      * @param  int    $booking_id
      * @param  int    $worker_id
      * @param  float  $total_final_cost   The full job cost (labor + materials + mobilization)
-     * @param  string $payment_method     'Cash' or 'GCash'
+     * @param  string $payment_method     'Cash' or 'GCash'/'PayMongo'
      * @return array  ['success'=>bool, 'message'=>string, 'commission'=>float]
      */
     public function processFinalPaymentCommission($booking_id, $worker_id, $total_final_cost, $payment_method = 'Cash') {
@@ -500,13 +630,21 @@ class WalletManager {
                 throw new Exception("Invalid parameters: booking=$booking_id, worker=$worker_id, cost=$total_final_cost");
             }
 
-            // Prevent double-charging: check if commission already processed
-            $check = $this->conn->prepare("SELECT final_commission_deducted, admin_fee_amount FROM bookings WHERE id = ?");
-            $check->execute([$booking_id]);
-            $brow = $check->fetch();
-            if ($brow && !empty($brow['final_commission_deducted'])) {
+            // Prevent double-charging: atomically claim this booking for
+            // commission processing (this single UPDATE is both the guard
+            // and the "already processed" check — no separate read needed).
+            $claim = $this->conn->prepare("UPDATE bookings
+                          SET final_commission_deducted = TRUE
+                          WHERE id = ? AND final_commission_deducted = FALSE");
+            $claim->execute([$booking_id]);
+
+            if ($claim->rowCount() === 0) {
                 return ['success' => true, 'message' => 'Commission already processed', 'commission' => 0];
             }
+
+            $check = $this->conn->prepare("SELECT admin_fee_amount, voucher_discount FROM bookings WHERE id = ?");
+            $check->execute([$booking_id]);
+            $brow = $check->fetch();
 
             // Commission — use the amount complete_job.php already computed and stored
             // (4% of labor fee ONLY, not materials or mobilization). Recomputing
@@ -519,19 +657,17 @@ class WalletManager {
                 $commission = round($total_final_cost * (ADMIN_COMMISSION_PERCENT / 100), 2);
             }
 
-            // Fetch worker wallet
-            $worker = $this->getWorkerWallet($worker_id);
-            if (floatval($worker['wallet_balance']) < $commission) {
-                throw new Exception("Worker wallet insufficient for commission. Balance: {$worker['wallet_balance']}, Commission: $commission");
-            }
-
-            $new_worker_balance = floatval($worker['wallet_balance']) - $commission;
-
-            // Deduct from worker
             $upd_worker = $this->conn->prepare("UPDATE worker_profiles
-                           SET wallet_balance = ?
-                           WHERE user_id = ?");
-            $upd_worker->execute([$new_worker_balance, $worker_id]);
+                           SET wallet_balance = wallet_balance - ?
+                           WHERE user_id = ? AND wallet_balance >= ?
+                           RETURNING wallet_balance");
+            $upd_worker->execute([$commission, $worker_id, $commission]);
+            $worker_row = $upd_worker->fetch();
+
+            if (!$worker_row) {
+                throw new Exception("Worker wallet insufficient for commission ($commission).");
+            }
+            $new_worker_balance = floatval($worker_row['wallet_balance']);
 
             // Log worker debit
             $w_desc = "4% commission on final payment (₱" . number_format($total_final_cost, 2) . ") for booking #$booking_id via $payment_method";
@@ -547,15 +683,12 @@ class WalletManager {
             ]);
 
             // Credit admin wallet
-            $admin = $this->getAdminWallet();
-            $new_admin_balance = floatval($admin['balance']) + $commission;
-            $new_total_earned  = floatval($admin['total_earned']) + $commission;
-
+            $this->ensureAdminWalletExists();
             $upd_admin = $this->conn->prepare("UPDATE admin_wallet
-                          SET balance = ?,
-                              total_earned = ?
-                          WHERE id = 1");
-            $upd_admin->execute([$new_admin_balance, $new_total_earned]);
+                          SET balance = balance + ?, total_earned = total_earned + ?
+                          WHERE id = 1 RETURNING balance");
+            $upd_admin->execute([$commission, $commission]);
+            $new_admin_balance = floatval($upd_admin->fetchColumn());
 
             // Log admin credit
             $a_desc = "4% commission from booking #$booking_id final payment ($payment_method) — worker #$worker_id";
@@ -570,9 +703,46 @@ class WalletManager {
                 'balance_after'=> $new_admin_balance,
             ]);
 
-            // Mark commission as processed on the booking
-            $mark = $this->conn->prepare("UPDATE bookings SET final_commission_deducted = TRUE WHERE id = ?");
-            $mark->execute([$booking_id]);
+            // ── GreenLoop voucher discount: platform absorbs it ──────────────
+            // If this booking's mobilization fee was discounted by a redeemed
+            // GreenLoop voucher, the worker still deserves the FULL (pre-
+            // discount) mobilization amount — the discount is a marketing
+            // cost, not something the worker should eat. Top the worker up by
+            // voucher_discount here (the one place every booking passes
+            // through exactly once at final settlement, Cash or online) and
+            // fund it out of admin_wallet, logged as its own line so it's
+            // visible on the Finance dashboard rather than silently blended
+            // into other transactions.
+            $voucher_discount = round(floatval($brow['voucher_discount'] ?? 0), 2);
+            if ($voucher_discount > 0) {
+                $upd_worker_v = $this->conn->prepare("UPDATE worker_profiles
+                                    SET wallet_balance = wallet_balance + ?
+                                    WHERE user_id = ? RETURNING wallet_balance");
+                $upd_worker_v->execute([$voucher_discount, $worker_id]);
+                $new_worker_balance_v = floatval($upd_worker_v->fetchColumn());
+
+                $upd_admin_v = $this->conn->prepare("UPDATE admin_wallet
+                                   SET balance = balance - ?
+                                   WHERE id = 1 RETURNING balance");
+                $upd_admin_v->execute([$voucher_discount]);
+                $new_admin_balance_v = floatval($upd_admin_v->fetchColumn());
+
+                $v_worker_desc = "Platform-covered GreenLoop voucher discount for booking #$booking_id";
+                $this->addTransaction([
+                    'user_id' => $worker_id, 'user_type' => 'worker', 'type' => 'credit', 'amount' => $voucher_discount,
+                    'ref_id' => $booking_id, 'ref_type' => 'voucher_subsidy', 'description' => $v_worker_desc,
+                    'balance_after' => $new_worker_balance_v
+                ]);
+
+                $v_admin_desc = "Platform-covered voucher discount for booking #$booking_id — worker #$worker_id";
+                $this->addTransaction([
+                    'user_id' => 1, 'user_type' => 'admin', 'type' => 'debit', 'amount' => $voucher_discount,
+                    'ref_id' => $booking_id, 'ref_type' => 'voucher_subsidy', 'description' => $v_admin_desc,
+                    'balance_after' => $new_admin_balance_v
+                ]);
+
+                error_log("✅ Voucher discount ₱$voucher_discount absorbed by platform for booking #$booking_id");
+            }
 
             $this->commitTx($owns_tx);
             error_log("✅ Final payment commission processed: ₱$commission from worker #$worker_id for booking #$booking_id");
@@ -590,14 +760,10 @@ class WalletManager {
      * Get admin wallet (create if not exists)
      */
     private function getAdminWallet() {
+        $this->ensureAdminWalletExists();
         $stmt = $this->conn->prepare("SELECT * FROM admin_wallet WHERE id = 1");
         $stmt->execute();
-        $row = $stmt->fetch();
-        if (!$row) {
-            $this->conn->exec("INSERT INTO admin_wallet (id, balance, total_earned, total_withdrawn) VALUES (1, 0, 0, 0)");
-            return ['balance' => 0, 'total_earned' => 0, 'total_withdrawn' => 0];
-        }
-        return $row;
+        return $stmt->fetch();
     }
 
     /**
@@ -653,7 +819,7 @@ class WalletManager {
     public function getPendingEscrow() {
         $sql = "SELECT COUNT(*) as count, SUM(calculated_fee) as total
                 FROM bookings
-                WHERE payment_method = 'Xendit'
+                WHERE payment_method = 'PayMongo'
                 AND payment_status = 'Paid'
                 AND is_escrow = TRUE
                 AND status = 'Pending'";

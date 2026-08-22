@@ -20,7 +20,7 @@ class BookingManager {
         $subtotal = $base + $distance_fee + $urgency_fee;
 
         // Apply GCash discount
-        if ($payment_method === 'Xendit') {
+        if ($payment_method === 'PayMongo') {
             $discount = ($subtotal * GCASH_DISCOUNT_PERCENT) / 100;
             $total = $subtotal - $discount;
             return [

@@ -153,7 +153,7 @@ function completeBooking(bookingId) {
     const card = document.querySelector(`[data-booking-id="${bookingId}"]`);
     const paymentBadge = card?.querySelector('.payment-badge');
 
-    if (paymentBadge && paymentBadge.textContent.includes('Xendit')) {
+    if (paymentBadge && paymentBadge.textContent.includes('PayMongo')) {
         alert('For GCash bookings, please submit proof of completion first.');
         return;
     }

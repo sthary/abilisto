@@ -36,7 +36,7 @@ $points_to_next    = LISTO_POINTS_FOR_FREE - $points_progress;
 $pending_sql = "SELECT COUNT(*) as count, SUM(calculated_fee) as total
                 FROM bookings
                 WHERE worker_id = ?
-                AND payment_method = 'Xendit'
+                AND payment_method = 'PayMongo'
                 AND payment_status = 'Paid'
                 AND status = 'Pending'";
 $pending_stmt = $conn->prepare($pending_sql);
@@ -86,7 +86,7 @@ if (isset($_POST['topup_btn'])) {
     } elseif ($amount > MAX_TOPUP) {
         $topup_error = "Maximum top-up is ₱" . MAX_TOPUP;
     } elseif ($payment_method === 'gcash') {
-        header("Location: process_topup_xendit.php?amount=$amount");
+        header("Location: process_topup_paymongo.php?amount=$amount");
         exit();
     } else {
         $topup_error = "Invalid payment method selected.";
@@ -511,7 +511,7 @@ $statusStyle = getStatusBadge($profile['verification_status'] ?? 'None');
                 <div class="w-9 h-9 gradient-green rounded-xl flex items-center justify-center shadow-md shadow-emerald-500/20">
                     <span class="material-symbols-rounded text-white filled">add_circle</span>
                 </div>
-                <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">Add Funds via Xendit</h3>
+                <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">Add Funds via PayMongo</h3>
             </div>
 
             <form method="POST" id="topupForm">
@@ -547,7 +547,7 @@ $statusStyle = getStatusBadge($profile['verification_status'] ?? 'None');
                                         <span class="material-symbols-rounded text-3xl text-primary">smartphone</span>
                                     </div>
                                     <div>
-                                        <p class="font-bold text-slate-800 dark:text-slate-100">Xendit</p>
+                                        <p class="font-bold text-slate-800 dark:text-slate-100">PayMongo</p>
                                         <p class="text-xs text-primary font-medium">Instant · Secure</p>
                                     </div>
                                     <div class="ml-auto">

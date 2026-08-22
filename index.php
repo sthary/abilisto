@@ -581,13 +581,13 @@ $impactStats = getImpactStats($pdo, 'today');
             <div class="bg-white dark:bg-slate-900 p-10 rounded-xl border-2 border-primary shadow-2xl shadow-primary/10 relative">
                 <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Popular</div>
                 <h3 class="text-xl font-bold mb-2">Online Payment</h3>
-                <p class="text-slate-500 mb-8">10% Xendit discount</p>
+                <p class="text-slate-500 mb-8">10% PayMongo discount</p>
                 <div class="flex items-baseline gap-1 mb-8">
                     <span class="text-4xl font-black">₱18</span>
                     <span class="text-slate-500">base mobilization fee</span>
                 </div>
                 <ul class="space-y-4 mb-10">
-                    <li class="flex items-center gap-3"><i class="fa-solid fa-check-circle text-primary"></i><span class="font-semibold"><strong>10% discount</strong> with Xendit</span></li>
+                    <li class="flex items-center gap-3"><i class="fa-solid fa-check-circle text-primary"></i><span class="font-semibold"><strong>10% discount</strong> with PayMongo</span></li>
                     <li class="flex items-center gap-3"><i class="fa-solid fa-check-circle text-primary"></i><span class="font-semibold">Faster booking confirmation</span></li>
                     <li class="flex items-center gap-3"><i class="fa-solid fa-check-circle text-primary"></i><span>Secure digital receipt</span></li>
                     <li class="flex items-center gap-3"><i class="fa-solid fa-check-circle text-primary"></i><span>Priority matching</span></li>

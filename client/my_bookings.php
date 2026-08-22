@@ -163,7 +163,7 @@ function renderBookingCard($row, $lang, $type, $index = 0) {
 
     // Payment badge
     echo '<span class="glass-badge bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-            <span class="material-symbols-rounded text-[16px]">' . ($row['payment_method'] == 'Xendit' ? 'smartphone' : 'payments') . '</span>
+            <span class="material-symbols-rounded text-[16px]">' . ($row['payment_method'] == 'PayMongo' ? 'smartphone' : 'payments') . '</span>
             ' . htmlspecialchars($row['payment_method']) . ' • ' . htmlspecialchars($row['payment_status']) . '
           </span>';
 
@@ -229,9 +229,9 @@ function renderBookingCard($row, $lang, $type, $index = 0) {
 
         // Confirm Completion button:
         // - 'Pending Confirmation' = worker confirmed cash received, waiting for client
-        // - 'Accepted' + Xendit   = GCash paid, client confirms job done
-        if ($row['status'] == 'Pending Confirmation' || 
-            ($row['status'] == 'Accepted' && $row['payment_method'] == 'Xendit' && $row['final_payment_status'] == 'paid')) {
+        // - 'Accepted' + PayMongo = GCash paid, client confirms job done
+        if ($row['status'] == 'Pending Confirmation' ||
+            ($row['status'] == 'Accepted' && $row['payment_method'] == 'PayMongo' && $row['final_payment_status'] == 'paid')) {
 
             $btn_label = $row['status'] == 'Pending Confirmation'
                 ? 'Confirm Cash Received'

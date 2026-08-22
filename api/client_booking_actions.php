@@ -73,8 +73,8 @@ try {
                 //    notify_cash_payment.php when worker clicked "Confirm Cash".
                 //    Nothing to credit to wallet here — cash stays with the worker. ──
 
-                // ── GCash/Xendit mobilization escrow: release now ────────────
-                if ($booking['payment_method'] == 'Xendit' && 
+                // ── GCash/PayMongo mobilization escrow: release now ────────────
+                if ($booking['payment_method'] == 'PayMongo' &&
                     $booking['payment_status'] == 'Paid' && 
                     $booking['is_escrow'] == 1) {
                     

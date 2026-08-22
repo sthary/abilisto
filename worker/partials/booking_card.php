@@ -44,7 +44,7 @@ function renderBookingCard($booking, $type) {
 
     // ── Other flags ───────────────────────────────────────────────────────────
     $hasFinalCosts = $booking['labor_materials_cost'] > 0 && $booking['total_final_cost'] > 0;
-    $isPrepaid     = $booking['payment_method'] === 'Xendit' && $booking['payment_status'] === 'Paid';
+    $isPrepaid     = $booking['payment_method'] === 'PayMongo' && $booking['payment_status'] === 'Paid';
 
     // ── Urgency styling ───────────────────────────────────────────────────────
     $urgencyColors = [

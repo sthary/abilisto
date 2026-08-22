@@ -63,7 +63,7 @@ if (isset($_POST['submit_completion'])) {
         $labor_materials = $labor_fee + $materials_cost;
 
         // Total client pays depends on mobilization payment status
-        if ($booking['payment_method'] == 'Xendit' && $booking['payment_status'] == 'Paid') {
+        if ($booking['payment_method'] == 'PayMongo' && $booking['payment_status'] == 'Paid') {
             $total = $labor_materials; // Mobilization already settled
         } else {
             $total = $mobilization + $labor_materials;
@@ -93,7 +93,7 @@ if (isset($_POST['submit_completion'])) {
     }
 }
 
-$mobilization_paid = ($booking['payment_method'] == 'Xendit' && $booking['payment_status'] == 'Paid');
+$mobilization_paid = ($booking['payment_method'] == 'PayMongo' && $booking['payment_status'] == 'Paid');
 ?>
 
 <!DOCTYPE html>

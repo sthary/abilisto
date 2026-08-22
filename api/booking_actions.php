@@ -114,14 +114,21 @@ try {
             $conn->beginTransaction();
 
             try {
-                // Update booking status
-                $update_sql = "UPDATE bookings SET status = 'Accepted', updated_at = NOW() WHERE id = ?";
+                // Atomically claim the accept (guards against double-click /
+                // double-submit triggering deductAdminFee twice for the
+                // same booking — the same principle as the atomic escrow
+                // claims in WalletManager).
+                $update_sql = "UPDATE bookings SET status = 'Accepted', updated_at = NOW() WHERE id = ? AND status = 'Pending'";
                 $stmt = $conn->prepare($update_sql);
                 $stmt->execute([$booking_id]);
-                
+
+                if ($stmt->rowCount() === 0) {
+                    throw new Exception('This booking was already accepted or is no longer pending.');
+                }
+
                 // For cash payments, deduct fee immediately
                 // For GCash/escrow payments, just mark as accepted - payment stays in escrow
-                if ($booking['payment_method'] != 'Xendit') {
+                if ($booking['payment_method'] != 'PayMongo') {
                     // Cash payment - deduct fee
                     $fee_result = $wallet->deductAdminFee($booking['id'], $worker_id);
                     if (!$fee_result['success']) {
@@ -135,7 +142,7 @@ try {
                 if (!empty($booking['client_id'])) { // Target client_id directly!
                     try {
                         $fcm = new FCMv1();
-                        $status_text = $booking['payment_method'] == 'Xendit' ? 
+                        $status_text = $booking['payment_method'] == 'PayMongo' ?
                             "Payment held in escrow until job completion." : 
                             "";
                         
@@ -160,7 +167,7 @@ try {
                 
                 // Also save in-app notification
                 $notif_msg = "✅ " . $worker_name . " accepted your booking!";
-                if ($booking['payment_method'] == 'Xendit') {
+                if ($booking['payment_method'] == 'PayMongo') {
                     $notif_msg .= " Payment held in escrow. Confirm when job is done.";
                 }
                 
@@ -199,10 +206,10 @@ try {
                 $stmt->execute([$booking_id]);
                 
                 // Refund if escrow
-                if ($booking['payment_method'] == 'Xendit' && 
-                    $booking['payment_status'] == 'Paid' && 
+                if ($booking['payment_method'] == 'PayMongo' &&
+                    $booking['payment_status'] == 'Paid' &&
                     $booking['is_escrow'] == 1) {
-                    
+
                     $refund_result = $wallet->refundEscrowPayment(
                         $booking['id'], 
                         $booking['client_id'], 

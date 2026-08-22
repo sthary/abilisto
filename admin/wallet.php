@@ -61,32 +61,37 @@ if (isset($_POST['process_withdrawal'])) {
     $worker_id = intval($_POST['worker_id']);
     $amount = floatval($_POST['amount']);
     
+    // Atomically claim this withdrawal (WHERE status = 'Pending' both guards
+    // against double-submit/double-click and avoids a stale-read race on
+    // admin_wallet.balance — previously this used a balance value fetched
+    // once at page load, so approving two withdrawals in quick succession
+    // could under-deduct the admin wallet by one of the two amounts).
+    $claim = $conn->prepare("UPDATE withdrawals SET status = ? WHERE id = ? AND status = 'Pending'");
+    $claim->execute([$action === 'approve' ? 'Approved' : 'Rejected', $withdrawal_id]);
+
+    if ($claim->rowCount() === 0) {
+        header("Location: wallet.php?msg=" . urlencode("This withdrawal was already processed."));
+        exit();
+    }
+
     if ($action === 'approve') {
-        // Update withdrawal status
-        $conn->prepare("UPDATE withdrawals SET status = 'Approved' WHERE id = ?")->execute([$withdrawal_id]);
+        $upd_admin = $conn->prepare("UPDATE admin_wallet
+                          SET balance = balance - ?, total_withdrawn = total_withdrawn + ?
+                          WHERE id = 1 RETURNING balance");
+        $upd_admin->execute([$amount, $amount]);
+        $new_balance = floatval($upd_admin->fetchColumn());
 
-        // Update admin wallet - subtract the amount (since we're paying out)
-        $new_balance = $wallet['balance'] - $amount;
-        $new_withdrawn = $wallet['total_withdrawn'] + $amount;
-        $conn->prepare("UPDATE admin_wallet SET balance = ?, total_withdrawn = ? WHERE id = 1")
-             ->execute([$new_balance, $new_withdrawn]);
-
-        // Record transaction
         $conn->prepare("INSERT INTO wallet_transactions (user_id, user_type, transaction_type, amount, reference_id, reference_type, description, balance_after)
                      VALUES (1, 'admin', 'debit', ?, ?, 'withdrawal', ?, ?)")
              ->execute([$amount, $withdrawal_id, "Withdrawal payout to worker #$worker_id", $new_balance]);
 
         $message = "Withdrawal approved and payment processed.";
     } else {
-        // Reject - refund the money back to worker
-        $conn->prepare("UPDATE withdrawals SET status = 'Rejected' WHERE id = ?")->execute([$withdrawal_id]);
-        $conn->prepare("UPDATE worker_profiles SET wallet_balance = wallet_balance + ? WHERE user_id = ?")
-             ->execute([$amount, $worker_id]);
-
-        // Record refund transaction for worker
-        $worker_balance_stmt = $conn->prepare("SELECT wallet_balance FROM worker_profiles WHERE user_id = ?");
-        $worker_balance_stmt->execute([$worker_id]);
-        $worker_balance = $worker_balance_stmt->fetch()['wallet_balance'];
+        $upd_worker = $conn->prepare("UPDATE worker_profiles
+                          SET wallet_balance = wallet_balance + ?
+                          WHERE user_id = ? RETURNING wallet_balance");
+        $upd_worker->execute([$amount, $worker_id]);
+        $worker_balance = floatval($upd_worker->fetchColumn());
 
         $conn->prepare("INSERT INTO wallet_transactions (user_id, user_type, transaction_type, amount, reference_id, reference_type, description, balance_after)
                      VALUES (?, 'worker', 'credit', ?, ?, 'withdrawal', 'Withdrawal rejected - funds returned', ?)")
@@ -94,7 +99,7 @@ if (isset($_POST['process_withdrawal'])) {
 
         $message = "Withdrawal rejected and funds returned to worker.";
     }
-    
+
     // Refresh data
     header("Location: wallet.php?msg=" . urlencode($message));
     exit();

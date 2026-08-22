@@ -123,26 +123,26 @@ $admin_balance_sql = "SELECT balance FROM admin_wallet WHERE id = 1";
 $admin_balance = (float)($conn->query($admin_balance_sql)->fetch()['balance'] ?? 0);
 
 // ============================================================
-// SIMULATED XENDIT BALANCE (calculated from DB)
-// We track what physically passed through Xendit/GCash/Maya
+// SIMULATED PAYMONGO BALANCE (calculated from DB)
+// We track what physically passed through PayMongo/GCash/Maya
 // by checking payment_method fields — Cash is excluded entirely
-// since it never touches Xendit.
+// since it never touches PayMongo.
 // ============================================================
 
-// IN 1: Mobilization fees paid via Xendit (calculated_fee column)
-// payment_method = 'Xendit' AND payment_status = 'Paid'
+// IN 1: Mobilization fees paid via PayMongo (calculated_fee column)
+// payment_method = 'PayMongo' AND payment_status = 'Paid'
 $xendit_in_mobilization_sql = "SELECT COALESCE(SUM(calculated_fee), 0) as total
     FROM bookings
-    WHERE payment_method = 'Xendit'
+    WHERE payment_method = 'PayMongo'
     AND payment_status = 'Paid'";
 $xendit_in_mobilization = (float)($conn->query($xendit_in_mobilization_sql)->fetch()['total'] ?? 0);
 
-// IN 2: Final payments received via Xendit/GCash/Maya
-// final_payment_method IN ('Xendit','GCash','Maya') AND final_payment_status = 'paid'
+// IN 2: Final payments received via PayMongo/GCash/Maya
+// final_payment_method IN ('PayMongo','GCash','Maya') AND final_payment_status = 'paid'
 $xendit_in_final_sql = "SELECT COALESCE(SUM(total_final_cost), 0) as total
     FROM bookings
     WHERE final_payment_status = 'paid'
-    AND final_payment_method IN ('Xendit', 'GCash', 'Maya', 'gcash', 'maya')";
+    AND final_payment_method IN ('PayMongo', 'GCash', 'Maya', 'gcash', 'maya')";
 $xendit_in_final = (float)($conn->query($xendit_in_final_sql)->fetch()['total'] ?? 0);
 
 // IN 3: Worker top-ups completed via GCash/bank (workers funded their wallets)
@@ -151,7 +151,7 @@ $xendit_in_topups_sql = "SELECT COALESCE(SUM(amount), 0) as total
     WHERE status = 'completed'";
 $xendit_in_topups = (float)($conn->query($xendit_in_topups_sql)->fetch()['total'] ?? 0);
 
-// OUT: Completed worker withdrawals (money sent OUT of Xendit to workers)
+// OUT: Completed worker withdrawals (money sent OUT of PayMongo to workers)
 $xendit_out_withdrawals_sql = "SELECT COALESCE(SUM(amount), 0) as total
     FROM withdrawals
     WHERE status IN ('Completed', 'completed', 'approved', 'Approved')";
@@ -162,7 +162,7 @@ $xendit_total_in  = $xendit_in_mobilization + $xendit_in_final + $xendit_in_topu
 $xendit_total_out = $xendit_out_withdrawals;
 $xendit_simulated_balance = $xendit_total_in - $xendit_total_out;
 
-// Solvency ratio: can we cover worker debt with our simulated Xendit balance?
+// Solvency ratio: can we cover worker debt with our simulated PayMongo balance?
 $solvency_ratio = $total_liabilities > 0 ? round(($xendit_simulated_balance / $total_liabilities) * 100, 1) : 100;
 $is_solvent = $xendit_simulated_balance >= $total_liabilities;
 
@@ -461,7 +461,7 @@ $current_date = date('M d, Y');
         #toast.success { background: #10B981; color: white; }
         #toast.error   { background: #F43F5E; color: white; }
 
-        /* ── Xendit placeholder badge ──────────────────── */
+        /* ── PayMongo placeholder badge ──────────────────── */
         .xendit-badge {
             display: inline-flex;
             align-items: center;
@@ -557,9 +557,9 @@ $current_date = date('M d, Y');
                     </span>
                 </div>
 
-                <!-- Simulated Xendit Balance -->
+                <!-- Simulated PayMongo Balance -->
                 <div class="flex items-center justify-between mb-1">
-                    <p class="text-[10px] text-slate-400">Simulated Xendit Balance</p>
+                    <p class="text-[10px] text-slate-400">Simulated PayMongo Balance</p>
                     <span class="xendit-badge">
                         <span class="material-icons-round" style="font-size:10px">database</span>
                         FROM DB
@@ -574,14 +574,14 @@ $current_date = date('M d, Y');
                     <div class="flex justify-between text-[10px]">
                         <span class="text-slate-400 flex items-center gap-1">
                             <span class="material-icons-round text-equity" style="font-size:11px">arrow_downward</span>
-                            Mobilization (Xendit)
+                            Mobilization (PayMongo)
                         </span>
                         <span class="font-semibold text-equity">+₱<?php echo number_format($xendit_in_mobilization, 2); ?></span>
                     </div>
                     <div class="flex justify-between text-[10px]">
                         <span class="text-slate-400 flex items-center gap-1">
                             <span class="material-icons-round text-equity" style="font-size:11px">arrow_downward</span>
-                            Final Payments (GCash/Xendit)
+                            Final Payments (GCash/PayMongo)
                         </span>
                         <span class="font-semibold text-equity">+₱<?php echo number_format($xendit_in_final, 2); ?></span>
                     </div>
@@ -601,7 +601,7 @@ $current_date = date('M d, Y');
                     </div>
                 </div>
 
-                <!-- Solvency bar: can Xendit cover worker debt? -->
+                <!-- Solvency bar: can PayMongo cover worker debt? -->
                 <div class="pt-3 border-t border-white/30 dark:border-white/10">
                     <p class="text-[10px] text-slate-400 mb-1">Can we pay all workers right now?</p>
                     <div class="solvency-track mb-2">

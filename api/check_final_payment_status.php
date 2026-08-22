@@ -1,7 +1,7 @@
 <?php
 // api/check_final_payment_status.php
 // Lightweight poll target for worker/generate_receipt.php — lets the
-// receipt page detect a client's Xendit/GCash payment completing (or a
+// receipt page detect a client's PayMongo/GCash payment completing (or a
 // client's cash-completion confirmation) without a full page reload.
 session_start();
 require_once '../db_connect.php';

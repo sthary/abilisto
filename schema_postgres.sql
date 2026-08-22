@@ -70,6 +70,7 @@ CREATE TABLE bookings (
   service_type VARCHAR(50) NOT NULL DEFAULT '',
   problem_desc TEXT NOT NULL,
   calculated_fee NUMERIC(10,2),
+  voucher_discount NUMERIC(10,2) DEFAULT 0.00,
   mobilization_fee NUMERIC(10,2) DEFAULT 0.00,
   labor_materials_cost NUMERIC(10,2) DEFAULT 0.00,
   total_final_cost NUMERIC(10,2) DEFAULT 0.00,
@@ -760,7 +761,7 @@ CREATE TABLE wallet_transactions (
   transaction_type TEXT NOT NULL CHECK (transaction_type IN ('credit','debit','fee','refund','withdrawal')),
   amount NUMERIC(10,2) NOT NULL,
   reference_id INTEGER,
-  reference_type TEXT CHECK (reference_type IS NULL OR reference_type IN ('booking','withdrawal','fee','topup','listo_points','listo_reward','final_commission','final_payment','')),
+  reference_type TEXT CHECK (reference_type IS NULL OR reference_type IN ('booking','withdrawal','fee','topup','listo_points','listo_reward','final_commission','final_payment','voucher_subsidy','')),
   description TEXT,
   balance_after NUMERIC(10,2),
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -785,8 +786,8 @@ CREATE TABLE withdrawals (
   PRIMARY KEY (id)
 );
 COMMENT ON COLUMN withdrawals.booking_id IS 'Reference booking for cost breakdown display';
-COMMENT ON COLUMN withdrawals.xendit_disbursement_id IS 'Xendit disbursement ID returned by API';
-COMMENT ON COLUMN withdrawals.processed_at IS 'When admin approved & Xendit was called';
+COMMENT ON COLUMN withdrawals.xendit_disbursement_id IS 'Unused — reserved for a future automated payout API disbursement id (withdrawals are currently a manual admin process; column name predates the PayMongo migration)';
+COMMENT ON COLUMN withdrawals.processed_at IS 'When admin approved the withdrawal';
 COMMENT ON COLUMN withdrawals.notes IS 'Failure reason or admin notes';
 COMMENT ON COLUMN withdrawals.approved_by IS 'hr user_id';
 

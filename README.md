@@ -1,7 +1,7 @@
 # Abilisto
 
 Gig-marketplace / waste-collection service platform (Surigao del Sur, PH). Connects clients
-with verified workers for bookings, handles escrow-style payments (Xendit), push notifications
+with verified workers for bookings, handles escrow-style payments (PayMongo), push notifications
 (OneSignal + Firebase), SMS OTP (iProgSMS), AI-assisted chat/scanning (Gemini, OpenRouter), and
 includes a separate GreenLoop recycling/rewards module and a real-time Node chat server.
 
@@ -29,7 +29,7 @@ contain real user PII and live data. See `.gitignore`.
 ## Local setup
 
 1. Copy `.env.example` to `.env` and fill in real values (ask whoever has access to the current
-   secrets — Xendit, Gemini, Firebase, Google OAuth, OpenRouter, Resend, OneSignal, iProgSMS).
+   secrets — PayMongo, Gemini, Firebase, Google OAuth, OpenRouter, Resend, OneSignal, iProgSMS).
 2. Local dev uses a **local MySQL database via XAMPP**, seeded from `u942667021_abilisto_db.sql`
    (never the live DB). To (re)create it:
    ```bash

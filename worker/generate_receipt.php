@@ -5,6 +5,8 @@ include '../db_connect.php';
 include '../includes/init_lang.php';
 include '../config/constants.php';
 require_once '../includes/fcm_sender.php';
+require_once '../includes/functions/wallet_manager.php';
+require_once '../includes/functions/paymongo_client.php';
 
 // Enable error logging
 error_log("=== GENERATE RECEIPT STARTED ===");
@@ -45,8 +47,8 @@ if (!$booking) {
 
 error_log("Booking found: #$booking_id - Client: {$booking['client_name']}");
 
-// Determine if mobilization was paid via Xendit
-$mobilization_paid = ($booking['payment_method'] == 'Xendit' && $booking['payment_status'] == 'Paid');
+// Determine if mobilization was paid via PayMongo
+$mobilization_paid = ($booking['payment_method'] == 'PayMongo' && $booking['payment_status'] == 'Paid');
 $mobilization_amount = floatval($booking['calculated_fee']);
 $labor_materials = floatval($booking['labor_materials_cost']);
 $total_cost = floatval($booking['total_final_cost']);
@@ -68,97 +70,45 @@ $worker_gets = $total_cost - $admin_fee;
 error_log("Mobilization paid: " . ($mobilization_paid ? 'YES' : 'NO'));
 error_log("Remaining balance: ₱$remaining_balance");
 
-// Generate QR Code via Xendit for remaining balance
+// Generate a PayMongo Payment Link for the remaining balance
 $qr_code_url = null;
-$xendit_id = null;
+$paymongo_link_id = null;
 $qr_error = null;
 
 if ($remaining_balance > 0 && $booking['final_payment_status'] != 'paid') {
-    
-    error_log("Attempting to generate Xendit invoice for ₱$remaining_balance");
-    
+
+    error_log("Attempting to generate PayMongo link for ₱$remaining_balance");
+
     // Validate minimum amount
     if ($remaining_balance < 1.00) {
-        $qr_error = "Amount too small for Xendit payment. Please use cash option.";
+        $qr_error = "Amount too small for online payment. Please use cash option.";
         error_log($qr_error);
     } else {
-        // Create Xendit invoice for remaining balance
-        $external_id = 'FINAL-' . time() . '-' . $booking_id . '-' . rand(100, 999);
-        $secret_key = getenv('XENDIT_SECRET_KEY');
-        
-        // Get client email with fallback
-        $client_email = !empty($booking['client_email']) ? $booking['client_email'] : 'customer_' . $booking_id . '@abilisto.com';
-        
-        $data = [
-            'external_id' => $external_id,
-            'amount' => $remaining_balance,
-            'description' => 'Final Payment for Booking #' . $booking_id,
-            'invoice_duration' => 86400,
-            'currency' => 'PHP',
-            'customer' => [
-                'given_names' => $booking['client_name'],
-                'email' => $client_email,
-                'mobile_number' => $booking['client_phone'] ?? ''
-            ],
-            'success_redirect_url' => 'https://abilisto.site/client/final_payment_success.php?booking_id=' . $booking_id,
-            'failure_redirect_url' => 'https://abilisto.site/worker/dashboard.php',
-            'payment_methods' => ['GCASH', 'MAYA'],
-            'metadata' => [
-                'booking_id' => $booking_id,
-                'worker_id' => $worker_id,
-                'type' => 'final_payment'
-            ]
-        ];
-        
-        error_log("Xendit Request: " . json_encode($data));
-        
-        $ch = curl_init('https://api.xendit.co/v2/invoices');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Authorization: Basic ' . base64_encode($secret_key . ':')
-        ]);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, getenv('APP_DEBUG') !== '1'); // verify in production, skip only on local XAMPP (no CA bundle)
-        
-        $response = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curl_error = curl_error($ch);
-        curl_close($ch);
-        
-        error_log("Xendit HTTP Code: $http_code");
-        error_log("Xendit Response: " . $response);
-        
-        if ($curl_error) {
-            error_log("CURL Error: " . $curl_error);
-            $qr_error = "Connection error to payment gateway.";
-        }
-        
-        $result = json_decode($response, true);
-        
-        if ($http_code == 200 && isset($result['invoice_url'])) {
-            $qr_code_url = $result['invoice_url'];
-            $xendit_id = $result['id'];
-            
-            // Save to database
-            $update_sql = "UPDATE bookings SET 
+        $reference_number = 'FINAL-' . time() . '-' . $booking_id . '-' . rand(100, 999);
+
+        $link = paymongoCreateLink(
+            $remaining_balance,
+            'Final Payment for Booking #' . $booking_id,
+            $reference_number,
+            ['booking_id' => $booking_id, 'worker_id' => $worker_id, 'type' => 'final_payment']
+        );
+
+        if ($link['success']) {
+            $qr_code_url      = $link['checkout_url'];
+            $paymongo_link_id = $link['id'];
+
+            // Save to database (column name predates the PayMongo migration)
+            $update_sql = "UPDATE bookings SET
                           final_payment_qr = ?,
                           final_payment_xendit_id = ?
                           WHERE id = ?";
             $update_stmt = $conn->prepare($update_sql);
-            $update_stmt->execute([$qr_code_url, $xendit_id, $booking_id]);
-            
-            error_log("✅ QR Code URL saved: $qr_code_url");
+            $update_stmt->execute([$qr_code_url, $paymongo_link_id, $booking_id]);
+
+            error_log("✅ PayMongo Link saved: $qr_code_url");
         } else {
-            error_log("❌ Xendit API Error");
-            if (isset($result['error_code'])) {
-                error_log("Error Code: " . $result['error_code']);
-                error_log("Message: " . ($result['message'] ?? 'No message'));
-                $qr_error = "Payment gateway error: " . ($result['message'] ?? 'Unable to generate QR code');
-            } else {
-                $qr_error = "Unable to generate payment QR code. Please try again.";
-            }
+            error_log("❌ PayMongo API Error: " . $link['message']);
+            $qr_error = "Payment gateway error: " . $link['message'];
         }
     }
 }
@@ -168,43 +118,44 @@ if ($remaining_balance > 0 && $booking['final_payment_status'] != 'paid') {
 if ($remaining_balance == 0 && $booking['status'] === 'Completed') {
     $zero_balance = true;
 } elseif ($remaining_balance == 0) {
+    // Nothing left to collect online — route through the same guarded
+    // WalletManager methods every other settlement path uses (previously
+    // this branch used raw SQL with no wallet_transactions log entry at
+    // all, making this real money movement invisible to the Finance
+    // dashboard, and no idempotency guard beyond the outer status check).
     error_log("Remaining balance is 0, auto-completing booking");
 
-    $conn->beginTransaction();
-
     try {
-        // Update booking to completed
-        $update = "UPDATE bookings SET
-                  status = 'Completed',
-                  updated_at = NOW()
-                  WHERE id = ?";
-        $stmt = $conn->prepare($update);
-        $stmt->execute([$booking_id]);
+        $wallet = new WalletManager($conn);
 
-        // Credit worker's wallet
-        $conn->prepare("UPDATE worker_profiles
-                      SET wallet_balance = wallet_balance + ?,
-                          jobs_completed = jobs_completed + 1
-                      WHERE user_id = ?")
-             ->execute([$worker_gets, $worker_id]);
+        $mobilization_released = ($mobilization_paid && intval($booking['is_escrow']) === 1);
+        $mobilization_amount   = $mobilization_released ? floatval($booking['calculated_fee']) : 0;
 
-        // Add to admin wallet (4% fee)
-        $conn->prepare("UPDATE admin_wallet
-                      SET balance = balance + ?,
-                          total_earned = total_earned + ?
-                      WHERE id = 1")
-             ->execute([$admin_fee, $admin_fee]);
-        
-        // Notify client
-        // 1. Notify client (In-App Bell Notification)
+        if ($mobilization_amount > 0) {
+            $wallet->creditOnlineFinalPayment($booking_id, $worker_id, $mobilization_amount, 0);
+        }
+
+        if ($total_cost > 0) {
+            $wallet->processFinalPaymentCommission($booking_id, $worker_id, $total_cost, $mobilization_paid ? 'PayMongo' : 'Cash');
+        }
+
+        $conn->prepare("UPDATE bookings
+                      SET status = 'Completed',
+                          final_payment_status = 'paid',
+                          updated_at = NOW()
+                      WHERE id = ? AND status != 'Completed'")
+             ->execute([$booking_id]);
+
+        $conn->prepare("UPDATE worker_profiles SET jobs_completed = jobs_completed + 1 WHERE user_id = ?")
+             ->execute([$worker_id]);
+
         $notif_msg = "✅ Job Complete! Total: ₱" . number_format($total_cost, 2) . ". Thank you for using Abilisto!";
         sendNotification($conn, $booking['client_id'], $notif_msg, "../client/my_bookings.php");
-        
-        // 2. Notify client (OneSignal Push Notification)
+
         try {
             $fcm = new FCMv1();
             $fcm->send(
-                $booking['client_id'], // Target client ID directly!
+                $booking['client_id'],
                 "✅ Job Complete!",
                 "Total: ₱" . number_format($total_cost, 2) . ". Thank you for using Abilisto!",
                 ['url' => '/abilisto/client/my_bookings.php']
@@ -212,14 +163,11 @@ if ($remaining_balance == 0 && $booking['status'] === 'Completed') {
         } catch (Exception $e) {
             error_log("Receipt push error: " . $e->getMessage());
         }
-        
-        $conn->commit();
+
         error_log("✅ Booking auto-completed successfully");
-        
         $zero_balance = true;
-        
+
     } catch (Exception $e) {
-        $conn->rollBack();
         error_log("❌ Auto-complete failed: " . $e->getMessage());
     }
 }
@@ -338,7 +286,7 @@ if ($remaining_balance == 0 && $booking['status'] === 'Completed') {
                     <?php if ($mobilization_paid): ?>
                         <div class="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-1.5 rounded-full border border-emerald-200 dark:border-emerald-800/50">
                             <span class="material-symbols-outlined text-emerald-500 text-sm">check_circle</span>
-                            <span class="text-sm font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-wider">Paid via Xendit</span>
+                            <span class="text-sm font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-wider">Paid via PayMongo</span>
                         </div>
                     <?php else: ?>
                         <div class="flex items-center gap-2 bg-yellow-50 dark:bg-yellow-900/20 px-4 py-1.5 rounded-full border border-yellow-200 dark:border-yellow-800/50">
@@ -424,7 +372,7 @@ if ($remaining_balance == 0 && $booking['status'] === 'Completed') {
             <div class="w-full mb-6 flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl px-4 py-3 text-left">
                 <span class="material-symbols-outlined text-amber-500 text-base shrink-0 mt-0.5">info</span>
                 <p class="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-                    <span class="font-bold">Note:</span> A <span class="font-bold">2.3% convenience fee</span> is charged by Xendit for online payments. This is on top of the amount shown above.
+                    <span class="font-bold">Note:</span> A <span class="font-bold">2.3% convenience fee</span> is charged by PayMongo for online payments. This is on top of the amount shown above.
                 </p>
             </div>
             
@@ -448,7 +396,7 @@ if ($remaining_balance == 0 && $booking['status'] === 'Completed') {
             <?php endif; ?>
             
             <div class="space-y-3">
-                <p class="text-lg font-bold text-slate-800 dark:text-slate-200">Xendit</p>
+                <p class="text-lg font-bold text-slate-800 dark:text-slate-200">PayMongo</p>
                 <p class="text-sm text-slate-400 max-w-[280px] mx-auto leading-relaxed">Position the QR code within the frame to pay instantly. Scannable from a distance.</p>
             </div>
             
@@ -554,7 +502,7 @@ function notifyCashPayment(bookingId) {
 }
 
 // ── Auto-close: poll for payment completion (cash confirmed by client, or
-// QR/Xendit scanned and paid) and redirect back to the dashboard once the
+// QR/PayMongo scanned and paid) and redirect back to the dashboard once the
 // booking is actually Completed — the worker shouldn't have to sit on this
 // page or manually refresh to find out the client paid. ──
 <?php if (!isset($zero_balance) && $booking['status'] !== 'Completed'): ?>

@@ -32,7 +32,7 @@ if (isset($_POST['topup_btn'])) {
         // Only GCash payment method is supported
         if ($payment_method == 'gcash') {
             // Redirect to GCash payment
-            header("Location: process_topup_xendit.php?amount=$amount");
+            header("Location: process_topup_paymongo.php?amount=$amount");
             exit();
         } else {
             $error = "Invalid payment method selected.";

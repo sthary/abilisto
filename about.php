@@ -77,7 +77,7 @@ $technologies = [
     ['name' => 'MySQL', 'color' => 'bg-orange-500', 'icon' => 'fa-solid fa-database'],
     ['name' => 'JavaScript', 'color' => 'bg-yellow-500', 'icon' => 'fa-brands fa-js'],
     ['name' => 'Tailwind CSS', 'color' => 'bg-sky-500', 'icon' => 'fa-brands fa-css3-alt'],
-    ['name' => 'Xendit', 'color' => 'bg-blue-600', 'icon' => 'fa-solid fa-credit-card'],
+    ['name' => 'PayMongo', 'color' => 'bg-blue-600', 'icon' => 'fa-solid fa-credit-card'],
     ['name' => 'Google APIs', 'color' => 'bg-green-600', 'icon' => 'fa-brands fa-google'],
 ];
 ?>

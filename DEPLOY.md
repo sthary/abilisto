@@ -81,7 +81,7 @@ original `key.txt`/`info.php`/test-script cleanup was done by hand alongside the
 These were found hardcoded/exposed in the live web root before this cleanup. Since they were
 publicly reachable, treat them as compromised and rotate in each provider's dashboard:
 
-- [ ] Xendit secret key
+- [ ] PayMongo secret key, public key, and webhook secret
 - [ ] Google Gemini API key
 - [ ] Firebase service-account key (`storage/secrets/*.json`) — regenerate in Firebase console
 - [ ] Google OAuth client secret
