@@ -46,11 +46,21 @@ if (isset($_GET['booking_id'])) {
         exit();
     }
 
-    // Already has a checkout link? Just send them back to it instead of
-    // creating a duplicate PayMongo Checkout Session for the same booking.
+    // Already has a checkout link? Reuse it only if it's actually still
+    // payable — a session whose payment failed or that expired will still
+    // be sitting on the booking row (the webhook clears it on payment.failed,
+    // but a session that's merely expired with no payment ever attempted
+    // never fires that event at all). 'active' is the one status value
+    // confirmed empirically to mean "a fresh, unpaid, payable session" —
+    // anything else, don't trust it and fall through to create a new one.
     if (!empty($booking['transaction_id']) && !empty($booking['checkout_url'])) {
-        header("Location: " . $booking['checkout_url']);
-        exit();
+        $existing = paymongoRetrieveCheckoutSession($booking['transaction_id']);
+        if ($existing['success'] && $existing['status'] === 'active' && !$existing['paid']) {
+            header("Location: " . $booking['checkout_url']);
+            exit();
+        }
+        error_log("process_payment_paymongo: existing session for booking #$booking_id is stale (status="
+            . ($existing['status'] ?? 'unknown') . ") — creating a fresh one");
     }
 
     $reference_number = 'INV-' . time() . '-' . $booking_id . '-' . rand(100, 999);

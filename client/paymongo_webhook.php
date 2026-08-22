@@ -1,10 +1,12 @@
 <?php
 // client/paymongo_webhook.php
 // PayMongo webhook endpoint. Handles:
-//   - Mobilization payments (metadata.type === 'mobilization') → hold in escrow
-//   - Final payments        (metadata.type === 'final_payment') → release escrow
+//   - payment.paid, mobilization  (metadata.type === 'mobilization')  → hold in escrow
+//   - payment.paid, final payment (metadata.type === 'final_payment') → release escrow
 //     if applicable, credit worker, deduct 4% commission, absorb any voucher
-//   - Wallet top-ups        (metadata.type === 'wallet_topup')  → credit worker wallet
+//   - payment.paid, top-up        (metadata.type === 'wallet_topup')  → credit worker wallet
+//   - payment.failed (any type)   → mark the record Failed, clear the dead
+//     checkout link so a retry generates a fresh session, notify the client/worker
 //
 // Register this URL in the PayMongo Dashboard, subscribed to payment.paid
 // and payment.failed, and put the webhook's signing secret in
@@ -54,6 +56,58 @@ $amount     = isset($attrs['amount']) ? floatval($attrs['amount']) / 100 : 0; //
 $booking_id = intval($metadata['booking_id'] ?? 0);
 $topup_id   = intval($metadata['topup_id'] ?? 0);
 $type       = $metadata['type'] ?? '';
+
+// ── FAILED payment: mark the record Failed and clear the dead checkout
+// link so a retry (process_payment_paymongo.php / generate_receipt.php)
+// generates a fresh session instead of resending the client to a link
+// that can no longer be paid. Nothing was ever credited for a failed
+// payment, so there's no money to unwind here — only status/UX to fix.
+if ($event_type === 'payment.failed') {
+
+    if ($type === 'mobilization' && $booking_id) {
+        $conn->prepare("UPDATE bookings
+                      SET payment_status = 'Failed', transaction_id = NULL, checkout_url = NULL
+                      WHERE id = ? AND payment_status != 'Paid'")
+             ->execute([$booking_id]);
+
+        $res = $conn->prepare("SELECT client_id FROM bookings WHERE id = ?");
+        $res->execute([$booking_id]);
+        if ($row = $res->fetch()) {
+            sendNotification($conn, $row['client_id'],
+                "❌ Your payment failed. Please try booking again.",
+                "../client/booking.php"
+            );
+        }
+        error_log("Mobilization payment failed for booking #$booking_id (webhook)");
+
+    } elseif ($type === 'final_payment' && $booking_id) {
+        $conn->prepare("UPDATE bookings
+                      SET final_payment_status = 'failed', final_payment_xendit_id = NULL, final_payment_qr = NULL
+                      WHERE id = ? AND final_payment_status != 'paid'")
+             ->execute([$booking_id]);
+
+        $res = $conn->prepare("SELECT worker_id FROM bookings WHERE id = ?");
+        $res->execute([$booking_id]);
+        if ($row = $res->fetch()) {
+            sendNotification($conn, $row['worker_id'],
+                "❌ Client's final payment failed for booking #$booking_id. They'll need to retry or pay cash.",
+                "../worker/dashboard.php"
+            );
+        }
+        error_log("Final payment failed for booking #$booking_id (webhook)");
+
+    } elseif ($type === 'wallet_topup' && $topup_id) {
+        $conn->prepare("UPDATE top_ups SET status = 'failed' WHERE id = ? AND status != 'completed'")
+             ->execute([$topup_id]);
+        error_log("Top-up #$topup_id failed (webhook)");
+
+    } else {
+        error_log("paymongo_webhook: payment.failed with unrecognized metadata — booking_id=$booking_id topup_id=$topup_id type=$type");
+    }
+
+    http_response_code(200);
+    exit('OK - failure recorded');
+}
 
 if ($event_type !== 'payment.paid') {
     error_log("paymongo_webhook: ignoring event type '$event_type'");
