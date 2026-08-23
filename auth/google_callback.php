@@ -27,7 +27,12 @@ if (isset($_GET['code'])) {
     curl_close($ch);
 
     if (!isset($token_data['access_token'])) {
-        die("Error fetching token from Google. Check your keys.");
+        // Log Google's actual reason instead of guessing — the generic
+        // message on screen doesn't say why, which made this undiagnosable.
+        error_log("Google OAuth token exchange failed. HTTP response: " . $response);
+        $g_error  = $token_data['error'] ?? 'unknown_error';
+        $g_detail = $token_data['error_description'] ?? 'No details returned by Google.';
+        die("Error fetching token from Google ($g_error): $g_detail");
     }
 
     // --- PART B: Get User Profile ---
