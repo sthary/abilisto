@@ -6,6 +6,23 @@ include 'google_config.php';
 
 if (isset($_GET['code'])) {
 
+    // Google's authorization codes are single-use. If this callback gets
+    // invoked twice for the same code (browser retry, back-button, a
+    // duplicate navigation on the extra redirect hop first-time consent
+    // goes through) the second attempt always fails — either Google
+    // rejects the reused code with invalid_grant, or if both requests
+    // race past the token exchange, the second one hits the UNIQUE
+    // constraint on users.email trying to insert the same new signup
+    // twice (uncaught, since nothing here catches PDO exceptions — a
+    // real HTTP 500). Short-circuit any repeat of the same code by
+    // replaying the first request's successful redirect instead of
+    // redoing any of this work.
+    $replay_key = 'google_oauth_redirect_' . md5($_GET['code']);
+    if (isset($_SESSION[$replay_key])) {
+        header("Location: " . $_SESSION[$replay_key]);
+        exit();
+    }
+
     // --- PART A: Exchange Code for Token ---
     $token_url = 'https://oauth2.googleapis.com/token';
     $data = [
@@ -86,33 +103,63 @@ if (isset($_GET['code'])) {
 
         // Redirect to login with the token — login.php will verify and create the real session
         $_SESSION['flash_info'] = "✅ Google account verified! Please confirm your login below.";
-        header("Location: login.php?google_token=" . urlencode($temp_token));
+        $redirect_url = "login.php?google_token=" . urlencode($temp_token);
+        $_SESSION[$replay_key] = $redirect_url;
+        header("Location: " . $redirect_url);
         exit();
 
     } else {
         // --- NEW USER: Insert with correct role and email verified, phone NOT verified ---
         // FIX ISSUE 1: is_email_verified=1, is_phone_verified=0 (default)
         // FIX ISSUE 2: use $role from state param, not hardcoded 'client'
+        // phone, address, and municipality are all NOT NULL with no default
+        // in the schema, and Google's 'email profile' scope never returns
+        // any of them — every brand new Google signup was failing here
+        // with a not-null violation (uncaught, a real HTTP 500) before this
+        // even reached the replay guard or invalid_grant could become
+        // visible. '' (not NULL) is the value the rest of the app already
+        // expects for "not filled in yet": manage_phone.php has a dedicated
+        // "Case 3: No phone number (e.g. Google login users)" branch,
+        // municipality's CHECK constraint explicitly allows '', and
+        // worker/profile_edit.php is where address/municipality get filled
+        // in later.
         $stmt_insert = $conn->prepare(
-            "INSERT INTO users (full_name, email, google_id, avatar, role, password, is_email_verified, is_phone_verified)
-             VALUES (?, ?, ?, ?, ?, NULL, TRUE, FALSE)"
+            "INSERT INTO users (full_name, email, google_id, avatar, role, password, phone, address, municipality, is_email_verified, is_phone_verified)
+             VALUES (?, ?, ?, ?, ?, NULL, '', '', '', TRUE, FALSE)"
         );
 
-        if ($stmt_insert->execute([$g_name, $g_email, $g_id, $g_picture, $role])) {
+        try {
+            $stmt_insert->execute([$g_name, $g_email, $g_id, $g_picture, $role]);
             $new_id = $conn->lastInsertId('users_id_seq');
-
-            // FIX ISSUE 3: Do NOT log them in yet. Store a temp token for login.php.
-            $temp_token = bin2hex(random_bytes(32));
-            $stmt_token = $conn->prepare(
-                "UPDATE users SET google_temp_token = ?, google_temp_token_expires = NOW() + INTERVAL '10 minutes' WHERE id = ?"
-            );
-            $stmt_token->execute([$temp_token, $new_id]);
-
-            $_SESSION['flash_success'] = "🎉 Account created with Google! Please log in to continue.";
-            header("Location: login.php?google_token=" . urlencode($temp_token));
-            exit();
-
+        } catch (PDOException $e) {
+            // The replay guard above should make this unreachable in
+            // practice, but if two requests for the same new signup ever
+            // do race past it (e.g. no session cookie), don't crash with
+            // an uncaught exception on the email UNIQUE constraint —
+            // whoever won the race already created the account, so just
+            // use it instead of erroring.
+            error_log("google_callback: insert race on email $g_email — " . $e->getMessage());
+            $stmt_check2 = $conn->prepare("SELECT id FROM users WHERE email = ?");
+            $stmt_check2->execute([$g_email]);
+            $race_winner = $stmt_check2->fetch();
+            if (!$race_winner) {
+                die("Error creating account. Please try again.");
+            }
+            $new_id = $race_winner['id'];
         }
+
+        // FIX ISSUE 3: Do NOT log them in yet. Store a temp token for login.php.
+        $temp_token = bin2hex(random_bytes(32));
+        $stmt_token = $conn->prepare(
+            "UPDATE users SET google_temp_token = ?, google_temp_token_expires = NOW() + INTERVAL '10 minutes' WHERE id = ?"
+        );
+        $stmt_token->execute([$temp_token, $new_id]);
+
+        $_SESSION['flash_success'] = "🎉 Account created with Google! Please log in to continue.";
+        $redirect_url = "login.php?google_token=" . urlencode($temp_token);
+        $_SESSION[$replay_key] = $redirect_url;
+        header("Location: " . $redirect_url);
+        exit();
     }
 }
 ?>
