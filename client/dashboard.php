@@ -386,7 +386,7 @@ if ($chk && $chk['is_email_verified'] == 0): ?>
             ?>
             <div class="mb-8" id="tour-workers">
                 <h2 class="text-lg md:text-2xl font-bold mb-4 tracking-tight"><?php echo $section_title; ?></h2>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 md:gap-4">
                     <?php foreach ($all_workers as $worker):
                         renderWorkerCard($worker, $BADGE_CONFIG, $SUB_ICONS);
                     endforeach; ?>
