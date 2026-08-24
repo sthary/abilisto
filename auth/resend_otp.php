@@ -15,12 +15,14 @@ if ($email) {
     if ($user = $stmt->fetch()) {
         if (empty($user['phone'])) {
             // If no phone number, redirect to verify_otp.php to prompt for phone
+            include '../includes/abilisto_page_shell.php';
+            abilistoAlertPageOpen();
             include '../includes/abilisto_alert.php';
             echo "<script>
                     abilistoAlert('Please provide your phone number first.').then(function(){
                         window.location.href='verify_otp.php?email=" . urlencode($email) . "';
                     });
-                  </script>";
+                  </script></body></html>";
             exit();
         }
 
@@ -33,12 +35,14 @@ if ($email) {
             $dev_otp_display = $otp_response['data']['otp_code'];
         }
 
+        include '../includes/abilisto_page_shell.php';
+        abilistoAlertPageOpen();
         include '../includes/abilisto_alert.php';
         echo "<script>
                 abilistoAlert('✅ New code sent to " . $user['phone'] . ".\\n(Dev Hint: " . $dev_otp_display . ")').then(function(){
                     window.location.href='verify_otp.php?email=" . urlencode($email) . "';
                 });
-              </script>";
+              </script></body></html>";
     } else {
         echo "User not found.";
     }

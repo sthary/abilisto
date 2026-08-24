@@ -19,12 +19,14 @@ if (!isset($_SESSION['is_phone_verified']) || $_SESSION['is_phone_verified'] == 
     if ($db_check && $db_check['is_phone_verified'] == 1) {
         $_SESSION['is_phone_verified'] = 1;
     } else {
+        include '../includes/abilisto_page_shell.php';
+        abilistoAlertPageOpen();
         include '../includes/abilisto_alert.php';
         echo "<script>
                 abilistoAlert('🚫 Action Denied.\\n\\nYou must verify your phone number before you can book a worker.').then(function(){
                     window.location.href = '../auth/verify_otp.php?email=' + encodeURIComponent('{$_SESSION['email']}');
                 });
-              </script>";
+              </script></body></html>";
         exit();
     }
 }
@@ -153,9 +155,18 @@ $initial_fee      = round(20 + ($initial_distance * 5));
 // 5. PROCESS BOOKING SUBMISSION
 // ============================================
 if (isset($_POST['book_btn'])) {
+    // Buffered so the two success branches below (which exit() with nothing
+    // else ever rendered) can be wrapped in a real, minimal HTML document
+    // with a viewport meta tag — without it, mobile browsers fall back to a
+    // ~980px desktop viewport for that response and render the alert modal
+    // tiny/zoomed out. The other branches (validation error, DB error) fall
+    // through to the real page below as before, so their buffer is just
+    // flushed through unwrapped.
+    ob_start();
     include '../includes/abilisto_alert.php';
     if (empty($_POST['service_date']) || empty($_POST['problem_desc']) || empty($_POST['urgency'])) {
         echo "<script>alert('{$lang['error_fill_all_fields']}');</script>";
+        echo ob_get_clean();
     } else {
         $problem_desc     = trim($_POST['problem_desc']);
         $booking_datetime = $_POST['service_date'];
@@ -283,10 +294,15 @@ if (isset($_POST['book_btn'])) {
                 $cash_msg = ($discount_amount > 0) ? "Note: You could have saved ₱{$discount_amount} by paying with GCash!" : "";
                 echo "<script>abilistoAlert('✅ Booking Request Sent Successfully!\\n\\n{$urgency_icon} Urgency: {$urgency_label}\\nTotal: ₱{$calculated_fee}{$voucher_js_msg}\\n{$cash_msg}\\nThe worker will be notified immediately.', 'success').then(function(){ window.location.href='my_bookings.php'; });</script>";
             }
+            $__booking_alert_buf = ob_get_clean();
+            include '../includes/abilisto_page_shell.php';
+            abilistoAlertPageOpen();
+            echo $__booking_alert_buf . '</body></html>';
             exit();
         } catch (PDOException $e) {
             error_log("❌ Booking insert failed: " . $e->getMessage());
             echo "<script>alert('DATABASE ERROR: Unable to create booking.\\n\\nError: " . addslashes($e->getMessage()) . "');</script>";
+            echo ob_get_clean();
         }
     }
 }
@@ -572,14 +588,10 @@ $initials = getInitials($worker['full_name']);
                             <div class="mt-1">
                                 <label class="text-xs font-medium text-slate-600 dark:text-slate-300 mb-1 block">Address / Landmarks:</label>
                                 <input type="text" id="location_address" name="location_address"
-                                       class="w-full p-2.5 md:p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+                                       class="w-full p-2.5 md:p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm"
                                        placeholder="e.g., Purok 3, near the basketball court" value="">
                             </div>
                         </div>
-                        <button type="button" id="changeLocation" class="self-start sm:self-auto px-3 py-2 text-xs md:text-sm font-medium text-primary hover:bg-primary/10 rounded-xl transition-colors flex items-center gap-1 flex-shrink-0">
-                            <span class="material-symbols-outlined text-base">edit</span>
-                            <span class="hidden sm:inline">Change</span>
-                        </button>
                     </div>
                 </div>
 
@@ -959,11 +971,6 @@ document.getElementById('pinOnMap').addEventListener('click', function() {
         setTimeout(function(){ initMap(defLat, defLng); }, 200);
         mc.scrollIntoView({behavior:'smooth', block:'center'});
     }
-});
-
-document.getElementById('changeLocation').addEventListener('click', function() {
-    document.getElementById('mapContainer').style.display = 'block';
-    if (map) { setTimeout(function(){ map.invalidateSize(); }, 100); }
 });
 
 // ============================================

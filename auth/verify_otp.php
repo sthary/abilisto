@@ -82,12 +82,14 @@ if (isset($_POST['verify_btn'])) {
         unset($_SESSION['pending_verify_role']);
         $_SESSION['flash_success'] = "✅ Phone verified! Please log in to continue.";
 
+        include '../includes/abilisto_page_shell.php';
+        abilistoAlertPageOpen();
         include '../includes/abilisto_alert.php';
         echo "<script>
                 abilistoAlert('✅ Phone verified! Please log in to your account.').then(function(){
                     window.location.href='login.php';
                 });
-              </script>";
+              </script></body></html>";
         exit();
     } else {
         $msg   = isset($api_result['message']) ? $api_result['message'] : "Invalid Code";

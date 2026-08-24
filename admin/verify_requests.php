@@ -105,12 +105,14 @@ if (isset($_POST['approve_request'])) {
     }
     
     // Redirect with message
+    include '../includes/abilisto_page_shell.php';
+    abilistoAlertPageOpen();
     include '../includes/abilisto_alert.php';
     echo "<script>
             abilistoAlert('" . addslashes($success_message ?? $error_message ?? 'Request processed!') . "').then(function(){
                 window.location.href = 'verify_requests.php';
             });
-          </script>";
+          </script></body></html>";
     exit();
 }
 
