@@ -544,6 +544,26 @@ function shouldShowVerifyNow($badge) {
                     </div>
                 </div>
             </section>
+
+            <!-- Security & Password -->
+            <section class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 overflow-hidden animate-slideUp mt-5">
+                <div class="p-4 md:p-6 flex items-center justify-between gap-4 flex-wrap">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-accent-green/10 rounded-lg">
+                            <span class="material-symbols-outlined text-accent-green text-xl">shield</span>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Security & Password</h2>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Change your password with an email confirmation code.</p>
+                        </div>
+                    </div>
+                    <a href="../client/security.php" class="inline-flex items-center gap-2 bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white font-bold py-2.5 px-5 rounded-lg transition-all text-sm">
+                        <span class="material-symbols-outlined text-sm">key</span>
+                        Go to Security & Password
+                    </a>
+                </div>
+            </section>
+
             <div class="flex justify-end pt-3">
                 <button type="button" onclick="checkPhoneChange()" class="vibrant-gradient text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/25 text-sm w-full md:w-auto justify-center">
                     <span class="material-symbols-outlined text-lg">save</span>Save Changes

@@ -87,32 +87,6 @@ if (isset($_POST['verify_otp'])) {
     }
 }
 
-// C. Handle Password Change
-if (isset($_POST['change_password'])) {
-    $current_pass = $_POST['current_password'];
-    $new_pass = $_POST['new_password'];
-    $confirm_pass = $_POST['confirm_password'];
-    
-    $pass_check_stmt = $conn->prepare("SELECT password FROM users WHERE id = ?");
-    $pass_check_stmt->execute([$user_id]);
-    $pass_check = $pass_check_stmt->fetch();
-
-    if (password_verify($current_pass, $pass_check['password'])) {
-        if ($new_pass === $confirm_pass) {
-            $hashed = password_hash($new_pass, PASSWORD_DEFAULT);
-            $conn->prepare("UPDATE users SET password=? WHERE id=?")->execute([$hashed, $user_id]);
-            $msg = "Password changed successfully!";
-            $msg_type = "success";
-        } else {
-            $msg = "New passwords do not match.";
-            $msg_type = "error";
-        }
-    } else {
-        $msg = "Current password is incorrect.";
-        $msg_type = "error";
-    }
-}
-
 // --- 4. FETCH DATA ---
 $user_stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
 $user_stmt->execute([$user_id]);
@@ -512,37 +486,14 @@ $initials = getInitials($user['full_name']);
         
         <div id="securityContent" class="hidden">
             <div class="p-4 md:p-6 pt-0 border-t border-slate-100 dark:border-slate-700">
-                <form method="POST">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="space-y-1">
-                            <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">Current Password</label>
-                            <div class="relative">
-                                <span class="material-symbols-outlined input-icon">lock</span>
-                                <input type="password" name="current_password" class="w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary rounded-lg py-2 px-3 pl-10 text-slate-800 dark:text-white text-sm font-medium transition-all" required>
-                            </div>
-                        </div>
-                        <div class="space-y-1">
-                            <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">New Password</label>
-                            <div class="relative">
-                                <span class="material-symbols-outlined input-icon">lock_open</span>
-                                <input type="password" name="new_password" class="w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary rounded-lg py-2 px-3 pl-10 text-slate-800 dark:text-white text-sm font-medium transition-all" required>
-                            </div>
-                        </div>
-                        <div class="space-y-1">
-                            <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">Confirm Password</label>
-                            <div class="relative">
-                                <span class="material-symbols-outlined input-icon">lock_clock</span>
-                                <input type="password" name="confirm_password" class="w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary rounded-lg py-2 px-3 pl-10 text-slate-800 dark:text-white text-sm font-medium transition-all" required>
-                            </div>
-                        </div>
-                        <div class="flex items-end">
-                            <button type="submit" name="change_password" class="w-full bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-1 text-sm">
-                                <span class="material-symbols-outlined text-sm">key</span>
-                                Update Password
-                            </button>
-                        </div>
-                    </div>
-                </form>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                    To keep your account safe, changing your password now requires a one-time code sent to your email —
+                    the same way password recovery works.
+                </p>
+                <a href="security.php" class="inline-flex items-center gap-2 bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white font-bold py-2.5 px-5 rounded-lg transition-all text-sm">
+                    <span class="material-symbols-outlined text-sm">key</span>
+                    Go to Security & Password
+                </a>
             </div>
         </div>
     </section>
