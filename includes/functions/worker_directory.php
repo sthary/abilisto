@@ -179,7 +179,6 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
         }
     }
     $badgeIcon = $badgeCfg[$highestBadge]['icon'] ?? '';
-    ?>
     // Cap skill tags shown on the grid card — an unlimited, variable-length
     // tag list is what made cards wrap to different heights across a row.
     $shownSkills = array_slice($skills, 0, 2);
