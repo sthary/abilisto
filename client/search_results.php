@@ -54,6 +54,8 @@ $page_title = $filter_sub ? "Workers offering: $filter_sub"
         .worker-card:hover { box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
         .badge-icon { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:999px; }
         .badge-icon .material-symbols-outlined { font-size: 12px !important; }
+        .rating-star { font-size: 10px !important; }
+        @media (min-width: 1024px) { .rating-star { font-size: 15px !important; } }
         .skill-tag-colored {
             display: inline-flex; align-items: center; gap: 4px;
             padding: 3px 8px 3px 6px; border-radius: 20px;
@@ -125,7 +127,7 @@ $page_title = $filter_sub ? "Workers offering: $filter_sub"
     <h1 class="text-lg md:text-2xl font-bold mb-5 tracking-tight"><?php echo htmlspecialchars($page_title); ?></h1>
 
     <?php if (count($workers) > 0): ?>
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 md:gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 lg:gap-6">
         <?php foreach ($workers as $worker): renderWorkerCard($worker, $BADGE_CONFIG, $SUB_ICONS); endforeach; ?>
     </div>
     <?php else: ?>

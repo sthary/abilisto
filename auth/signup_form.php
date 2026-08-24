@@ -2,6 +2,8 @@
 // auth/signup_form.php
 session_start();
 include 'google_config.php';
+require_once '../includes/functions/ph_provinces.php';
+$ph_provinces = getPhilippineProvinces();
 
 $role       = isset($_GET['role']) ? $_GET['role'] : 'client';
 $role_title = ucfirst($role);
@@ -261,27 +263,28 @@ if (isset($_SESSION['signup_error'])) {
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Province (fixed) -->
+                    <!-- Province -->
                     <div class="relative">
-                        <select class="w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-xl text-sm text-slate-900 appearance-none" disabled>
-                            <option selected>Province (Surigao del Sur)</option>
+                        <select name="province" id="province"
+                                class="w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none appearance-none text-sm text-slate-900" required>
+                            <?php foreach ($ph_provinces as $prov): ?>
+                            <option value="<?php echo htmlspecialchars($prov); ?>" <?php echo ($prov === 'Surigao del Sur') ? 'selected' : ''; ?>><?php echo htmlspecialchars($prov); ?></option>
+                            <?php endforeach; ?>
                         </select>
                         <span class="absolute right-4 top-1/2 -translate-y-1/2 material-icons-round text-sm text-slate-400 pointer-events-none">expand_more</span>
                     </div>
 
-                    <!-- Municipality -->
+                    <!-- Municipality — limited to Abilisto's actual operating area
+                         (matches the users.municipality DB CHECK constraint; the
+                         previous 19-option list included towns that would fail
+                         to save at all). -->
                     <div class="relative">
                         <select name="municipality" id="municipality"
                                 class="w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none appearance-none text-sm text-slate-900"
                                 onchange="updateBarangays()" required>
-                            <option value="" disabled selected>Municipality / City</option>
-                            <option>Tandag City</option><option>Bislig City</option><option>Barobo</option>
-                            <option>Bayabas</option><option>Cagwait</option><option>Cantilan</option>
-                            <option>Carmen</option><option>Carrascal</option><option>Cortes</option>
-                            <option>Hinatuan</option><option>Lanuza</option><option>Lianga</option>
-                            <option>Lingig</option><option>Madrid</option><option>Marihatag</option>
-                            <option>San Agustin</option><option>San Miguel</option><option>Tagbina</option>
-                            <option>Tago</option>
+                            <option value="" disabled selected>Municipality</option>
+                            <option>Cantilan</option><option>Carmen</option><option>Carrascal</option>
+                            <option>Lanuza</option><option>Madrid</option>
                         </select>
                         <span class="absolute right-4 top-1/2 -translate-y-1/2 material-icons-round text-sm text-slate-400 pointer-events-none">expand_more</span>
                     </div>

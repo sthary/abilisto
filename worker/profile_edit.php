@@ -11,7 +11,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
 }
 
 $worker_id = $_SESSION['user_id'];
-$msg = ""; $msg_type = ""; $otp_modal_open = false;
+$msg = ""; $msg_type = "";
 
 // A. Handle Profile Picture Upload
 if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] == 0) {
@@ -55,50 +55,23 @@ if (isset($_GET['delete_portfolio'])) {
     header("Location: profile_edit.php"); exit();
 }
 
-// D. Handle Main Profile Update
+// D. Handle Main Profile Update — full_name, municipality, phone, address,
+// and birthdate are no longer editable here; see
+// client/edit_personal_details.php. This now only touches the location pin
+// (users.latitude/longitude) and the Professional-tab fields.
 if (isset($_POST['update_profile'])) {
-    $full_name   = $_POST['full_name'];
-    $address     = $_POST['address'];
-    $municipality= $_POST['municipality'];
-    $new_lat     = floatval($_POST['latitude']);
-    $new_lng     = floatval($_POST['longitude']);
-    $new_phone   = $_POST['phone'];
-    $birthdate   = $_POST['birthdate'];
-    $category    = $_POST['service_category'];
-    $bio         = $_POST['bio'];
-    $rate        = floatval($_POST['minimum_standard_rate'] ?? 0);
+    $new_lat  = floatval($_POST['latitude']);
+    $new_lng  = floatval($_POST['longitude']);
+    $category = $_POST['service_category'];
+    $bio      = $_POST['bio'];
+    $rate     = floatval($_POST['minimum_standard_rate'] ?? 0);
 
-    $curr_check_stmt = $conn->prepare("SELECT phone FROM users WHERE id = ?");
-    $curr_check_stmt->execute([$worker_id]);
-    $curr_check        = $curr_check_stmt->fetch();
-    $current_phone_db  = $curr_check['phone'];
-
-    $conn->prepare("UPDATE users SET full_name=?, address=?, municipality=?, latitude=?, longitude=?, birthdate=? WHERE id=?")
-         ->execute([$full_name, $address, $municipality, $new_lat, $new_lng, $birthdate, $worker_id]);
+    $conn->prepare("UPDATE users SET latitude=?, longitude=? WHERE id=?")
+         ->execute([$new_lat, $new_lng, $worker_id]);
     $conn->prepare("UPDATE worker_profiles SET service_category=?, bio=?, minimum_standard_rate=? WHERE user_id=?")
          ->execute([$category, $bio, $rate, $worker_id]);
 
-    if ($new_phone != $current_phone_db) {
-        $otp_response        = sendOTP($new_phone);
-        $_SESSION['temp_new_phone'] = $new_phone;
-        $_SESSION['temp_otp']       = isset($otp_response['data']['otp_code']) ? $otp_response['data']['otp_code'] : rand(100000, 999999);
-        $otp_modal_open = true;
-    } else {
-        $msg = "✅ Profile updated successfully!"; $msg_type = "success";
-    }
-}
-
-// E. Handle OTP Verification
-if (isset($_POST['verify_otp'])) {
-    if ($_POST['otp_code'] == $_SESSION['temp_otp']) {
-        $new_p = $_SESSION['temp_new_phone'];
-        $conn->prepare("UPDATE users SET phone=?, is_phone_verified=TRUE WHERE id=?")->execute([$new_p, $worker_id]);
-        unset($_SESSION['temp_new_phone']); unset($_SESSION['temp_otp']);
-        echo "<script>alert('✅ Phone Number Verified & Updated!'); window.location.href='profile_edit.php';</script>";
-        exit();
-    } else {
-        $msg = "❌ Invalid OTP Code"; $msg_type = "error"; $otp_modal_open = true;
-    }
+    $msg = "✅ Profile updated successfully!"; $msg_type = "success";
 }
 
 // ── FETCH MAIN DATA ──────────────────────────────────────────────────────────
@@ -476,41 +449,38 @@ function shouldShowVerifyNow($badge) {
         <!-- ══ TAB: Personal ══════════════════════════════════════════════ -->
         <div class="tab-panel active" id="panel-personal">
             <section class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 overflow-hidden animate-slideUp">
+                <div class="p-4 md:p-6 flex items-center justify-between gap-4 flex-wrap border-b border-slate-100 dark:border-slate-700">
+                    <h2 class="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Personal Information</h2>
+                    <a href="../client/edit_personal_details.php" class="inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline">
+                        <span class="material-symbols-outlined text-sm">edit</span> Edit
+                    </a>
+                </div>
                 <div class="p-4 md:p-6 space-y-5">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div class="space-y-1.5">
-                            <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">Full Name</label>
-                            <input type="text" name="full_name" class="w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary rounded-xl py-3 px-4 text-slate-800 dark:text-white text-base font-medium transition-all" value="<?php echo htmlspecialchars($data['full_name']); ?>" required>
+                        <div class="space-y-1">
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
+                            <p class="text-base font-medium text-slate-800 dark:text-white py-1 px-1"><?php echo htmlspecialchars($data['full_name']); ?></p>
                         </div>
-                        <div class="space-y-1.5">
-                            <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">Birthday</label>
-                            <input type="date" name="birthdate" class="w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary rounded-xl py-3 px-4 text-slate-800 dark:text-white text-base font-medium transition-all" value="<?php echo $data['birthdate']; ?>">
+                        <div class="space-y-1">
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Birthday</label>
+                            <p class="text-base font-medium text-slate-800 dark:text-white py-1 px-1"><?php echo htmlspecialchars($data['birthdate'] ?: 'Not set'); ?></p>
                         </div>
-                        <div class="space-y-1.5">
-                            <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">Municipality</label>
-                            <div class="relative">
-                                <select name="municipality" class="w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary rounded-xl py-3 px-4 text-slate-800 dark:text-white text-base font-medium appearance-none transition-all" required>
-                                    <option value="">Select Municipality</option>
-                                    <?php foreach(['Tandag City','Bislig City','Barobo','Bayabas','Cagwait','Cantilan','Carmen','Carrascal','Cortes','Hinatuan','Lanuza','Lianga','Lingig','Madrid','Marihatag','San Agustin','San Miguel','Tagbina','Tago'] as $m): ?>
-                                    <option value="<?php echo $m; ?>" <?php echo ($data['municipality']==$m)?'selected':''; ?>><?php echo $m; ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-lg">expand_more</span>
-                            </div>
+                        <div class="space-y-1">
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Municipality</label>
+                            <p class="text-base font-medium text-slate-800 dark:text-white py-1 px-1"><?php echo htmlspecialchars($data['municipality'] ?: 'Not set'); ?></p>
                         </div>
-                        <div class="space-y-1.5">
-                            <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">Phone Number</label>
-                            <input type="tel" name="phone" id="phone-input" class="w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary rounded-xl py-3 px-4 text-slate-800 dark:text-white text-base font-medium transition-all" value="<?php echo htmlspecialchars($data['phone']); ?>" required>
-                            <p class="text-xs text-slate-400 mt-1">Changing this requires OTP verification</p>
+                        <div class="space-y-1">
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
+                            <p class="text-base font-medium text-slate-800 dark:text-white py-1 px-1"><?php echo htmlspecialchars($data['phone']); ?></p>
                         </div>
-                        <div class="space-y-1.5 md:col-span-2">
-                            <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">Email Address</label>
-                            <input type="email" class="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl py-3 px-4 text-slate-400 dark:text-slate-500 text-base font-medium cursor-not-allowed" value="<?php echo htmlspecialchars($data['email']); ?>" disabled>
+                        <div class="space-y-1 md:col-span-2">
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+                            <p class="text-base font-medium text-slate-500 dark:text-slate-400 py-1 px-1"><?php echo htmlspecialchars($data['email']); ?></p>
                         </div>
                     </div>
-                    <div class="space-y-1.5">
-                        <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">Street / Barangay Address</label>
-                        <input type="text" name="address" class="w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary rounded-xl py-3 px-4 text-slate-800 dark:text-white text-base font-medium transition-all" value="<?php echo htmlspecialchars($data['address']); ?>" placeholder="e.g. Purok 1, Poblacion">
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Address</label>
+                        <p class="text-base font-medium text-slate-800 dark:text-white py-1 px-1"><?php echo htmlspecialchars($data['address'] ?: 'Not set'); ?></p>
                     </div>
                     <!-- Map -->
                     <div class="space-y-3 pt-2">
@@ -565,8 +535,8 @@ function shouldShowVerifyNow($badge) {
             </section>
 
             <div class="flex justify-end pt-3">
-                <button type="button" onclick="checkPhoneChange()" class="vibrant-gradient text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/25 text-sm w-full md:w-auto justify-center">
-                    <span class="material-symbols-outlined text-lg">save</span>Save Changes
+                <button type="button" onclick="submitProfileForm()" class="vibrant-gradient text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/25 text-sm w-full md:w-auto justify-center">
+                    <span class="material-symbols-outlined text-lg">save</span>Save Location
                 </button>
             </div>
         </div>
@@ -752,7 +722,7 @@ function shouldShowVerifyNow($badge) {
                 </div>
             </section>
             <div class="flex justify-end pt-3">
-                <button type="button" onclick="checkPhoneChange()" class="vibrant-gradient text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/25 text-sm w-full md:w-auto justify-center">
+                <button type="button" onclick="submitProfileForm()" class="vibrant-gradient text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/25 text-sm w-full md:w-auto justify-center">
                     <span class="material-symbols-outlined text-lg">save</span>Save Changes
                 </button>
             </div>
@@ -831,38 +801,10 @@ function shouldShowVerifyNow($badge) {
 
 <!-- Mobile Save Bar -->
 <div id="mobile-save-bar" class="fixed bottom-0 left-0 right-0 p-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-slate-200 dark:border-slate-700 md:hidden z-40">
-    <button type="button" onclick="checkPhoneChange()" class="w-full vibrant-gradient text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/20 active:scale-95 transition-all text-sm">
+    <button type="button" onclick="submitProfileForm()" class="w-full vibrant-gradient text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/20 active:scale-95 transition-all text-sm">
         <span class="material-symbols-outlined text-lg">save</span>Save Changes
     </button>
 </div>
-
-<!-- OTP Modal -->
-<?php if($otp_modal_open): ?>
-<div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-md w-full p-8 animate-slideUp">
-        <div class="text-center">
-            <div class="w-20 h-20 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
-                <span class="material-symbols-outlined text-4xl text-primary">sms</span>
-            </div>
-            <h3 class="text-2xl font-bold mb-2 text-slate-900 dark:text-white">Verify Your Number</h3>
-            <p class="text-slate-500 dark:text-slate-400 mb-2">We sent a code to</p>
-            <p class="text-lg font-bold mb-6"><?php echo $_SESSION['temp_new_phone'] ?? '...'; ?></p>
-            <?php if(isset($_SESSION['temp_otp'])): ?>
-            <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 mb-6">
-                <p class="text-amber-600 dark:text-amber-400 text-sm"><span class="material-symbols-outlined text-sm align-middle">code</span> Dev Code: <strong class="text-lg"><?php echo $_SESSION['temp_otp']; ?></strong></p>
-            </div>
-            <?php endif; ?>
-            <form method="POST">
-                <input type="text" name="otp_code" class="w-full text-center text-2xl tracking-[0.5em] bg-slate-50 dark:bg-slate-900 border-2 border-primary/20 focus:border-primary rounded-xl py-4 px-5 mb-6" placeholder="000000" maxlength="6" autofocus required>
-                <div class="space-y-3">
-                    <button type="submit" name="verify_otp" class="w-full vibrant-gradient text-white py-4 rounded-xl font-bold transition-all shadow-lg shadow-primary/25">Verify & Continue</button>
-                    <a href="profile_edit.php" class="block w-full text-center text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 py-2">Cancel</a>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-<?php endif; ?>
 
 <!-- All Reviews Modal -->
 <div id="reviews-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
@@ -981,7 +923,7 @@ function syncRate(val, from) {
 const rateSlider = document.getElementById('rate-slider');
 if (rateSlider) syncRate(rateSlider.value, 'init');
 
-function checkPhoneChange() { document.getElementById('main-form').submit(); }
+function submitProfileForm() { document.getElementById('main-form').submit(); }
 
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(initMap, 300);

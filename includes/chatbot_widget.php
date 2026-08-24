@@ -575,17 +575,55 @@
         window.visualViewport.addEventListener('scroll', syncViewportHeight);
       }
 
+      function isDesktop() {
+        return window.matchMedia('(min-width: 769px)').matches;
+      }
+
+      /* ── LAYOUT: full-screen bottom sheet on mobile, a 30%-wide side
+         panel on desktop that slides in from whichever edge the toggler
+         currently sits near (right toggler → panel on the right, sliding
+         right-to-left; left toggler → panel on the left, sliding
+         left-to-right). Computed fresh on every open since the toggler is
+         draggable and can move between opens. */
+      function applyLayout(closed) {
+        if (isDesktop()) {
+          const togglerRect = toggler.getBoundingClientRect();
+          const onRight = (togglerRect.left + togglerRect.width / 2) > window.innerWidth / 2;
+          win.style.setProperty('top', '0', 'important');
+          win.style.setProperty('bottom', 'auto', 'important');
+          win.style.setProperty('height', '100%', 'important');
+          win.style.setProperty('width', '30%', 'important');
+          win.style.setProperty('min-width', '340px', 'important');
+          win.style.setProperty('max-width', '480px', 'important');
+          win.style.setProperty('border-radius', '0', 'important');
+          if (onRight) {
+            win.style.setProperty('left', 'auto', 'important');
+            win.style.setProperty('right', '0', 'important');
+            win.style.setProperty('transform', closed ? 'translateX(100%)' : 'translateX(0)', 'important');
+          } else {
+            win.style.setProperty('left', '0', 'important');
+            win.style.setProperty('right', 'auto', 'important');
+            win.style.setProperty('transform', closed ? 'translateX(-100%)' : 'translateX(0)', 'important');
+          }
+        } else {
+          win.style.setProperty('left', '0', 'important');
+          win.style.setProperty('right', '0', 'important');
+          win.style.setProperty('bottom', 'auto', 'important');
+          win.style.setProperty('width', '100%', 'important');
+          win.style.setProperty('min-width', '0', 'important');
+          win.style.setProperty('max-width', 'none', 'important');
+          win.style.setProperty('border-radius', '0', 'important');
+          win.style.setProperty('transform', closed ? 'translateY(100%)' : 'translateY(0)', 'important');
+          syncViewportHeight();
+        }
+      }
+
       function openSheet() {
         win.classList.add('open');
         overlay.classList.add('open');
-        // Belt-and-suspenders: force the transform via inline !important too,
-        // since this widget's stray nested <html>/<head>/<body> tags (it's
-        // PHP-included straight into the host page's <body>) can put its
-        // <style> block in an unpredictable cascade position.
-        win.style.setProperty('transform', 'translateY(0)', 'important');
         win.style.setProperty('visibility', 'visible', 'important');
         win.style.setProperty('pointer-events', 'auto', 'important');
-        syncViewportHeight();
+        applyLayout(false);
         scrollY = window.scrollY;
         document.body.style.position = 'fixed';
         document.body.style.top = -scrollY + 'px';
@@ -594,7 +632,7 @@
       function closeSheet() {
         win.classList.remove('open');
         overlay.classList.remove('open');
-        win.style.setProperty('transform', 'translateY(100%)', 'important');
+        applyLayout(true);
         win.style.setProperty('visibility', 'hidden', 'important');
         win.style.setProperty('pointer-events', 'none', 'important');
         document.body.style.position = '';
@@ -603,6 +641,7 @@
         window.scrollTo(0, scrollY);
       }
       overlay.addEventListener('click', closeSheet);
+      window.addEventListener('resize', () => { if (win.classList.contains('open')) applyLayout(false); });
 
       /* ── 1) CLOSE BUTTON (X) — removes Orbit widget from screen entirely (reappears after relogin/refresh) ── */
       function removeOrbitWidget() {

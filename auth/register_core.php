@@ -9,22 +9,36 @@ if (isset($_POST['register_btn'])) {
     $role       = $_POST['role'];
     $full_name  = $_POST['full_name'];
     $email      = $_POST['email'];
-    $password   = password_hash($_POST['password'], PASSWORD_DEFAULT); 
+    $password   = password_hash($_POST['password'], PASSWORD_DEFAULT);
     $phone      = $_POST['phone'];
     $street     = isset($_POST['street'])   ? $_POST['street']   : '';
     $barangay   = isset($_POST['barangay']) ? $_POST['barangay'] : '';
     $municipality = $_POST['municipality'];
+    $province   = isset($_POST['province']) && trim($_POST['province']) !== '' ? trim($_POST['province']) : 'Surigao del Sur';
     $lat        = isset($_POST['latitude'])  ? $_POST['latitude']  : '';
     $lng        = isset($_POST['longitude']) ? $_POST['longitude'] : '';
+
+    // Whitelist check — the DB has a CHECK constraint on this column;
+    // an uncaught PDOException here used to be able to kill the whole
+    // signup if a value outside the 5 operating towns ever reached this
+    // query (the old municipality dropdown listed 19 towns, only 5 of
+    // which are valid).
+    $allowed_municipalities = ['Carrascal', 'Cantilan', 'Madrid', 'Carmen', 'Lanuza'];
+    if (!in_array($municipality, $allowed_municipalities, true)) {
+        $_SESSION['signup_error'] = 'generic';
+        $_SESSION['signup_error_msg'] = 'Please select a valid municipality.';
+        header("Location: signup_form.php?role=$role");
+        exit();
+    }
 
     // Build address
     $address_parts = [];
     if (!empty($barangay))    $address_parts[] = $barangay;
     if (!empty($street))      $address_parts[] = $street;
-    if (!empty($municipality)) $address_parts[] = $municipality . ", Surigao del Sur";
+    if (!empty($municipality)) $address_parts[] = "$municipality, $province";
     $full_address = !empty($address_parts)
         ? implode(', ', $address_parts)
-        : $municipality . ", Surigao del Sur";
+        : "$municipality, $province";
 
     // ============================================================
     // DUPLICATE CHECK — before attempting insert

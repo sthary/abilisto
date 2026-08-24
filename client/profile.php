@@ -15,77 +15,10 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
 }
 
 $user_id = $_SESSION['user_id'];
-$msg = ""; $msg_type = ""; $otp_modal_open = false;
+$msg = ''; $msg_type = '';
 
-// --- 3. HANDLE LOGIC (Kept exactly the same) ---
-
-// A. Handle Profile Update
-if (isset($_POST['update_profile'])) {
-    $full_name = $_POST['full_name'];
-    $address = $_POST['address'];
-    // Whitelist check — the DB has a CHECK constraint on this column, and
-    // ERRMODE_EXCEPTION means any value outside it used to throw an
-    // uncaught PDOException here that silently killed the WHOLE profile
-    // save (name/address/phone included), not just this field. Failing
-    // clearly here instead of letting a bad value reach the query.
-    $allowed_municipalities = ['Carrascal', 'Cantilan', 'Madrid', 'Carmen', 'Lanuza'];
-    $municipality = in_array($_POST['municipality'] ?? '', $allowed_municipalities, true) ? $_POST['municipality'] : null;
-    if ($municipality === null) {
-        $msg = "Please select a valid municipality.";
-        $msg_type = "error";
-    }
-    $new_lat = floatval($_POST['latitude']);
-    $new_lng = floatval($_POST['longitude']);
-    $new_phone = $_POST['phone'];
-
-    if ($municipality !== null) {
-        $curr_check_stmt = $conn->prepare("SELECT phone FROM users WHERE id = ?");
-        $curr_check_stmt->execute([$user_id]);
-        $curr_check = $curr_check_stmt->fetch();
-        $current_phone_db = $curr_check['phone'];
-
-        $update_stmt = $conn->prepare("UPDATE users SET
-                       full_name=?,
-                       address=?,
-                       municipality=?,
-                       latitude=?,
-                       longitude=?
-                       WHERE id=?");
-        $update_stmt->execute([$full_name, $address, $municipality, $new_lat, $new_lng, $user_id]);
-
-        if ($new_phone != $current_phone_db) {
-            // Send OTP Logic
-            $otp_response = sendOTP($new_phone);
-            $_SESSION['temp_new_phone'] = $new_phone;
-
-            if (isset($otp_response['data']['otp_code'])) {
-                $_SESSION['temp_otp'] = $otp_response['data']['otp_code'];
-            } else {
-                $_SESSION['temp_otp'] = rand(100000, 999999);
-            }
-            $otp_modal_open = true;
-        } else {
-            $msg = "Profile updated successfully!";
-            $msg_type = "success";
-        }
-    }
-}
-
-// B. Handle OTP Verification
-if (isset($_POST['verify_otp'])) {
-    if ($_POST['otp_code'] == $_SESSION['temp_otp']) {
-        $new_p = $_SESSION['temp_new_phone'];
-        $conn->prepare("UPDATE users SET phone=?, is_phone_verified=TRUE WHERE id=?")->execute([$new_p, $user_id]);
-        unset($_SESSION['temp_new_phone']); 
-        unset($_SESSION['temp_otp']);
-        echo "<script>alert('✅ Phone Number Verified & Updated!'); window.location.href='profile.php';</script>";
-        exit();
-    } else { 
-        $msg = "Invalid OTP Code"; 
-        $msg_type = "error"; 
-        $otp_modal_open = true; 
-    }
-}
+// Full name, municipality, phone, and address are no longer editable
+// inline here — see client/edit_personal_details.php.
 
 // --- 4. FETCH DATA ---
 $user_stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
@@ -345,84 +278,45 @@ $initials = getInitials($user['full_name']);
         </div>
     </section>
     
-    <!-- Main Form -->
-    <form method="POST" id="main-form">
-        <section class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 overflow-hidden animate-slideUp" style="animation-delay: 0.1s;">
-            <div class="p-4 md:p-5 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700">
+    <!-- Personal Information (read-only — edit via a dedicated page) -->
+    <section class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 overflow-hidden animate-slideUp" style="animation-delay: 0.1s;">
+        <div class="p-4 md:p-5 flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700">
+            <div class="flex items-center gap-2">
                 <div class="p-2 bg-primary/10 rounded-lg">
                     <span class="material-symbols-outlined text-primary text-xl">edit_note</span>
                 </div>
                 <h2 class="text-lg font-bold text-slate-900 dark:text-white">Personal Information</h2>
             </div>
-            
-            <div class="p-4 md:p-6 space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Full Name -->
-                    <div class="space-y-1">
-                        <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">Full Name</label>
-                        <div class="relative">
-                            <span class="material-symbols-outlined input-icon">person</span>
-                            <input type="text" name="full_name" class="w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary rounded-lg py-2 px-3 pl-10 text-slate-800 dark:text-white text-sm font-medium transition-all" value="<?php echo htmlspecialchars($user['full_name']); ?>" required>
-                        </div>
-                    </div>
+            <a href="edit_personal_details.php" class="inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline shrink-0">
+                <span class="material-symbols-outlined text-sm">edit</span> Edit
+            </a>
+        </div>
 
-                    <!-- Municipality (Select — must match the DB's CHECK constraint exactly) -->
-                    <div class="space-y-1">
-                        <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">Municipality</label>
-                        <div class="relative">
-                            <span class="material-symbols-outlined input-icon">location_city</span>
-                            <select name="municipality" class="w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary rounded-lg py-2 px-3 pl-10 text-slate-800 dark:text-white text-sm font-medium transition-all appearance-none" required>
-                                <?php foreach (['Carrascal', 'Cantilan', 'Madrid', 'Carmen', 'Lanuza'] as $muni): ?>
-                                <option value="<?php echo $muni; ?>" <?php echo ($user['municipality'] === $muni) ? 'selected' : ''; ?>><?php echo $muni; ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Email (Disabled) -->
-                    <div class="space-y-1">
-                        <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">Email Address</label>
-                        <div class="relative">
-                            <span class="material-symbols-outlined input-icon">email</span>
-                            <input type="email" class="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-lg py-2 px-3 pl-10 text-slate-500 dark:text-slate-400 text-sm font-medium cursor-not-allowed" value="<?php echo htmlspecialchars($user['email']); ?>" disabled>
-                        </div>
-                    </div>
-
-                    <!-- Phone -->
-                    <div class="space-y-1">
-                        <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">Phone Number</label>
-                        <div class="relative">
-                            <span class="material-symbols-outlined input-icon">phone</span>
-                            <input type="tel" name="phone" id="phone-input" class="w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary rounded-lg py-2 px-3 pl-10 text-slate-800 dark:text-white text-sm font-medium transition-all" value="<?php echo htmlspecialchars($user['phone']); ?>" required>
-                        </div>
-                        <p class="text-xs text-slate-500 mt-1">Changing this will require OTP verification</p>
-                    </div>
-                </div>
-
-                <!-- Address -->
+        <div class="p-4 md:p-6 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="space-y-1">
-                    <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">Street / Barangay Address</label>
-                    <div class="relative">
-                        <span class="material-symbols-outlined input-icon">home</span>
-                        <input type="text" name="address" class="w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary rounded-lg py-2 px-3 pl-10 text-slate-800 dark:text-white text-sm font-medium transition-all" value="<?php echo htmlspecialchars($user['address']); ?>">
-                    </div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
+                    <p class="text-sm font-medium text-slate-800 dark:text-white py-2 px-1"><?php echo htmlspecialchars($user['full_name']); ?></p>
                 </div>
-
-                <!-- Hidden lat/lng fields (keeping for backward compatibility) -->
-                <input type="hidden" name="latitude" id="lat" value="<?php echo $lat; ?>">
-                <input type="hidden" name="longitude" id="lng" value="<?php echo $lng; ?>">
-
-                <!-- Save Button (inside card for both mobile and desktop) -->
-                <div class="flex justify-end pt-3">
-                    <button type="button" onclick="checkPhoneChange()" class="w-full md:w-auto vibrant-gradient text-white px-6 py-2 rounded-lg font-bold flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-sm shadow-primary/25">
-                        <span class="material-symbols-outlined text-sm">save</span>
-                        Save Changes
-                    </button>
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Municipality</label>
+                    <p class="text-sm font-medium text-slate-800 dark:text-white py-2 px-1"><?php echo htmlspecialchars($user['municipality'] ?: 'Not set'); ?></p>
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+                    <p class="text-sm font-medium text-slate-500 dark:text-slate-400 py-2 px-1"><?php echo htmlspecialchars($user['email']); ?></p>
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
+                    <p class="text-sm font-medium text-slate-800 dark:text-white py-2 px-1"><?php echo htmlspecialchars($user['phone']); ?></p>
                 </div>
             </div>
-        </section>
-        <input type="hidden" name="update_profile" value="1">
-    </form>
+            <div class="space-y-1">
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Address</label>
+                <p class="text-sm font-medium text-slate-800 dark:text-white py-2 px-1"><?php echo htmlspecialchars($user['address'] ?: 'Not set'); ?></p>
+            </div>
+        </div>
+    </section>
 
     <!-- My Vouchers -->
     <section class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 overflow-hidden animate-slideUp" style="animation-delay: 0.15s;">
@@ -499,53 +393,12 @@ $initials = getInitials($user['full_name']);
     </section>
 </main>
 
-<!-- OTP Modal -->
-<?php if($otp_modal_open): ?>
-<div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 animate-slideUp">
-        <div class="text-center">
-            <div class="w-16 h-16 mx-auto mb-3 bg-primary/10 rounded-full flex items-center justify-center">
-                <span class="material-symbols-outlined text-3xl text-primary">sms</span>
-            </div>
-            <h3 class="text-xl font-bold mb-2 text-slate-900 dark:text-white">Verify Your Number</h3>
-            <p class="text-slate-500 dark:text-slate-400 mb-2 text-sm">We sent a code to</p>
-            <p class="text-base font-bold mb-4"><?php echo $_SESSION['temp_new_phone'] ?? '...'; ?></p>
-            
-            <?php if(isset($_SESSION['temp_otp'])): ?>
-            <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-2 mb-4">
-                <p class="text-amber-600 dark:text-amber-400 text-xs">
-                    <span class="material-symbols-outlined text-xs align-middle">code</span>
-                    Dev Code: <strong class="text-base"><?php echo $_SESSION['temp_otp']; ?></strong>
-                </p>
-            </div>
-            <?php endif; ?>
-            
-            <form method="POST">
-                <div class="relative mb-4">
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">pin</span>
-                    <input type="text" name="otp_code" class="w-full text-center text-xl tracking-[0.5em] bg-slate-50 dark:bg-slate-900 border-2 border-primary/20 focus:border-primary rounded-lg py-3 px-3 pl-10" placeholder="000000" maxlength="6" autofocus required>
-                </div>
-                
-                <div class="space-y-2">
-                    <button type="submit" name="verify_otp" class="w-full vibrant-gradient text-white py-3 rounded-lg font-bold transition-all shadow-sm shadow-primary/25 text-sm">
-                        Verify & Continue
-                    </button>
-                    <a href="profile.php" class="block w-full text-center text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 py-2 text-sm">
-                        Cancel
-                    </a>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-<?php endif; ?>
-
 <script>
     // Security section toggle
     function toggleSecurity() {
         const content = document.getElementById('securityContent');
         const chevron = document.getElementById('securityChevron');
-        
+
         if (content.classList.contains('hidden')) {
             content.classList.remove('hidden');
             chevron.style.transform = 'rotate(180deg)';
@@ -553,11 +406,6 @@ $initials = getInitials($user['full_name']);
             content.classList.add('hidden');
             chevron.style.transform = 'rotate(0deg)';
         }
-    }
-
-    // Form submission
-    function checkPhoneChange() {
-        document.getElementById('main-form').submit();
     }
 
     // Auto-hide alerts after 5 seconds

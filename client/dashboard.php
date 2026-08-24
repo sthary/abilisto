@@ -271,6 +271,8 @@ $active_mains = array_keys($workers_by_main);
             font-size: 14px !important;
             font-variation-settings: 'FILL' 1;
         }
+        .rating-star { font-size: 10px !important; }
+        @media (min-width: 1024px) { .rating-star { font-size: 15px !important; } }
 
         .skill-tag-colored {
             display: inline-flex; align-items: center; gap: 4px;
@@ -386,7 +388,7 @@ if ($chk && $chk['is_email_verified'] == 0): ?>
             ?>
             <div class="mb-8" id="tour-workers">
                 <h2 class="text-lg md:text-2xl font-bold mb-4 tracking-tight"><?php echo $section_title; ?></h2>
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 md:gap-4">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 lg:gap-6">
                     <?php foreach ($all_workers as $worker):
                         renderWorkerCard($worker, $BADGE_CONFIG, $SUB_ICONS);
                     endforeach; ?>
@@ -416,7 +418,7 @@ if ($chk && $chk['is_email_verified'] == 0): ?>
                     </a>
                 </div>
                 <!-- Horizontal scroll -->
-                <div class="flex overflow-x-auto no-scrollbar gap-3 pb-3 -mx-4 px-4">
+                <div class="flex overflow-x-auto no-scrollbar gap-3 lg:gap-5 pb-3 -mx-4 px-4">
                     <?php foreach ($workers_by_main[$main] as $worker):
                         renderWorkerCardHorizontal($worker, $BADGE_CONFIG, $SUB_ICONS);
                     endforeach; ?>
