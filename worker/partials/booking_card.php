@@ -302,6 +302,16 @@ function renderBookingCard($booking, $type) {
         </a>
     </div>
 
+    <?php elseif ($type === 'history'): ?>
+    <!-- ── HISTORY: view the completed receipt ─────────────────────────────── -->
+    <div class="mt-auto pt-4 border-t border-slate-100">
+        <a href="generate_receipt.php?booking_id=<?php echo (int)$booking['id']; ?>"
+           class="flex items-center justify-center gap-2 h-11 rounded-xl border border-slate-200 text-slate-500 hover:border-cyan-400 hover:text-cyan-600 hover:bg-cyan-50 transition-all text-sm font-semibold">
+            <span class="material-symbols-outlined" style="font-size:18px;">receipt_long</span>
+            View Receipt
+        </a>
+    </div>
+
     <?php endif; ?>
 
 </div>

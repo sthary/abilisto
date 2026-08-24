@@ -299,6 +299,27 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f3f6fd; }
         h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; }
 
+        /* ── Dark mode text fix ──────────────────────────────────────────
+           This page's whole Material-3 color palette above (tailwind.config)
+           was only ever exported for light mode — on-surface/on-background
+           etc. are static dark-gray hexes with no dark counterpart, so text
+           using them stayed dark-on-dark once the navbar's global
+           `.dark body` rule flips the background. These overrides give the
+           text-bearing tokens an actual dark-mode value, same technique the
+           navbar already uses (a `.dark` DOM-order override), so every
+           existing `text-on-surface`/`text-on-surface-variant` usage on this
+           page just works without having to hunt down and pair `dark:`
+           classes at each individual call site. */
+        .dark .text-on-surface          { color: #f1f5f9; }
+        .dark .text-on-surface-variant  { color: #94a3b8; }
+        .dark .text-on-background       { color: #f1f5f9; }
+        .dark .bg-surface-container,
+        .dark .bg-surface-container-low,
+        .dark .bg-surface-container-lowest,
+        .dark .bg-surface-container-high,
+        .dark .bg-surface-container-highest { background-color: #1e293b; }
+        .dark .border-outline-variant\/30 { border-color: rgba(148,163,184,0.3); }
+
         /* ── Job card hover ── */
         .job-card-hover {
             transition: all 0.3s ease;
