@@ -560,6 +560,13 @@
       function openSheet() {
         win.classList.add('open');
         overlay.classList.add('open');
+        // Belt-and-suspenders: force the transform via inline !important too,
+        // since this widget's stray nested <html>/<head>/<body> tags (it's
+        // PHP-included straight into the host page's <body>) can put its
+        // <style> block in an unpredictable cascade position.
+        win.style.setProperty('transform', 'translateY(0)', 'important');
+        win.style.setProperty('visibility', 'visible', 'important');
+        win.style.setProperty('pointer-events', 'auto', 'important');
         scrollY = window.scrollY;
         document.body.style.position = 'fixed';
         document.body.style.top = -scrollY + 'px';
@@ -568,6 +575,9 @@
       function closeSheet() {
         win.classList.remove('open');
         overlay.classList.remove('open');
+        win.style.setProperty('transform', 'translateY(100%)', 'important');
+        win.style.setProperty('visibility', 'hidden', 'important');
+        win.style.setProperty('pointer-events', 'none', 'important');
         document.body.style.position = '';
         document.body.style.top = '';
         document.body.style.width = '';
