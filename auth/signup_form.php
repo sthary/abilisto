@@ -3,7 +3,9 @@
 session_start();
 include 'google_config.php';
 require_once '../includes/functions/ph_provinces.php';
+require_once '../includes/functions/ph_municipalities.php';
 $ph_provinces = getPhilippineProvinces();
+$ph_municipalities = getPhilippineMunicipalities();
 
 $role       = isset($_GET['role']) ? $_GET['role'] : 'client';
 $role_title = ucfirst($role);
@@ -274,29 +276,30 @@ if (isset($_SESSION['signup_error'])) {
                         <span class="absolute right-4 top-1/2 -translate-y-1/2 material-icons-round text-sm text-slate-400 pointer-events-none">expand_more</span>
                     </div>
 
-                    <!-- Municipality — limited to Abilisto's actual operating area
-                         (matches the users.municipality DB CHECK constraint; the
-                         previous 19-option list included towns that would fail
-                         to save at all). -->
+                    <!-- Municipality — populated via JS based on the selected
+                         Province (see municipalitiesByProvince below). -->
                     <div class="relative">
                         <select name="municipality" id="municipality"
                                 class="w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none appearance-none text-sm text-slate-900"
                                 onchange="updateBarangays()" required>
                             <option value="" disabled selected>Municipality</option>
-                            <option>Cantilan</option><option>Carmen</option><option>Carrascal</option>
-                            <option>Lanuza</option><option>Madrid</option>
                         </select>
                         <span class="absolute right-4 top-1/2 -translate-y-1/2 material-icons-round text-sm text-slate-400 pointer-events-none">expand_more</span>
                     </div>
 
-                    <!-- Barangay -->
+                    <!-- Barangay — dropdown for the towns we have barangay data
+                         for (Surigao del Sur); falls back to free text for
+                         everywhere else. -->
                     <div class="relative md:col-span-2">
                         <select name="barangay" id="barangay"
                                 class="w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none appearance-none text-sm text-slate-900"
                                 required>
                             <option value="" disabled selected>Select Barangay</option>
                         </select>
-                        <span class="absolute right-4 top-1/2 -translate-y-1/2 material-icons-round text-sm text-slate-400 pointer-events-none">expand_more</span>
+                        <input type="text" name="barangay_text" id="barangay_text"
+                               class="hidden w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-sm text-slate-900"
+                               placeholder="Barangay">
+                        <span class="absolute right-4 top-1/2 -translate-y-1/2 material-icons-round text-sm text-slate-400 pointer-events-none" id="barangay-chevron">expand_more</span>
                     </div>
 
                     <!-- Street (optional) -->
@@ -369,11 +372,17 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // ============================================
-    // BARANGAY DATA (unchanged)
+    // PROVINCE -> MUNICIPALITY (nationwide)
+    // ============================================
+    const municipalitiesByProvince = <?php echo json_encode($ph_municipalities); ?>;
+
+    // ============================================
+    // BARANGAY DATA — only have real barangay lists for Surigao del Sur's
+    // towns; everywhere else falls back to a free-text Barangay field.
     // ============================================
     const barangays = {
-        'Tandag City': ['Bag-ong Lungsod','Bioto','Buenavista','Dagocdoc','Mabua','Maitum','Maticdum','Pandanon','Pangi','Quezon','Rosario','Salvacion','San Agustin Norte','San Agustin Sur','San Antonio','San Isidro','San Jose','Telaje','Tigman','Union','Villa Riza'],
-        'Bislig City': ['Bucto','Burboanan','Caguyao','Coleto','Comawas','Kahayag','Labisma','Lawigan','Mangagoy','Mone','Pamanlinan','Poblacion','San Antonio','San Fernando','San Isidro','San Jose','San Roque','San Vicente','Santa Cruz','Tabon','Tumanan','Mahayag','Pamaypayan','San Agustin'],
+        'Tandag': ['Bag-ong Lungsod','Bioto','Buenavista','Dagocdoc','Mabua','Maitum','Maticdum','Pandanon','Pangi','Quezon','Rosario','Salvacion','San Agustin Norte','San Agustin Sur','San Antonio','San Isidro','San Jose','Telaje','Tigman','Union','Villa Riza'],
+        'Bislig': ['Bucto','Burboanan','Caguyao','Coleto','Comawas','Kahayag','Labisma','Lawigan','Mangagoy','Mone','Pamanlinan','Poblacion','San Antonio','San Fernando','San Isidro','San Jose','San Roque','San Vicente','Santa Cruz','Tabon','Tumanan','Mahayag','Pamaypayan','San Agustin'],
         'Barobo': ['Amaga','Bahi','Cabacungan','Cambagang','Causwagan','Dapdap','Dughan','Gamut','Javier','Kinayan','Mamis','Poblacion','Rizal','San Jose','San Roque','San Vicente','Sua','Sudlon','Tambis','Unidad','Wakat'],
         'Bayabas': ['Amag','Balete','Cabugo','Cagbaoto','La Paz','Magobawok','Panaosawon'],
         'Cagwait': ['Aras-asan','Bacolod','Bitaugan','La Purisima','Magpayang','Mat-e','Poblacion','Tubo-tubo','Unidad','Villanueva','Tawas'],
@@ -396,19 +405,43 @@ document.addEventListener('DOMContentLoaded', function () {
     window.updateBarangays = function () {
         const municipality = document.getElementById('municipality').value;
         const barangaySelect = document.getElementById('barangay');
-        barangaySelect.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
+        const barangayText = document.getElementById('barangay_text');
         if (municipality && barangays[municipality]) {
+            barangaySelect.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
             barangays[municipality].sort().forEach(function (b) {
                 const opt = document.createElement('option');
                 opt.value = opt.textContent = b;
                 barangaySelect.appendChild(opt);
             });
+            barangaySelect.classList.remove('hidden');
             barangaySelect.disabled = false;
+            barangaySelect.required = true;
+            barangayText.classList.add('hidden');
+            barangayText.required = false;
         } else {
+            // No barangay list for this municipality — fall back to free text.
+            barangaySelect.classList.add('hidden');
             barangaySelect.disabled = true;
+            barangaySelect.required = false;
+            barangayText.classList.remove('hidden');
+            barangayText.required = true;
         }
     };
-    updateBarangays();
+
+    window.populateMunicipalities = function () {
+        const province = document.getElementById('province').value;
+        const select = document.getElementById('municipality');
+        const list = municipalitiesByProvince[province] || [];
+        select.innerHTML = '<option value="" disabled selected>Municipality</option>';
+        list.forEach(function (m) {
+            const opt = document.createElement('option');
+            opt.value = opt.textContent = m;
+            select.appendChild(opt);
+        });
+        updateBarangays();
+    };
+    document.getElementById('province').addEventListener('change', populateMunicipalities);
+    populateMunicipalities();
 
     // ============================================
     // REAL-TIME VALIDATION (unchanged)

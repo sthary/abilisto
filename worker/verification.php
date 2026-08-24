@@ -14,7 +14,9 @@
 
 require_once '../db_connect.php';
 require_once '../includes/functions/ph_provinces.php';
+require_once '../includes/functions/ph_municipalities.php';
 $ph_provinces = getPhilippineProvinces();
+$ph_municipalities = getPhilippineMunicipalities();
 
 header('X-Frame-Options: DENY');
 header('X-Content-Type-Options: nosniff');
@@ -159,11 +161,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($_POST['step1_submit'])) {
         $same     = !empty($_POST['same_as_permanent']) ? 1 : 0;
-        $perm_mun = san_enum($_POST['permanent_municipality'] ?? null, $municipalities);
-        $perm_bar = ($perm_mun && isset($barangays[$perm_mun])) ? san_enum($_POST['permanent_barangay'] ?? null, $barangays[$perm_mun]) : null;
         $perm_prov = san_enum($_POST['permanent_province'] ?? null, $ph_provinces);
+        $perm_mun = san_enum($_POST['permanent_municipality'] ?? null, $ph_municipalities[$perm_prov] ?? []);
+        // Real barangay data only exists for Surigao del Sur's towns; every
+        // other municipality falls back to the free-text field the form
+        // switches to automatically.
+        $perm_bar = ($perm_mun && isset($barangays[$perm_mun]))
+            ? san_enum($_POST['permanent_barangay'] ?? null, $barangays[$perm_mun])
+            : (san_text($_POST['permanent_barangay_text'] ?? '', 150) ?: null);
         if ($same) { $cur_mun = $perm_mun; $cur_bar = $perm_bar; $cur_str = san_text($_POST['permanent_street'] ?? ''); $cur_hse = san_text($_POST['permanent_house'] ?? ''); $cur_prov = $perm_prov; }
-        else { $cur_mun = san_enum($_POST['current_municipality'] ?? null, $municipalities); $cur_bar = ($cur_mun && isset($barangays[$cur_mun])) ? san_enum($_POST['current_barangay'] ?? null, $barangays[$cur_mun]) : null; $cur_str = san_text($_POST['current_street'] ?? ''); $cur_hse = san_text($_POST['current_house'] ?? ''); $cur_prov = san_enum($_POST['current_province'] ?? null, $ph_provinces) ?: $perm_prov; }
+        else {
+            $cur_prov = san_enum($_POST['current_province'] ?? null, $ph_provinces) ?: $perm_prov;
+            $cur_mun = san_enum($_POST['current_municipality'] ?? null, $ph_municipalities[$cur_prov] ?? []);
+            $cur_bar = ($cur_mun && isset($barangays[$cur_mun]))
+                ? san_enum($_POST['current_barangay'] ?? null, $barangays[$cur_mun])
+                : (san_text($_POST['current_barangay_text'] ?? '', 150) ?: null);
+            $cur_str = san_text($_POST['current_street'] ?? ''); $cur_hse = san_text($_POST['current_house'] ?? '');
+        }
         $dob = san_date($_POST['date_of_birth'] ?? null); $age = san_int($_POST['age'] ?? null, 18, 120); $nat = san_enum($_POST['nationality'] ?? null, VALID_NATIONALITY); $cs = san_enum($_POST['civil_status'] ?? null, VALID_CIVIL_STATUS); $sex = san_enum($_POST['sex'] ?? null, VALID_SEX);
         if (!$perm_mun || !$perm_bar || !$perm_prov || !$dob || !$age || !$nat || !$cs || !$sex) { $error = 'Please fill all required fields with valid values.'; }
         else {
@@ -433,18 +447,18 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background-color:#F8FAFC;color:#
 <div class="field-group"><label class="field-label">Sex <span class="text-red-400">*</span></label><div class="flex gap-3"><?php foreach(['Male','Female'] as $sx): ?><label class="flex-1 cursor-pointer group"><input type="radio" name="sex" value="<?=$e($sx)?>" class="sex-radio sr-only" required><div class="flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 transition-all duration-200 group-hover:border-blue-300"><span class="material-symbols-outlined text-lg"><?=$sx==='Male'?'male':'female'?></span><?=$e($sx)?></div></label><?php endforeach; ?></div></div>
 <div class="section-card"><div class="section-card-header"><div class="section-icon"><span class="material-symbols-outlined text-lg">home</span></div><h3 class="text-sm font-bold text-slate-800">Permanent Address</h3></div>
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div class="field-group"><label class="field-label">Province <span class="text-red-400">*</span></label><div class="relative"><select class="field-select-plain" name="permanent_province" required><?php foreach($ph_provinces as $prov): ?><option value="<?=$e($prov)?>" <?=($prov==='Surigao del Sur')?'selected':''?>><?=$e($prov)?></option><?php endforeach; ?></select><span class="material-symbols-outlined field-chevron">expand_more</span></div></div>
+    <div class="field-group"><label class="field-label">Province <span class="text-red-400">*</span></label><div class="relative"><select class="field-select-plain" name="permanent_province" id="permanent_province" onchange="populateVerificationMunicipality('permanent')" required><?php foreach($ph_provinces as $prov): ?><option value="<?=$e($prov)?>" <?=($prov==='Surigao del Sur')?'selected':''?>><?=$e($prov)?></option><?php endforeach; ?></select><span class="material-symbols-outlined field-chevron">expand_more</span></div></div>
     <div class="field-group"><label class="field-label">Municipality <span class="text-red-400">*</span></label><div class="relative"><select class="field-select-plain" name="permanent_municipality" id="permanent_municipality" onchange="updateBarangays(this.value,'permanent')" required><option value="">Select municipality…</option><optgroup label="DISTRICT 1"><?php foreach($district1 as $m): if(in_array($m,$municipalities)): ?><option value="<?=$e($m)?>"><?=$e($m)?></option><?php endif;endforeach;?></optgroup><optgroup label="DISTRICT 2"><?php foreach($district2 as $m): if(in_array($m,$municipalities)): ?><option value="<?=$e($m)?>"><?=$e($m)?></option><?php endif;endforeach;?></optgroup></select><span class="material-symbols-outlined field-chevron">expand_more</span></div></div>
-    <div class="field-group"><label class="field-label">Barangay <span class="text-red-400">*</span></label><div class="relative"><select class="field-select-plain" name="permanent_barangay" id="permanent_barangay" required><option value="">Select barangay…</option></select><span class="material-symbols-outlined field-chevron">expand_more</span></div></div>
+    <div class="field-group"><label class="field-label">Barangay <span class="text-red-400">*</span></label><div class="relative"><select class="field-select-plain" name="permanent_barangay" id="permanent_barangay" required><option value="">Select barangay…</option></select><input class="field-input hidden" name="permanent_barangay_text" id="permanent_barangay_text" type="text" placeholder="Barangay" maxlength="150"/><span class="material-symbols-outlined field-chevron">expand_more</span></div></div>
     <div class="field-group"><label class="field-label">Street</label><input class="field-input" name="permanent_street" type="text" placeholder="Street / Purok" maxlength="200"/></div>
     <div class="field-group"><label class="field-label">House / Unit Details</label><input class="field-input" name="permanent_house" type="text" placeholder="House No., Lot" maxlength="200"/></div>
 </div></div>
 <div class="section-card"><div class="section-card-header"><div class="section-icon"><span class="material-symbols-outlined text-lg">pin_drop</span></div><h3 class="text-sm font-bold text-slate-800">Current Address</h3></div>
 <label class="flex items-center gap-2 mb-4 cursor-pointer"><input type="checkbox" name="same_as_permanent" id="sameCheck" class="w-4 h-4 text-blue-600 rounded" onchange="toggleCurrentAddress(this.checked)"><span class="text-sm text-slate-600 font-medium">Same as Permanent Address</span></label>
 <div id="currentAddressFields" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div class="field-group"><label class="field-label">Province <span class="text-red-400">*</span></label><div class="relative"><select class="field-select-plain" name="current_province"><?php foreach($ph_provinces as $prov): ?><option value="<?=$e($prov)?>" <?=($prov==='Surigao del Sur')?'selected':''?>><?=$e($prov)?></option><?php endforeach; ?></select><span class="material-symbols-outlined field-chevron">expand_more</span></div></div>
+    <div class="field-group"><label class="field-label">Province <span class="text-red-400">*</span></label><div class="relative"><select class="field-select-plain" name="current_province" id="current_province" onchange="populateVerificationMunicipality('current')"><?php foreach($ph_provinces as $prov): ?><option value="<?=$e($prov)?>" <?=($prov==='Surigao del Sur')?'selected':''?>><?=$e($prov)?></option><?php endforeach; ?></select><span class="material-symbols-outlined field-chevron">expand_more</span></div></div>
     <div class="field-group"><label class="field-label">Municipality <span class="text-red-400">*</span></label><div class="relative"><select class="field-select-plain" name="current_municipality" id="current_municipality" onchange="updateBarangays(this.value,'current')"><option value="">Select municipality…</option><optgroup label="DISTRICT 1"><?php foreach($district1 as $m): if(in_array($m,$municipalities)): ?><option value="<?=$e($m)?>"><?=$e($m)?></option><?php endif;endforeach;?></optgroup><optgroup label="DISTRICT 2"><?php foreach($district2 as $m): if(in_array($m,$municipalities)): ?><option value="<?=$e($m)?>"><?=$e($m)?></option><?php endif;endforeach;?></optgroup></select><span class="material-symbols-outlined field-chevron">expand_more</span></div></div>
-    <div class="field-group"><label class="field-label">Barangay <span class="text-red-400">*</span></label><div class="relative"><select class="field-select-plain" name="current_barangay" id="current_barangay"><option value="">Select barangay…</option></select><span class="material-symbols-outlined field-chevron">expand_more</span></div></div>
+    <div class="field-group"><label class="field-label">Barangay <span class="text-red-400">*</span></label><div class="relative"><select class="field-select-plain" name="current_barangay" id="current_barangay"><option value="">Select barangay…</option></select><input class="field-input hidden" name="current_barangay_text" id="current_barangay_text" type="text" placeholder="Barangay" maxlength="150"/><span class="material-symbols-outlined field-chevron">expand_more</span></div></div>
     <div class="field-group"><label class="field-label">Street</label><input class="field-input" name="current_street" type="text" placeholder="Street / Purok" maxlength="200"/></div>
     <div class="field-group"><label class="field-label">House / Unit Details</label><input class="field-input" name="current_house" type="text" placeholder="House No., Lot" maxlength="200"/></div>
 </div></div>
@@ -711,7 +725,51 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background-color:#F8FAFC;color:#
 
 <script>
 const barangays = <?=json_encode($barangays, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?>;
-function updateBarangays(municipality,type){const sel=document.getElementById(type+'_barangay');if(!sel)return;sel.innerHTML='<option value="">Select barangay…</option>';if(municipality&&barangays[municipality]){[...barangays[municipality]].sort().forEach(b=>{const o=document.createElement('option');o.value=b;o.textContent=b;sel.appendChild(o);});sel.disabled=false;}else sel.disabled=true;}
+const verifyDistrict1 = <?=json_encode($district1, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?>;
+const verifyDistrict2 = <?=json_encode($district2, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?>;
+const verifyMunicipalities = <?=json_encode($municipalities, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?>;
+const municipalitiesByProvince = <?=json_encode($ph_municipalities, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?>;
+
+function updateBarangays(municipality,type){
+    const sel=document.getElementById(type+'_barangay');
+    const txt=document.getElementById(type+'_barangay_text');
+    if(!sel)return;
+    if(municipality&&barangays[municipality]){
+        sel.innerHTML='<option value="">Select barangay…</option>';
+        [...barangays[municipality]].sort().forEach(b=>{const o=document.createElement('option');o.value=b;o.textContent=b;sel.appendChild(o);});
+        sel.classList.remove('hidden'); sel.disabled=false; sel.required=true;
+        if(txt){txt.classList.add('hidden'); txt.required=false;}
+    } else {
+        sel.classList.add('hidden'); sel.disabled=true; sel.required=false;
+        if(txt){txt.classList.remove('hidden'); txt.required= (type==='permanent' || !document.getElementById('sameCheck').checked);}
+    }
+}
+
+// Rebuilds the Municipality <select> for the given address type ('permanent'
+// or 'current') based on its Province — Surigao del Sur keeps the original
+// district-grouped list (with real barangay data); every other province
+// gets a flat list from the nationwide dataset (barangay falls back to
+// free text since we don't have barangay-level data outside Surigao del Sur).
+function populateVerificationMunicipality(type){
+    const province = document.getElementById(type+'_province').value;
+    const sel = document.getElementById(type+'_municipality');
+    if(!sel) return;
+    sel.innerHTML = '<option value="">Select municipality…</option>';
+    if (province === 'Surigao del Sur') {
+        const groups = [['DISTRICT 1', verifyDistrict1], ['DISTRICT 2', verifyDistrict2]];
+        groups.forEach(([label, list]) => {
+            const og = document.createElement('optgroup');
+            og.label = label;
+            list.forEach(m => { if (verifyMunicipalities.includes(m)) { const o=document.createElement('option'); o.value=o.textContent=m; og.appendChild(o); } });
+            sel.appendChild(og);
+        });
+    } else {
+        (municipalitiesByProvince[province] || []).forEach(m => {
+            const o = document.createElement('option'); o.value = o.textContent = m; sel.appendChild(o);
+        });
+    }
+    updateBarangays('', type);
+}
 function toggleCurrentAddress(checked){const f=document.getElementById('currentAddressFields');if(!f)return;f.style.opacity=checked?'0.4':'1';f.querySelectorAll('input,select').forEach(el=>{el.disabled=checked;if(!checked&&el.tagName==='SELECT'&&(el.id==='current_municipality'||el.id==='current_barangay'))el.setAttribute('required','');else if(checked)el.removeAttribute('required');});}
 function previewImage(input,previewId,type='id'){const p=document.getElementById(previewId);if(!p)return;p.innerHTML='';if(input.files&&input.files[0]){const r=new FileReader();r.onload=e=>{const wrapper=document.createElement('div');wrapper.className='photo-preview-wrapper';const img=document.createElement('img');img.src=e.target.result;img.className='camera-preview';const removeBtn=document.createElement('div');removeBtn.className='remove-photo-btn';removeBtn.innerHTML='✕';removeBtn.onclick=function(e){e.stopPropagation();removePhoto(input,previewId);};wrapper.appendChild(img);wrapper.appendChild(removeBtn);p.appendChild(wrapper);};r.readAsDataURL(input.files[0]);}}
 function removePhoto(inputElement, previewId){inputElement.value='';document.getElementById(previewId).innerHTML='';}

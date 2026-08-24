@@ -10,6 +10,7 @@ include '../db_connect.php';
 include '../includes/init_lang.php';
 include '../includes/sms_sender.php';
 require_once '../includes/functions/ph_provinces.php';
+require_once '../includes/functions/ph_municipalities.php';
 
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['client', 'worker'], true)) {
     header("Location: ../auth/login.php");
@@ -20,8 +21,8 @@ $user_id   = $_SESSION['user_id'];
 $is_worker = $_SESSION['role'] === 'worker';
 $back_link = $is_worker ? '../worker/profile_edit.php' : 'profile.php';
 
-$allowed_municipalities = ['Carrascal', 'Cantilan', 'Madrid', 'Carmen', 'Lanuza'];
 $provinces = getPhilippineProvinces();
+$municipalities_by_province = getPhilippineMunicipalities();
 
 $msg = '';
 $msg_type = '';
@@ -35,18 +36,22 @@ $user = $user_stmt->fetch();
 if (isset($_POST['update_details'])) {
     $street      = trim($_POST['street'] ?? '');
     $barangay    = trim($_POST['barangay'] ?? '');
-    $municipality = in_array($_POST['municipality'] ?? '', $allowed_municipalities, true) ? $_POST['municipality'] : null;
+    $municipality_raw = trim($_POST['municipality'] ?? '');
     $province    = trim($_POST['province'] ?? '');
     $new_phone_raw = trim($_POST['phone'] ?? '');
 
-    if ($municipality === null) {
-        $msg = "Please select a valid municipality.";
-        $msg_type = "error";
-    } elseif ($street === '' || $barangay === '' || $province === '') {
-        $msg = "Please fill in street, barangay, and province.";
-        $msg_type = "error";
-    } elseif (!in_array($province, $provinces, true)) {
+    $province_valid = in_array($province, $provinces, true);
+    $municipality = ($province_valid && in_array($municipality_raw, $municipalities_by_province[$province] ?? [], true))
+        ? $municipality_raw : null;
+
+    if (!$province_valid) {
         $msg = "Please select a valid province.";
+        $msg_type = "error";
+    } elseif ($municipality === null) {
+        $msg = "Please select a valid municipality for the chosen province.";
+        $msg_type = "error";
+    } elseif ($street === '' || $barangay === '') {
+        $msg = "Please fill in street and barangay.";
         $msg_type = "error";
     } else {
         $full_address = "$street, Barangay $barangay, $municipality, $province";
@@ -180,23 +185,21 @@ if (isset($_POST['verify_otp'])) {
                 </div>
 
                 <div class="space-y-1.5">
-                    <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">Municipality</label>
-                    <select name="municipality" required
-                            class="w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary rounded-xl py-3 px-4 text-slate-800 dark:text-white text-sm font-medium">
-                        <option value="">Select municipality...</option>
-                        <?php foreach ($allowed_municipalities as $m): ?>
-                        <option value="<?php echo $m; ?>" <?php echo ($user['municipality'] === $m) ? 'selected' : ''; ?>><?php echo $m; ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="space-y-1.5 md:col-span-2">
                     <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">Province</label>
-                    <select name="province" required
+                    <select name="province" id="province" required
+                            onchange="populateMunicipalities()"
                             class="w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary rounded-xl py-3 px-4 text-slate-800 dark:text-white text-sm font-medium">
                         <?php foreach ($provinces as $p): ?>
                         <option value="<?php echo htmlspecialchars($p); ?>" <?php echo ($p === 'Surigao del Sur') ? 'selected' : ''; ?>><?php echo htmlspecialchars($p); ?></option>
                         <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">Municipality</label>
+                    <select name="municipality" id="municipality" required
+                            class="w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary rounded-xl py-3 px-4 text-slate-800 dark:text-white text-sm font-medium">
+                        <option value="">Select province first...</option>
                     </select>
                 </div>
 
@@ -247,6 +250,25 @@ if (isset($_POST['verify_otp'])) {
     </div>
 </div>
 <?php endif; ?>
+
+<script>
+    const municipalitiesByProvince = <?php echo json_encode($municipalities_by_province); ?>;
+    const currentMunicipality = <?php echo json_encode($user['municipality'] ?? ''); ?>;
+
+    function populateMunicipalities() {
+        const province = document.getElementById('province').value;
+        const select = document.getElementById('municipality');
+        const list = municipalitiesByProvince[province] || [];
+        select.innerHTML = '<option value="">Select municipality...</option>';
+        list.forEach(function (m) {
+            const opt = document.createElement('option');
+            opt.value = opt.textContent = m;
+            if (m === currentMunicipality) opt.selected = true;
+            select.appendChild(opt);
+        });
+    }
+    populateMunicipalities();
+</script>
 
 </body>
 </html>
