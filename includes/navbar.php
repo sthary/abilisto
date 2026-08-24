@@ -318,7 +318,7 @@ $current_lang = $_SESSION['lang'] ?? 'en';
         bottom: 0;
         left: 0;
         width: 100%;
-        height: 64px;
+        height: 52px;
         background: #146af5;
         display: flex;
         justify-content: center;
@@ -390,8 +390,8 @@ $current_lang = $_SESSION['lang'] ?? 'en';
         z-index: 1000;
         align-items: center;
         justify-content: space-between;
-        padding: 12px 16px;
-        padding-top: max(12px, env(safe-area-inset-top));
+        padding: 8px 14px;
+        padding-top: max(8px, env(safe-area-inset-top));
         background: rgba(255, 255, 255, 0.9);
         backdrop-filter: blur(12px);
         border-bottom: 1px solid rgba(0, 0, 0, 0.05);
@@ -401,12 +401,12 @@ $current_lang = $_SESSION['lang'] ?? 'en';
         border-bottom-color: rgba(255,255,255,0.05);
     }
     .mobile-top-nav .nav-logo { gap: 6px; }
-    .mobile-top-nav .logo-icon { width: 28px; height: 28px; }
-    .mobile-top-nav .logo-text { font-size: 1.1rem; }
+    .mobile-top-nav .logo-icon { width: 24px; height: 24px; }
+    .mobile-top-nav .logo-text { font-size: 1rem; }
     .mobile-top-nav-hamburger {
-        width: 40px; height: 40px;
+        width: 32px; height: 32px;
         display: flex; align-items: center; justify-content: center;
-        font-size: 1.3rem;
+        font-size: 1.1rem;
         color: #64748b;
         cursor: pointer;
     }
@@ -415,14 +415,14 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     /* ---------- MOBILE FOOTER: floating circular Menu/Close button ---------- */
     .mobile-fab-menu {
         position: absolute;
-        top: -34px;
+        top: -24px;
         left: 50%;
         transform: translateX(-50%);
-        width: 96px;
-        height: 96px;
+        width: 72px;
+        height: 72px;
         border-radius: 50%;
         background: #fff;
-        padding: 6px;
+        padding: 5px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -454,17 +454,17 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     .mobile-fab-label {
         color: #fff;
         font-weight: 800;
-        font-size: 0.8rem;
+        font-size: 0.65rem;
         letter-spacing: 0.5px;
-        transition: opacity 0.3s ease, transform 0.45s cubic-bezier(.34,1.56,.64,1);
+        transition: opacity 0.35s ease, transform 0.55s cubic-bezier(.34,1.56,.64,1);
     }
     .mobile-fab-close {
         position: absolute;
         color: #fff;
-        font-size: 1.5rem;
+        font-size: 1.15rem;
         opacity: 0;
         transform: rotate(-200deg) scale(0.4);
-        transition: opacity 0.3s ease, transform 0.45s cubic-bezier(.34,1.56,.64,1);
+        transition: opacity 0.35s ease, transform 0.55s cubic-bezier(.34,1.56,.64,1);
     }
     .mobile-fab-menu.open .mobile-fab-label {
         opacity: 0;
@@ -476,22 +476,26 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     }
 
     /* ---------- SHORTCUTS SLIDE-UP SHEET ---------- */
+    /* z-index kept BELOW the bottom nav bar (1000) / FAB (1001) so the bar
+       and its Menu/Close button always stay visible and tappable on top —
+       the sheet rises to sit just above the bar instead of covering it. */
     .shortcuts-overlay {
         position: fixed; inset: 0;
         background: rgba(15,23,42,0.45);
         backdrop-filter: blur(2px);
         opacity: 0; visibility: hidden;
         transition: opacity 0.25s ease, visibility 0.25s ease;
-        z-index: 1998;
+        z-index: 990;
     }
     .shortcuts-overlay.open { opacity: 1; visibility: visible; }
     .shortcuts-sheet {
         position: fixed;
-        left: 0; right: 0; bottom: 0;
+        left: 0; right: 0;
+        bottom: calc(52px + env(safe-area-inset-bottom));
         background: #fff;
         border-radius: 24px 24px 0 0;
-        padding: 12px 20px max(20px, env(safe-area-inset-bottom));
-        z-index: 1999;
+        padding: 12px 20px 20px;
+        z-index: 991;
         transform: translateY(100%);
         transition: transform 0.35s cubic-bezier(.4,0,.2,1);
         box-shadow: 0 -8px 30px rgba(0,0,0,0.15);
@@ -595,7 +599,7 @@ $current_lang = $_SESSION['lang'] ?? 'en';
         .desktop-nav { display: none !important; }
         .mobile-top-nav { display: flex !important; }
         .mobile-bottom-nav { display: flex !important; }
-        body { padding-top: 60px; padding-bottom: 90px; }
+        body { padding-top: 48px; padding-bottom: 68px; }
     }
     @media (min-width: 769px) {
         .desktop-nav { display: block !important; }
@@ -685,7 +689,7 @@ $current_lang = $_SESSION['lang'] ?? 'en';
 <!-- MOBILE TOP NAV: logo left, hamburger right (opens the same profile/settings/logout drawer the hamburger always has) -->
 <div class="mobile-top-nav">
     <a href="<?php echo $home_link; ?>" class="nav-logo">
-        <img src="/1.png" alt="Abilisto Logo" style="width:28px;height:28px;border-radius:8px;object-fit:cover;">
+        <img src="/1.png" alt="Abilisto Logo" style="width:24px;height:24px;border-radius:7px;object-fit:cover;">
         <span class="logo-text">Abi<span>listo</span></span>
     </a>
     <?php if (isset($_SESSION['user_id'])): ?>
