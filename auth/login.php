@@ -102,6 +102,16 @@ if (isset($_POST['login_btn'])) {
 
         if (!empty($user['password']) && password_verify($password, $user['password'])) {
 
+            // Staff roles have their own dedicated login pages (no phone
+            // gate, no Google OAuth) — send them there instead of logging
+            // in here, checked before the phone-verification gate below so
+            // it can never block a staff account the way it used to.
+            $staff_pages = ['admin' => 'admin_login.php', 'hr' => 'hr_login.php', 'finance' => 'finance_login.php'];
+            if (isset($staff_pages[$user['role']])) {
+                header("Location: " . $staff_pages[$user['role']] . "?email=" . urlencode($user['email']));
+                exit();
+            }
+
             // Must verify phone before accessing dashboard
             if ($user['is_phone_verified'] == 0) {
                 echo "<script>
