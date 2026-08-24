@@ -795,16 +795,12 @@ $minRate = number_format($worker['minimum_standard_rate'], 2);
 
 <!-- Dark Mode Toggle -->
 <script>
-    // Check for saved dark mode preference
-    if (localStorage.getItem('darkMode') === 'true') {
+    // Check for saved dark mode preference — 'theme' is the key
+    // includes/navbar.php's actual toggle writes to; this page was
+    // checking a different, never-written 'darkMode' key.
+    if (localStorage.getItem('theme') === 'dark') {
         document.documentElement.classList.add('dark');
     }
-    
-    // Listen for dark mode toggle from navbar
-    document.addEventListener('darkModeToggle', function() {
-        const isDark = document.documentElement.classList.contains('dark');
-        localStorage.setItem('darkMode', isDark);
-    });
 </script>
 
 <!-- ══════════════════════════════════════════

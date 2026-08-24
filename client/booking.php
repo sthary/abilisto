@@ -341,6 +341,12 @@ $initials = getInitials($worker['full_name']);
     </style>
 
     <script>
+        // Apply the site-wide dark-mode preference before paint — this page
+        // doesn't include includes/navbar.php (which is where the theme
+        // init normally happens), so it never picked up the stored choice.
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+        }
         tailwind.config = {
             darkMode:"class",
             theme:{ extend:{

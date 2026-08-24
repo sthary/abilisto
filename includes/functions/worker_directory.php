@@ -231,14 +231,10 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
         </div>
 
         <?php if ($worker['minimum_standard_rate'] > 0): ?>
-        <div class="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5 truncate">
+        <div class="text-[11px] text-slate-500 dark:text-slate-400 truncate">
             from <strong class="text-primary">₱<?php echo number_format($worker['minimum_standard_rate']); ?></strong>/job
         </div>
         <?php endif; ?>
-
-        <div class="w-full py-1.5 bg-blue-50 dark:bg-blue-900/20 text-primary text-xs font-bold rounded-lg flex items-center justify-center gap-1 group-hover:bg-primary group-hover:text-white transition-all mt-auto">
-            View <span class="material-symbols-outlined text-sm">arrow_right_alt</span>
-        </div>
     </a>
     <?php
 }
@@ -263,7 +259,7 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
     $extraSkillsCount = count($skills) - count($shownSkills);
     ?>
     <a href="worker_details.php?id=<?php echo $worker['id']; ?>"
-       class="group bg-white dark:bg-slate-800 rounded-xl p-2.5 border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 min-w-[150px] sm:min-w-[170px] w-[170px] flex flex-col flex-shrink-0 h-[265px] worker-card">
+       class="group bg-white dark:bg-slate-800 rounded-xl p-2.5 border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 min-w-[150px] sm:min-w-[170px] w-[170px] flex flex-col flex-shrink-0 h-[225px] worker-card">
 
         <div class="relative w-full aspect-[4/3] rounded-lg overflow-hidden mb-2 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
             <?php if ($hasImage): ?>
@@ -300,16 +296,12 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
             $full   = floor($rating);
             $half   = ($rating - $full) >= 0.5;
             for ($i = 1; $i <= 5; $i++) {
-                if ($i <= $full)            echo '<span class="material-symbols-outlined text-yellow-400 text-[10px]" style="font-variation-settings:\'FILL\' 1">star</span>';
-                elseif ($i==$full+1&&$half) echo '<span class="material-symbols-outlined text-yellow-400 text-[10px]">star_half</span>';
-                else                        echo '<span class="material-symbols-outlined text-slate-300 dark:text-slate-600 text-[10px]">star</span>';
+                if ($i <= $full)            echo '<span class="material-symbols-outlined text-yellow-400" style="font-size:10px;font-variation-settings:\'FILL\' 1">star</span>';
+                elseif ($i==$full+1&&$half) echo '<span class="material-symbols-outlined text-yellow-400" style="font-size:10px">star_half</span>';
+                else                        echo '<span class="material-symbols-outlined text-slate-300 dark:text-slate-600" style="font-size:10px">star</span>';
             }
             ?>
             <span class="ml-0.5 text-[10px] font-bold"><?php echo number_format($worker['average_rating'], 1); ?></span>
-        </div>
-
-        <div class="w-full py-1.5 bg-blue-50 dark:bg-blue-900/20 text-primary text-xs font-bold rounded-lg flex items-center justify-center gap-1 group-hover:bg-primary group-hover:text-white transition-all mt-auto">
-            View <span class="material-symbols-outlined text-sm">arrow_right_alt</span>
         </div>
     </a>
     <?php
