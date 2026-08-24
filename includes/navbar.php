@@ -423,7 +423,7 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     /* ---------- MOBILE FOOTER: floating circular Menu button (no plate — just the gradient ball) ---------- */
     .mobile-fab-menu {
         position: absolute;
-        top: -20px;
+        top: -32px;
         left: 50%;
         transform: translateX(-50%);
         width: 64px;
@@ -446,11 +446,11 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     }
     .mobile-fab-menu.open .mobile-fab-glow {
         opacity: 1;
-        transform: scale(1.4);
+        transform: scale(1.3);
         animation: fabGlowSpin 2.2s linear infinite;
     }
     @keyframes fabGlowSpin {
-        to { transform: scale(1.4) rotate(360deg); }
+        to { transform: scale(1.3) rotate(360deg); }
     }
     .mobile-fab-ring {
         position: relative;

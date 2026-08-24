@@ -288,6 +288,10 @@ if (!empty($neighborReviews)) {
         .leaf-spin { transition: transform 0.6s cubic-bezier(0.34,1.56,0.64,1); }
         .leaf-spin:hover { transform: rotate(20deg) scale(1.08); }
 
+        /* hide scrollbar for the mobile horizontal-scroll stat-card rail */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
         @media (max-width: 768px) { .hero-title { font-size: 2.5rem; } }
     </style>
 </head>
@@ -440,11 +444,11 @@ if (!empty($neighborReviews)) {
             </div>
         </div>
 
-        <!-- Stat Cards -->
-        <div class="sr-group grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+        <!-- Stat Cards: horizontal-scroll rail on mobile, grid from sm: up -->
+        <div class="sr-group flex overflow-x-auto no-scrollbar snap-x snap-mandatory gap-4 -mx-4 px-4 pb-2 sm:mx-0 sm:px-0 sm:pb-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-5 mb-8">
 
             <!-- Total Scraps -->
-            <div class="gl-card bg-slate-50 dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
+            <div class="gl-card shrink-0 w-[78vw] max-w-[280px] snap-start sm:w-auto sm:max-w-none sm:shrink bg-slate-50 dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
                 <div class="flex items-start justify-between mb-5">
                     <div class="size-11 bg-green-100 dark:bg-green-900/40 rounded-xl flex items-center justify-center text-2xl">📦</div>
                     <span id="trend-badge" class="text-xs font-bold px-2.5 py-1 rounded-full
@@ -463,7 +467,7 @@ if (!empty($neighborReviews)) {
             </div>
 
             <!-- E-Waste (accent card) -->
-            <div class="gl-card bg-amber-50 dark:bg-amber-950/20 rounded-2xl p-6 border-2 border-amber-200 dark:border-amber-800 shadow-lg shadow-amber-100/50 dark:shadow-none">
+            <div class="gl-card shrink-0 w-[78vw] max-w-[280px] snap-start sm:w-auto sm:max-w-none sm:shrink bg-amber-50 dark:bg-amber-950/20 rounded-2xl p-6 border-2 border-amber-200 dark:border-amber-800 shadow-lg shadow-amber-100/50 dark:shadow-none">
                 <div class="flex items-start justify-between mb-5">
                     <div class="size-11 bg-amber-100 dark:bg-amber-900/50 rounded-xl flex items-center justify-center text-2xl">⚡</div>
                     <span class="text-xs font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-2.5 py-1 rounded-full">E-Waste</span>
@@ -477,7 +481,7 @@ if (!empty($neighborReviews)) {
             </div>
 
             <!-- Green Coins -->
-            <div class="gl-card bg-slate-50 dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
+            <div class="gl-card shrink-0 w-[78vw] max-w-[280px] snap-start sm:w-auto sm:max-w-none sm:shrink bg-slate-50 dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
                 <div class="flex items-start justify-between mb-5">
                     <div class="size-11 bg-yellow-100 dark:bg-yellow-900/30 rounded-xl flex items-center justify-center text-2xl">🟢</div>
                 </div>
@@ -490,7 +494,7 @@ if (!empty($neighborReviews)) {
             </div>
 
             <!-- Contributors -->
-            <div class="gl-card bg-slate-50 dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
+            <div class="gl-card shrink-0 w-[78vw] max-w-[280px] snap-start sm:w-auto sm:max-w-none sm:shrink bg-slate-50 dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
                 <div class="flex items-start justify-between mb-5">
                     <div class="size-11 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-2xl">👥</div>
                 </div>
