@@ -222,9 +222,9 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
             $full      = floor($rating);
             $half      = ($rating - $full) >= 0.5;
             for ($i = 1; $i <= 5; $i++) {
-                if ($i <= $full)           echo '<span class="material-symbols-outlined text-yellow-400 text-[10px]" style="font-variation-settings:\'FILL\' 1">star</span>';
-                elseif ($i==$full+1&&$half) echo '<span class="material-symbols-outlined text-yellow-400 text-[10px]">star_half</span>';
-                else                        echo '<span class="material-symbols-outlined text-slate-300 dark:text-slate-600 text-[10px]">star</span>';
+                if ($i <= $full)           echo '<span class="material-symbols-outlined text-yellow-400" style="font-size:10px;font-variation-settings:\'FILL\' 1">star</span>';
+                elseif ($i==$full+1&&$half) echo '<span class="material-symbols-outlined text-yellow-400" style="font-size:10px">star_half</span>';
+                else                        echo '<span class="material-symbols-outlined text-slate-300 dark:text-slate-600" style="font-size:10px">star</span>';
             }
             ?>
             <span class="ml-0.5 text-[10px] font-bold"><?php echo number_format($worker['average_rating'], 1); ?></span>
