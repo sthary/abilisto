@@ -387,49 +387,49 @@ function renderBookingCard($row, $lang, $type, $index = 0) {
 
 <?php include '../includes/navbar.php'; ?>
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-7 lg:py-10">
 
     <!-- Header -->
-    <header class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+    <header class="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8 lg:mb-12">
         <div>
-            <h1 class="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-2">
+            <h1 class="text-xl sm:text-2xl lg:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-1 sm:mb-2">
                 <?php echo $lang['my_bookings_header']; ?>
             </h1>
-            <p class="text-slate-500 dark:text-slate-400 text-lg">
+            <p class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm lg:text-lg">
                 <?php echo $lang['my_bookings_sub']; ?>
             </p>
         </div>
-        <a href="dashboard.php" class="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 px-8 rounded-2xl shadow-primary transition-all active:scale-95 group">
-            <span class="material-symbols-rounded transition-transform group-hover:rotate-90">add</span>
+        <a href="dashboard.php" class="flex items-center justify-center gap-1.5 sm:gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm sm:text-base py-2.5 px-4 sm:py-3 sm:px-6 lg:py-4 lg:px-8 rounded-xl sm:rounded-2xl shadow-primary transition-all active:scale-95 group">
+            <span class="material-symbols-rounded text-lg sm:text-xl transition-transform group-hover:rotate-90">add</span>
             New Booking
         </a>
     </header>
 
     <!-- Tabs + Sort -->
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
-        <div class="flex p-1.5 bg-slate-200/50 dark:bg-slate-800/50 backdrop-blur-md rounded-2xl w-fit">
-            <button class="tab-btn flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-semibold transition-all" id="active-tab" onclick="switchTab('active')">
-                <span class="material-symbols-rounded">schedule</span>
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 lg:mb-8">
+        <div class="flex p-1 sm:p-1.5 bg-slate-200/50 dark:bg-slate-800/50 backdrop-blur-md rounded-xl sm:rounded-2xl w-fit">
+            <button class="tab-btn flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 lg:px-6 lg:py-2.5 rounded-lg sm:rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-semibold text-xs sm:text-sm lg:text-base transition-all" id="active-tab" onclick="switchTab('active')">
+                <span class="material-symbols-rounded text-base sm:text-lg lg:text-xl">schedule</span>
                 <span>Active Jobs</span>
                 <?php if (count($active_bookings) > 0): ?>
-                <span class="bg-primary text-white text-[11px] font-bold px-2 py-0.5 rounded-full"><?php echo count($active_bookings); ?></span>
+                <span class="bg-primary text-white text-[9px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full"><?php echo count($active_bookings); ?></span>
                 <?php endif; ?>
             </button>
-            <button class="tab-btn flex items-center gap-2 px-6 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 font-semibold hover:text-slate-700 dark:hover:text-slate-200 transition-all" id="history-tab" onclick="switchTab('history')">
-                <span class="material-symbols-rounded">history</span>
+            <button class="tab-btn flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 lg:px-6 lg:py-2.5 rounded-lg sm:rounded-xl text-slate-500 dark:text-slate-400 font-semibold text-xs sm:text-sm lg:text-base hover:text-slate-700 dark:hover:text-slate-200 transition-all" id="history-tab" onclick="switchTab('history')">
+                <span class="material-symbols-rounded text-base sm:text-lg lg:text-xl">history</span>
                 <span>History</span>
             </button>
         </div>
 
         <!-- FIX: Functional Sort by Date dropdown -->
-        <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
             <div class="relative" id="sortDropdownWrapper">
                 <button id="sortBtn"
                         onclick="toggleSortDropdown()"
-                        class="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-300 hover:border-primary transition-colors">
-                    <span class="material-symbols-rounded text-slate-400">calendar_today</span>
-                    <span class="text-sm font-medium" id="sortLabel">Newest First</span>
-                    <span class="material-symbols-rounded text-slate-400" id="sortChevron">expand_more</span>
+                        class="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 lg:px-5 lg:py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg sm:rounded-xl text-slate-600 dark:text-slate-300 hover:border-primary transition-colors">
+                    <span class="material-symbols-rounded text-base sm:text-lg text-slate-400">calendar_today</span>
+                    <span class="text-xs sm:text-sm font-medium" id="sortLabel">Newest First</span>
+                    <span class="material-symbols-rounded text-base sm:text-lg text-slate-400" id="sortChevron">expand_more</span>
                 </button>
                 <div id="sortDropdown" class="sort-dropdown absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-40 overflow-hidden">
                     <button onclick="applySort('desc')" class="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-medium" id="sortDesc">
