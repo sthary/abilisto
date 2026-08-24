@@ -119,6 +119,46 @@ function getImpactStats($pdo, $period = 'today') {
 }
 
 $impactStats = getImpactStats($pdo, 'today');
+
+// ============================================================
+// REAL WORKER COUNT — hero trust badge (was mislabeled GreenLoop
+// recycling-contributor count; this is the actual worker headcount)
+// ============================================================
+$workerCountStmt = $pdo->query("SELECT COUNT(*) AS cnt FROM users WHERE role = 'worker'");
+$trustedWorkerCount = (int)($workerCountStmt->fetch()['cnt'] ?? 0);
+
+// ============================================================
+// REAL "TRUSTED BY YOUR NEIGHBORS" DATA — completed bookings with a
+// real review attached. Deliberately empty until real transactions
+// exist; the section below hides itself entirely when this is empty
+// rather than ever showing fabricated names/jobs.
+// ============================================================
+$neighborStmt = $pdo->prepare("
+    SELECT r.rating, r.comment,
+           b.service_type, b.location_address,
+           wu.full_name AS worker_name,
+           cu.full_name AS client_name
+    FROM reviews r
+    JOIN bookings b ON b.id = r.booking_id
+    JOIN users wu ON wu.id = r.worker_id
+    JOIN users cu ON cu.id = r.client_id
+    WHERE b.status = 'Completed'
+      AND r.rating >= 4
+      AND r.comment IS NOT NULL AND r.comment != ''
+    ORDER BY r.created_at DESC
+    LIMIT 3
+");
+$neighborStmt->execute();
+$neighborReviews = $neighborStmt->fetchAll();
+// Feature the longest comment as the big pull-quote; the rest (including
+// itself) still list as job cards on the left.
+$featuredReview = null;
+if (!empty($neighborReviews)) {
+    $featuredReview = $neighborReviews[0];
+    foreach ($neighborReviews as $r) {
+        if (strlen($r['comment']) > strlen($featuredReview['comment'])) $featuredReview = $r;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo $lang_code; ?>">
@@ -350,7 +390,7 @@ $impactStats = getImpactStats($pdo, 'today');
                 </div>
                 <div>
                     <p class="text-xs text-slate-500 font-medium">Trusted by</p>
-                    <p class="text-sm font-bold"><?= number_format($impactStats['total_contributors']) ?>+ Contributors</p>
+                    <p class="text-sm font-bold"><?= number_format($trustedWorkerCount) ?>+ Workers</p>
                 </div>
             </div>
         </div>
@@ -513,44 +553,28 @@ $impactStats = getImpactStats($pdo, 'today');
                     <i class="fa-solid fa-medal text-yellow-500 text-3xl"></i>
                 </div>
                 <h3 class="text-xl font-bold mb-2">Gold</h3>
-                <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">TESDA NC III - Master-level expertise for complex industrial jobs.</p>
-                <ul class="mt-4 space-y-2 text-sm text-slate-500">
-                    <li class="flex items-center gap-2"><i class="fa-solid fa-check text-green-500"></i> 5+ years experience</li>
-                    <li class="flex items-center gap-2"><i class="fa-solid fa-check text-green-500"></i> Priority scheduling</li>
-                </ul>
+                <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">TESDA National Certificate III (NC III), the highest craftsman-level certification TESDA issues for this trade. Holders have demonstrated mastery through official TESDA assessment, not self-reported experience.</p>
             </div>
             <div class="p-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-primary/50 transition-all">
                 <div class="size-12 rounded-lg bg-slate-400/10 flex items-center justify-center mb-6">
                     <i class="fa-solid fa-award text-slate-400 text-3xl"></i>
                 </div>
                 <h3 class="text-xl font-bold mb-2">Silver</h3>
-                <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">TESDA NC II - Professional expertise for residential & commercial.</p>
-                <ul class="mt-4 space-y-2 text-sm text-slate-500">
-                    <li class="flex items-center gap-2"><i class="fa-solid fa-check text-green-500"></i> 3+ years experience</li>
-                    <li class="flex items-center gap-2"><i class="fa-solid fa-check text-green-500"></i> Warranty on work</li>
-                </ul>
+                <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">TESDA National Certificate II (NC II), for tradespeople qualified to handle standard residential and commercial jobs independently. This is TESDA's mid-tier competency assessment, one step below master-level NC III.</p>
             </div>
             <div class="p-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-primary/50 transition-all">
                 <div class="size-12 rounded-lg bg-orange-400/10 flex items-center justify-center mb-6">
                     <i class="fa-solid fa-certificate text-orange-500 text-3xl"></i>
                 </div>
                 <h3 class="text-xl font-bold mb-2">Bronze</h3>
-                <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">TESDA NC I - Basic certification for routine home repairs.</p>
-                <ul class="mt-4 space-y-2 text-sm text-slate-500">
-                    <li class="flex items-center gap-2"><i class="fa-solid fa-check text-green-500"></i> 1+ years experience</li>
-                    <li class="flex items-center gap-2"><i class="fa-solid fa-check text-green-500"></i> Affordable rates</li>
-                </ul>
+                <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">TESDA National Certificate I (NC I), the entry-level competency assessment for routine, straightforward repair work. Still a real TESDA credential, verified through the same official certification process as every other tier.</p>
             </div>
             <div class="p-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-primary/50 transition-all">
                 <div class="size-12 rounded-lg bg-primary/10 flex items-center justify-center mb-6">
                     <i class="fa-solid fa-users text-primary text-3xl"></i>
                 </div>
                 <h3 class="text-xl font-bold mb-2">Community</h3>
-                <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Local heroes vouched by neighbors for simple tasks.</p>
-                <ul class="mt-4 space-y-2 text-sm text-slate-500">
-                    <li class="flex items-center gap-2"><i class="fa-solid fa-check text-green-500"></i> Community-vouched</li>
-                    <li class="flex items-center gap-2"><i class="fa-solid fa-check text-green-500"></i> Lower rates</li>
-                </ul>
+                <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Not a TESDA credential — skilled locals vouched for directly by neighbors who've worked with them. A practical option for simple tasks in areas where formal certification isn't yet common.</p>
             </div>
         </div>
     </div>
@@ -603,6 +627,10 @@ $impactStats = getImpactStats($pdo, 'today');
 </section>
 
 <!-- ── SOCIAL PROOF ── -->
+<!-- Hidden entirely until real completed bookings have real reviews attached
+     — no fabricated names/jobs. Appears automatically once $neighborReviews
+     has rows (see the query near the top of this file). -->
+<?php if (!empty($neighborReviews)): ?>
 <section class="py-24 bg-white dark:bg-slate-950 overflow-hidden">
     <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20">
         <div>
@@ -611,66 +639,54 @@ $impactStats = getImpactStats($pdo, 'today');
                 <p class="text-slate-600 dark:text-slate-400">Real jobs completed by real workers in your community.</p>
             </div>
             <div class="sr-group space-y-6">
+                <?php
+                $service_icon_map = [
+                    'Plumbing' => 'fa-wrench', 'Electrical' => 'fa-bolt', 'Aircon_Ref' => 'fa-snowflake',
+                    'Carpentry' => 'fa-hammer', 'Masonry' => 'fa-trowel', 'Welding' => 'fa-fire',
+                    'Automotive' => 'fa-car', 'Motorcycle' => 'fa-motorcycle', 'Electronics' => 'fa-microchip',
+                    'Computer_Tech' => 'fa-computer', 'Cleaning' => 'fa-broom', 'Painting' => 'fa-paint-roller',
+                ];
+                foreach ($neighborReviews as $nr):
+                    $icon = $service_icon_map[$nr['service_type']] ?? 'fa-check';
+                    $service_label = str_replace('_', ' ', $nr['service_type']);
+                    $loc = $nr['location_address'] ? explode(',', $nr['location_address'])[0] : '';
+                ?>
                 <div class="flex items-center gap-6 p-4 bg-background-light dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
                     <div class="size-16 rounded-lg bg-slate-200 dark:bg-slate-800 flex-shrink-0 flex items-center justify-center">
-                        <i class="fa-solid fa-wrench text-primary text-2xl"></i>
+                        <i class="fa-solid <?= $icon ?> text-primary text-2xl"></i>
                     </div>
                     <div class="flex-1">
-                        <h4 class="font-bold mb-1">Plumbing Fix</h4>
-                        <p class="text-sm text-slate-500 mb-2">📍 Carrascal</p>
+                        <h4 class="font-bold mb-1"><?= htmlspecialchars($service_label) ?></h4>
+                        <?php if ($loc): ?><p class="text-sm text-slate-500 mb-2">📍 <?= htmlspecialchars($loc) ?></p><?php endif; ?>
                         <div class="flex items-center gap-2">
                             <div class="size-5 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center"><i class="fa-solid fa-user text-xs text-slate-500"></i></div>
-                            <span class="text-xs text-slate-600 dark:text-slate-400 font-medium italic">Fixed by: Ronald T. Gamba</span>
+                            <span class="text-xs text-slate-600 dark:text-slate-400 font-medium italic">Fixed by: <?= htmlspecialchars($nr['worker_name']) ?></span>
                         </div>
                     </div>
                 </div>
-                <div class="flex items-center gap-6 p-4 bg-background-light dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <div class="size-16 rounded-lg bg-slate-200 dark:bg-slate-800 flex-shrink-0 flex items-center justify-center">
-                        <i class="fa-solid fa-bolt text-yellow-500 text-2xl"></i>
-                    </div>
-                    <div class="flex-1">
-                        <h4 class="font-bold mb-1">Electrical Repair</h4>
-                        <p class="text-sm text-slate-500 mb-2">📍 Cantilan</p>
-                        <div class="flex items-center gap-2">
-                            <div class="size-5 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center"><i class="fa-solid fa-user text-xs text-slate-500"></i></div>
-                            <span class="text-xs text-slate-600 dark:text-slate-400 font-medium italic">Fixed by: Emanriec B. Mabitasan</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="flex items-center gap-6 p-4 bg-background-light dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <div class="size-16 rounded-lg bg-slate-200 dark:bg-slate-800 flex-shrink-0 flex items-center justify-center">
-                        <i class="fa-solid fa-snowflake text-blue-500 text-2xl"></i>
-                    </div>
-                    <div class="flex-1">
-                        <h4 class="font-bold mb-1">Aircon Servicing</h4>
-                        <p class="text-sm text-slate-500 mb-2">📍 Madrid</p>
-                        <div class="flex items-center gap-2">
-                            <div class="size-5 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center"><i class="fa-solid fa-user text-xs text-slate-500"></i></div>
-                            <span class="text-xs text-slate-600 dark:text-slate-400 font-medium italic">Fixed by: Glenn A. Madronial</span>
-                        </div>
-                    </div>
-                </div>
+                <?php endforeach; ?>
             </div>
         </div>
         <div class="sr-right bg-primary/5 dark:bg-slate-900 rounded-[3rem] p-12 relative flex flex-col justify-center">
             <div class="mb-8"><i class="fa-solid fa-quote-left text-primary text-6xl opacity-50"></i></div>
             <p class="text-2xl font-bold leading-relaxed mb-8 text-slate-800 dark:text-slate-200">
-                "I found a plumber in minutes! My pipe burst at 10 AM. Within 30 minutes, a verified worker arrived and fixed it. The mobilization fee was totally worth it. Ganahan ko!"
+                "<?= htmlspecialchars($featuredReview['comment']) ?>"
             </p>
             <div class="flex items-center gap-4">
-                <img class="size-14 rounded-full border-4 border-white dark:border-slate-800" src="https://ui-avatars.com/api/?name=Maria+Santos&background=0d6efd&color=fff&size=64" alt="Maria Santos"/>
+                <img class="size-14 rounded-full border-4 border-white dark:border-slate-800" src="https://ui-avatars.com/api/?name=<?= urlencode($featuredReview['client_name']) ?>&background=0d6efd&color=fff&size=64" alt="<?= htmlspecialchars($featuredReview['client_name']) ?>"/>
                 <div>
-                    <h5 class="font-bold text-lg">Maria Turja Pame</h5>
+                    <h5 class="font-bold text-lg"><?= htmlspecialchars($featuredReview['client_name']) ?></h5>
                     <div class="flex">
-                        <i class="fa-solid fa-star text-yellow-400"></i><i class="fa-solid fa-star text-yellow-400"></i>
-                        <i class="fa-solid fa-star text-yellow-400"></i><i class="fa-solid fa-star text-yellow-400"></i>
-                        <i class="fa-solid fa-star text-yellow-400"></i>
+                        <?php for ($i = 0; $i < 5; $i++): ?>
+                        <i class="fa-solid fa-star <?= $i < (int)$featuredReview['rating'] ? 'text-yellow-400' : 'text-slate-300 dark:text-slate-700' ?>"></i>
+                        <?php endfor; ?>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </section>
+<?php endif; ?>
 
 <!-- ── PROMISE SECTION ── -->
 <section class="py-24 bg-slate-900 text-white">
