@@ -222,12 +222,12 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
             $full      = floor($rating);
             $half      = ($rating - $full) >= 0.5;
             for ($i = 1; $i <= 5; $i++) {
-                if ($i <= $full)           echo '<span class="material-symbols-outlined text-yellow-400 text-xs" style="font-variation-settings:\'FILL\' 1">star</span>';
-                elseif ($i==$full+1&&$half) echo '<span class="material-symbols-outlined text-yellow-400 text-xs">star_half</span>';
-                else                        echo '<span class="material-symbols-outlined text-slate-300 dark:text-slate-600 text-xs">star</span>';
+                if ($i <= $full)           echo '<span class="material-symbols-outlined text-yellow-400 text-[10px]" style="font-variation-settings:\'FILL\' 1">star</span>';
+                elseif ($i==$full+1&&$half) echo '<span class="material-symbols-outlined text-yellow-400 text-[10px]">star_half</span>';
+                else                        echo '<span class="material-symbols-outlined text-slate-300 dark:text-slate-600 text-[10px]">star</span>';
             }
             ?>
-            <span class="ml-0.5 text-[11px] font-bold"><?php echo number_format($worker['average_rating'], 1); ?></span>
+            <span class="ml-0.5 text-[10px] font-bold"><?php echo number_format($worker['average_rating'], 1); ?></span>
         </div>
 
         <?php if ($worker['minimum_standard_rate'] > 0): ?>
@@ -300,12 +300,12 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
             $full   = floor($rating);
             $half   = ($rating - $full) >= 0.5;
             for ($i = 1; $i <= 5; $i++) {
-                if ($i <= $full)            echo '<span class="material-symbols-outlined text-yellow-400 text-xs" style="font-variation-settings:\'FILL\' 1">star</span>';
-                elseif ($i==$full+1&&$half) echo '<span class="material-symbols-outlined text-yellow-400 text-xs">star_half</span>';
-                else                        echo '<span class="material-symbols-outlined text-slate-300 dark:text-slate-600 text-xs">star</span>';
+                if ($i <= $full)            echo '<span class="material-symbols-outlined text-yellow-400 text-[10px]" style="font-variation-settings:\'FILL\' 1">star</span>';
+                elseif ($i==$full+1&&$half) echo '<span class="material-symbols-outlined text-yellow-400 text-[10px]">star_half</span>';
+                else                        echo '<span class="material-symbols-outlined text-slate-300 dark:text-slate-600 text-[10px]">star</span>';
             }
             ?>
-            <span class="ml-0.5 text-[11px] font-bold"><?php echo number_format($worker['average_rating'], 1); ?></span>
+            <span class="ml-0.5 text-[10px] font-bold"><?php echo number_format($worker['average_rating'], 1); ?></span>
         </div>
 
         <div class="w-full py-1.5 bg-blue-50 dark:bg-blue-900/20 text-primary text-xs font-bold rounded-lg flex items-center justify-center gap-1 group-hover:bg-primary group-hover:text-white transition-all mt-auto">
