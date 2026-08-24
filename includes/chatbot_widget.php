@@ -1,9 +1,16 @@
+<?php
+// Lets includes/navbar.php know it's safe to render the Abi trigger
+// buttons (they call window.abiToggle, which only this file defines).
+// This must run before navbar.php's own PHP executes on pages where
+// navbar.php is included first — see the include order note there.
+define('ABI_WIDGET_INCLUDED', true);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Abi Widget · Draggable</title>
+  <title>Abi Widget</title>
   <style>
     div[data-orbit-widget="true"] * {
       margin: 0;
@@ -11,106 +18,68 @@
       box-sizing: border-box;
     }
 
-    body {
-      background: #e5f0ff;
-      min-height: 100vh;
-      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    /* ========== ABI NAV ORB — the small animated logo used for the
+       trigger button embedded in the desktop nav (beside "More") and
+       the mobile hamburger sidebar (above "Profile"). Same animation
+       as before, just sized for an inline nav icon instead of a large
+       floating drag handle. ========== */
+    .abi-nav-orb {
+      position: relative;
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
     }
-
-    /* ========== ORBIT WIDGET CONTAINER ========== */
-    div[data-orbit-widget="true"] {
-      position: fixed;
-      /* Default position: bottom-right — JS will override on drag */
-      bottom: 24px;
-      right: 24px;
-      width: 36px;
-      height: 36px;
-      z-index: 999999;
+    .abi-nav-orb-ball {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #5a4ed0, #8d3dd7);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      animation: orbit-ballPulse 10s ease-in-out infinite;
+    }
+    .abi-nav-orb-ring {
+      position: absolute;
+      width: 34px;
+      height: 34px;
+      top: 50%;
+      left: 50%;
+      margin-left: -17px;
+      margin-top: -17px;
+      border-radius: 50%;
+      border: 1.5px solid #8d6de8;
+      animation: orbit-ringPulse 10s ease-in-out infinite;
+      background: transparent;
       pointer-events: none;
-      touch-action: none !important;
-      user-select: none !important;
-      /* JS sets top/left after first drag; until then bottom/right CSS handles it */
     }
-
-    /* Only the toggler, overlay, and open window are interactive */
-    div[data-orbit-widget="true"] .orbit-toggler,
-    div[data-orbit-widget="true"] .orbit-overlay.open,
-    div[data-orbit-widget="true"] .orbit-window.open,
-    div[data-orbit-widget="true"] .orbit-window.open * {
-      pointer-events: auto;
+    .abi-nav-orb-scaler {
+      position: absolute;
+      width: 34px;
+      height: 34px;
+      top: 50%;
+      left: 50%;
+      margin-left: -17px;
+      margin-top: -17px;
+      animation: orbit-ringPulse 10s ease-in-out infinite;
+      pointer-events: none;
     }
-
-    /* ========== ORBIT TOGGLER ========== */
-    div[data-orbit-widget="true"] .orbit-toggler {
-      position: absolute !important;
-      top: 0 !important;
-      left: 0 !important;
-      width: 36px !important;
-      height: 36px !important;
-      cursor: grab !important;
-      z-index: 1000000 !important;
-      pointer-events: auto !important;
+    .abi-nav-orb-spinner {
+      position: absolute;
+      inset: 0;
+      animation: orbit-spin 8s linear infinite;
+      pointer-events: none;
     }
-
-    div[data-orbit-widget="true"] .orbit-toggler.dragging {
-      cursor: grabbing !important;
-    }
-
-    div[data-orbit-widget="true"] .orbit-toggler .o-ball {
-      position: absolute !important;
-      inset: 0 !important;
-      border-radius: 50% !important;
-      background: linear-gradient(145deg, #5a4ed0, #8d3dd7) !important;
-      border: 1px solid rgba(255, 255, 255, 0.3) !important;
-      animation: orbit-ballPulse 10s ease-in-out infinite !important;
-      box-shadow: none !important;
-    }
-
-    div[data-orbit-widget="true"] .orbit-toggler .o-ring {
-      position: absolute !important;
-      width: 52px !important;
-      height: 52px !important;
-      top: 50% !important;
-      left: 50% !important;
-      margin-left: -26px !important;
-      margin-top: -26px !important;
-      border-radius: 50% !important;
-      border: 2px solid #8d6de8 !important;
-      animation: orbit-ringPulse 10s ease-in-out infinite !important;
-      background: transparent !important;
-      pointer-events: none !important;
-    }
-
-    div[data-orbit-widget="true"] .orbit-toggler .o-orbit-scaler {
-      position: absolute !important;
-      width: 52px !important;
-      height: 52px !important;
-      top: 50% !important;
-      left: 50% !important;
-      margin-left: -26px !important;
-      margin-top: -26px !important;
-      animation: orbit-ringPulse 10s ease-in-out infinite !important;
-      pointer-events: none !important;
-    }
-
-    div[data-orbit-widget="true"] .orbit-toggler .o-orbit-spinner {
-      position: absolute !important;
-      inset: 0 !important;
-      animation: orbit-spin 8s linear infinite !important;
-      pointer-events: none !important;
-    }
-
-    div[data-orbit-widget="true"] .orbit-toggler .o-dot {
-      position: absolute !important;
-      width: 6px !important;
-      height: 6px !important;
-      background: linear-gradient(145deg, #ffffff, #d0aeff) !important;
-      border: 1px solid #a14ef0 !important;
-      border-radius: 50% !important;
-      top: -3px !important;
-      left: 50% !important;
-      transform: translateX(-50%) !important;
-      pointer-events: none !important;
+    .abi-nav-orb-dot {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: linear-gradient(145deg, #ffffff, #d0aeff);
+      border: 1px solid #a14ef0;
+      border-radius: 50%;
+      top: -2px;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
     }
 
     @keyframes orbit-ballPulse {
@@ -141,13 +110,15 @@
       visibility: visible !important;
     }
 
-    /* ========== CHAT WINDOW — full-screen sheet ========== */
-    /* top:0 + height:100% (not bottom:0 + vh) because position:fixed
-       elements anchored via `bottom` can end up pinned behind the mobile
-       keyboard on iOS Safari — top+height is the side that stays correct.
-       JS additionally syncs height/top to the visualViewport on keyboard
-       open/close (see script below) since vh/dvh units alone don't
-       reliably shrink for the keyboard on every mobile browser. */
+    /* ========== CHAT WINDOW — full-screen sheet on mobile, a docked
+       side panel on desktop (always right-anchored, sliding in from
+       the right edge — see applyLayout() below). top:0 + height:100%
+       (not bottom:0 + vh) because position:fixed elements anchored via
+       `bottom` can end up pinned behind the mobile keyboard on iOS
+       Safari — top+height is the side that stays correct. JS
+       additionally syncs height/top to the visualViewport on keyboard
+       open/close since vh/dvh units alone don't reliably shrink for
+       the keyboard on every mobile browser. ========== */
     div[data-orbit-widget="true"] .orbit-window {
       position: fixed !important;
       left: 0 !important;
@@ -490,17 +461,6 @@
 <body>
 
   <div data-orbit-widget="true" id="orbitRoot">
-    <!-- FLOATING TOGGLER (drag handle) -->
-    <div class="orbit-toggler" id="toggler">
-      <div class="o-ball"></div>
-      <div class="o-ring"></div>
-      <div class="o-orbit-scaler">
-        <div class="o-orbit-spinner" id="spinner">
-          <div class="o-dot"></div>
-        </div>
-      </div>
-    </div>
-
     <!-- BACKDROP -->
     <div class="orbit-overlay" id="orbitOverlay"></div>
 
@@ -520,7 +480,7 @@
           <h4>Abi</h4>
           <span class="beta-badge">Beta</span>
         </div>
-        <!-- NEW: (x) button on RIGHT side of modal -->
+        <!-- (x) button on RIGHT side of modal -->
         <div class="orbit-close-widget" id="orbitCloseBtn" title="Remove Abi widget (reappears after refresh)">✕</div>
       </div>
 
@@ -542,7 +502,6 @@
   <script>
     (function () {
       const root    = document.getElementById('orbitRoot');
-      const toggler = document.getElementById('toggler');
       const win     = document.getElementById('win');
       const overlay = document.getElementById('orbitOverlay');
       const inp     = document.getElementById('inp');
@@ -550,7 +509,7 @@
       const msgs    = document.getElementById('msgs');
       const closeWidgetBtn = document.getElementById('orbitCloseBtn');
 
-      if (!root || !toggler || !win || !overlay || !inp || !sendBtn || !msgs || !closeWidgetBtn) return;
+      if (!root || !win || !overlay || !inp || !sendBtn || !msgs || !closeWidgetBtn) return;
 
       /* ── SHEET OPEN/CLOSE — also locks body scroll while open so a
          focused input's keyboard doesn't drag the whole page up with it
@@ -580,15 +539,12 @@
       }
 
       /* ── LAYOUT: full-screen bottom sheet on mobile, a 30%-wide side
-         panel on desktop that slides in from whichever edge the toggler
-         currently sits near (right toggler → panel on the right, sliding
-         right-to-left; left toggler → panel on the left, sliding
-         left-to-right). Computed fresh on every open since the toggler is
-         draggable and can move between opens. */
+         panel on desktop. The trigger now lives in a fixed spot (nav bar
+         on desktop, hamburger sidebar on mobile) instead of a draggable
+         floating ball, so the panel always docks to the same edge —
+         right — and always slides in right-to-left. */
       function applyLayout(closed) {
         if (isDesktop()) {
-          const togglerRect = toggler.getBoundingClientRect();
-          const onRight = (togglerRect.left + togglerRect.width / 2) > window.innerWidth / 2;
           win.style.setProperty('top', '0', 'important');
           win.style.setProperty('bottom', 'auto', 'important');
           win.style.setProperty('height', '100%', 'important');
@@ -596,15 +552,9 @@
           win.style.setProperty('min-width', '340px', 'important');
           win.style.setProperty('max-width', '480px', 'important');
           win.style.setProperty('border-radius', '0', 'important');
-          if (onRight) {
-            win.style.setProperty('left', 'auto', 'important');
-            win.style.setProperty('right', '0', 'important');
-            win.style.setProperty('transform', closed ? 'translateX(100%)' : 'translateX(0)', 'important');
-          } else {
-            win.style.setProperty('left', '0', 'important');
-            win.style.setProperty('right', 'auto', 'important');
-            win.style.setProperty('transform', closed ? 'translateX(-100%)' : 'translateX(0)', 'important');
-          }
+          win.style.setProperty('left', 'auto', 'important');
+          win.style.setProperty('right', '0', 'important');
+          win.style.setProperty('transform', closed ? 'translateX(100%)' : 'translateX(0)', 'important');
         } else {
           win.style.setProperty('left', '0', 'important');
           win.style.setProperty('right', '0', 'important');
@@ -643,7 +593,27 @@
       overlay.addEventListener('click', closeSheet);
       window.addEventListener('resize', () => { if (win.classList.contains('open')) applyLayout(false); });
 
-      /* ── 1) CLOSE BUTTON (X) — removes Orbit widget from screen entirely (reappears after relogin/refresh) ── */
+      /* ── GLOBAL TOGGLE — called by the Abi trigger buttons that live in
+         includes/navbar.php (desktop nav beside "More", mobile hamburger
+         sidebar above "Profile"). Exposed globally since those buttons
+         are wired from navbar.php's own script, which may run before or
+         after this one depending on include order; by only *calling*
+         window.abiToggle at click time (long after both scripts have
+         run) the order never matters. ── */
+      window.abiToggle = function () {
+        if (win.classList.contains('open')) {
+          closeSheet();
+        } else {
+          openSheet();
+          showTempNote();
+          inp.focus();
+        }
+      };
+
+      /* ── CLOSE BUTTON (X) — removes the Abi widget from the page
+         entirely (reappears after relogin/refresh), and disables the
+         external nav trigger buttons to match since they're the only
+         way to reopen it. ── */
       function removeOrbitWidget() {
         document.body.style.position = '';
         document.body.style.top = '';
@@ -653,13 +623,19 @@
         } else if (root && root.parentNode) {
           root.parentNode.removeChild(root);
         }
+        document.querySelectorAll('.abi-nav-toggler').forEach(function (btn) {
+          btn.style.opacity = '0.4';
+          btn.style.pointerEvents = 'none';
+          btn.setAttribute('aria-disabled', 'true');
+        });
+        window.abiToggle = function () {};
       }
       closeWidgetBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         removeOrbitWidget();
       });
 
-      /* ── 2) TEMPORARY NOTE (appears only when modal is opened, disappears after 5 seconds) ── */
+      /* ── TEMPORARY NOTE (appears only when modal is opened, disappears after 5 seconds) ── */
       let activeNote = null;
       function showTempNote() {
         // Remove any existing note first to avoid stacking
@@ -679,116 +655,6 @@
           }
         }, 5000);
       }
-
-      /* ── HELPERS ────────────────────────────────────────────── */
-      function clamp(val, min, max) {
-        return Math.min(Math.max(val, min), max);
-      }
-
-      /* ── POSITION PERSISTENCE ──────────────────────────────── */
-      const STORAGE_KEY = 'orbit-widget-pos';
-
-      function savePosition(left, top) {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({
-            x: left / window.innerWidth,
-            y: top  / window.innerHeight
-          }));
-        } catch (e) {}
-      }
-
-      function loadPosition() {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if (!raw) return null;
-          const pct = JSON.parse(raw);
-          return {
-            left: clamp(Math.round(pct.x * window.innerWidth),  0, window.innerWidth  - 36),
-            top:  clamp(Math.round(pct.y * window.innerHeight), 0, window.innerHeight - 36)
-          };
-        } catch (e) { return null; }
-      }
-
-      function applyPosition(left, top) {
-        root.style.bottom = '';
-        root.style.right  = '';
-        root.style.left   = left + 'px';
-        root.style.top    = top  + 'px';
-      }
-
-      /* ── DRAG LOGIC ─────────────────────────────────────────── */
-      let isDragging  = false;
-      let didDrag     = false;
-      let startX, startY, startLeft, startTop;
-
-      function initPosition() {
-        const r = root.getBoundingClientRect();
-        applyPosition(r.left, r.top);
-      }
-
-      // Restore saved position on load, or fall back to default bottom-right
-      (function restorePosition() {
-        const saved = loadPosition();
-        if (saved) {
-          applyPosition(saved.left, saved.top);
-        } else {
-          initPosition();
-        }
-      })();
-
-      toggler.addEventListener('pointerdown', (e) => {
-        if (e.button !== undefined && e.button !== 0) return;
-        isDragging = true;
-        didDrag    = false;
-
-        startX    = e.clientX;
-        startY    = e.clientY;
-        startLeft = parseFloat(root.style.left) || 0;
-        startTop  = parseFloat(root.style.top)  || 0;
-
-        toggler.classList.add('dragging');
-        toggler.setPointerCapture(e.pointerId);
-        e.preventDefault();
-      });
-
-      toggler.addEventListener('pointermove', (e) => {
-        if (!isDragging) return;
-
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-
-        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) didDrag = true;
-
-        const newLeft = clamp(startLeft + dx, 0, window.innerWidth  - 36);
-        const newTop  = clamp(startTop  + dy, 0, window.innerHeight - 36);
-
-        applyPosition(newLeft, newTop);
-      });
-
-      toggler.addEventListener('pointerup', (e) => {
-        if (!isDragging) return;
-        isDragging = false;
-        toggler.classList.remove('dragging');
-
-        if (didDrag) {
-          savePosition(parseFloat(root.style.left), parseFloat(root.style.top));
-        } else {
-          // It was a tap/click — toggle the sheet
-          const wasOpen = win.classList.contains('open');
-          if (wasOpen) {
-            closeSheet();
-          } else {
-            openSheet();
-            showTempNote();
-            inp.focus();
-          }
-        }
-      });
-
-      toggler.addEventListener('pointercancel', () => {
-        isDragging = false;
-        toggler.classList.remove('dragging');
-      });
 
       /* ── MESSAGES ───────────────────────────────────────────── */
       // Conversation memory — previously every message was sent in

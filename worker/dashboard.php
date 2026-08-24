@@ -561,8 +561,8 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 </head>
 <body class="text-on-surface antialiased min-h-screen overflow-x-hidden">
 
-<?php include '../includes/navbar.php'; ?>
 <?php include '../includes/chatbot_widget.php'; ?>
+<?php include '../includes/navbar.php'; ?>
 
 <!-- ══════════════════════════════════════════
      UNVERIFIED WORKER MODAL

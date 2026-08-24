@@ -691,6 +691,18 @@ $current_lang = $_SESSION['lang'] ?? 'en';
 
             <!-- Right side: MORE dropdown + (optionally no separate lang/logout) -->
             <div class="nav-actions">
+                <?php if (defined('ABI_WIDGET_INCLUDED')): ?>
+                <button type="button" id="abiTogglerDesktop" class="abi-nav-toggler more-btn" title="Chat with Abi">
+                    <span class="abi-nav-orb">
+                        <span class="abi-nav-orb-ball"></span>
+                        <span class="abi-nav-orb-ring"></span>
+                        <span class="abi-nav-orb-scaler">
+                            <span class="abi-nav-orb-spinner"><span class="abi-nav-orb-dot"></span></span>
+                        </span>
+                    </span>
+                    Abi
+                </button>
+                <?php endif; ?>
                 <div class="more-dropdown-container" id="moreDropdownDesktop">
                     <button class="more-btn" id="moreBtnDesktop">
                         <i class="fa-solid fa-ellipsis-vertical"></i> More
@@ -802,6 +814,20 @@ $current_lang = $_SESSION['lang'] ?? 'en';
 <!-- Mobile Sidebar (drawer) -->
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 <div class="mobile-sidebar" id="mobileSidebar">
+    <?php if (defined('ABI_WIDGET_INCLUDED')): ?>
+    <!-- Abi -->
+    <button type="button" id="abiTogglerMobile" class="abi-nav-toggler sidebar-item" style="width:100%;background:none;border:none;cursor:pointer;text-align:left;font:inherit;">
+        <span class="abi-nav-orb">
+            <span class="abi-nav-orb-ball"></span>
+            <span class="abi-nav-orb-ring"></span>
+            <span class="abi-nav-orb-scaler">
+                <span class="abi-nav-orb-spinner"><span class="abi-nav-orb-dot"></span></span>
+            </span>
+        </span>
+        Abi
+    </button>
+    <?php endif; ?>
+
     <!-- Profile -->
     <a href="<?php echo ($_SESSION['role']=='worker')?'../worker/profile_edit.php':'../client/profile.php'; ?>" class="sidebar-item">
         <i class="fa-solid fa-user"></i> Profile
@@ -849,6 +875,17 @@ $current_lang = $_SESSION['lang'] ?? 'en';
         });
     }
 
+    // ----- ABI TOGGLER (desktop nav, beside "More") -----
+    // window.abiToggle is exposed by includes/chatbot_widget.php. Only
+    // referenced at click time, so it doesn't matter whether that file's
+    // script has already run by the time this one does.
+    const abiDesktopBtn = document.getElementById('abiTogglerDesktop');
+    if (abiDesktopBtn) {
+        abiDesktopBtn.addEventListener('click', function() {
+            if (window.abiToggle) window.abiToggle();
+        });
+    }
+
     // ----- MOBILE SIDEBAR -----
     const menuToggle = document.getElementById('mobileMenuToggle');
     const sidebar = document.getElementById('mobileSidebar');
@@ -864,6 +901,16 @@ $current_lang = $_SESSION['lang'] ?? 'en';
         }
         menuToggle.addEventListener('click', openSidebar);
         overlay.addEventListener('click', closeSidebar);
+
+        // Abi toggler (mobile sidebar, above "Profile") — close the
+        // drawer first so it doesn't sit on top of the chat sheet.
+        const abiMobileBtn = document.getElementById('abiTogglerMobile');
+        if (abiMobileBtn) {
+            abiMobileBtn.addEventListener('click', function() {
+                closeSidebar();
+                if (window.abiToggle) window.abiToggle();
+            });
+        }
     }
 
     // ----- SHORTCUTS SLIDE-UP SHEET (mobile footer Menu button) -----

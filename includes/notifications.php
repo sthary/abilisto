@@ -112,8 +112,8 @@ $unread_count = $unread_count_stmt->fetch()['count'] ?? 0;
 <body class="bg-background-light dark:bg-background-dark min-h-screen transition-colors duration-300 font-sans antialiased">
 
 <!-- Include Navbar -->
-<?php include '../includes/navbar.php'; ?>
 <?php include '../includes/chatbot_widget.php'; ?>
+<?php include '../includes/navbar.php'; ?>
 
 <main class="max-w-4xl mx-auto px-4 py-5 sm:py-8 md:py-20">
 
