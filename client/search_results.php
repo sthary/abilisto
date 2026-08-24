@@ -57,12 +57,20 @@ $page_title = $filter_sub ? "Workers offering: $filter_sub"
         .rating-star { font-size: 10px !important; }
         @media (min-width: 1024px) { .rating-star { font-size: 15px !important; } }
         .skill-tag-colored {
-            display: inline-flex; align-items: center; gap: 4px;
-            padding: 3px 8px 3px 6px; border-radius: 20px;
-            font-size: 11px; font-weight: 700; white-space: nowrap;
+            display: inline-flex; align-items: center; gap: 3px;
+            padding: 2px 6px 2px 5px; border-radius: 20px;
+            font-size: 10px; font-weight: 700; white-space: nowrap;
             border-width: 1px;
         }
-        .skill-tag-colored .material-symbols-outlined { font-size: 13px !important; }
+        .skill-tag-colored .material-symbols-outlined { font-size: 11px !important; }
+        @media (min-width: 1024px) {
+            .skill-tag-colored {
+                gap: 4px;
+                padding: 3px 8px 3px 6px;
+                font-size: 11px;
+            }
+            .skill-tag-colored .material-symbols-outlined { font-size: 13px !important; }
+        }
     </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-300 font-sans">

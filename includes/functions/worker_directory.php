@@ -209,7 +209,7 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
             <span class="truncate"><?php echo htmlspecialchars($worker['municipality'] ?: 'Location not set'); ?></span>
         </div>
 
-        <div class="flex flex-nowrap items-center gap-1 mb-1.5 lg:mb-3 h-[20px] lg:h-[40px] overflow-hidden shrink-0">
+        <div class="flex flex-nowrap items-center gap-1 mb-1.5 lg:mb-3 h-[22px] lg:h-[40px] overflow-hidden shrink-0">
             <?php renderColoredSkillTags($shownSkills, $badgeCfg, $subIcons); ?>
             <?php if ($extraSkillsCount > 0): ?>
             <span class="text-[10px] lg:text-xs font-bold text-slate-400">+<?php echo $extraSkillsCount; ?></span>
@@ -259,7 +259,7 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
     $extraSkillsCount = count($skills) - count($shownSkills);
     ?>
     <a href="worker_details.php?id=<?php echo $worker['id']; ?>"
-       class="group bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl p-2.5 lg:p-4 border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 min-w-[150px] sm:min-w-[170px] lg:min-w-[240px] w-[170px] lg:w-[240px] flex flex-col flex-shrink-0 h-[236px] lg:h-[392px] worker-card">
+       class="group bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl p-2.5 lg:p-4 border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 min-w-[150px] sm:min-w-[170px] lg:min-w-[240px] w-[170px] lg:w-[240px] flex flex-col flex-shrink-0 h-[238px] lg:h-[392px] worker-card">
 
         <div class="relative w-full shrink-0 aspect-[4/3] lg:aspect-square rounded-lg lg:rounded-xl overflow-hidden mb-2 lg:mb-4 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
             <?php if ($hasImage): ?>
@@ -283,7 +283,7 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
             <span class="truncate"><?php echo htmlspecialchars($worker['municipality'] ?: 'Location not set'); ?></span>
         </div>
 
-        <div class="flex flex-nowrap items-center gap-1 mb-1.5 lg:mb-3 h-[20px] lg:h-[40px] overflow-hidden shrink-0">
+        <div class="flex flex-nowrap items-center gap-1 mb-1.5 lg:mb-3 h-[22px] lg:h-[40px] overflow-hidden shrink-0">
             <?php renderColoredSkillTags($shownSkills, $badgeCfg, $subIcons); ?>
             <?php if ($extraSkillsCount > 0): ?>
             <span class="text-[10px] lg:text-xs font-bold text-slate-400">+<?php echo $extraSkillsCount; ?></span>
