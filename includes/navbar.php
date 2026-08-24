@@ -387,6 +387,98 @@ $current_lang = $_SESSION['lang'] ?? 'en';
         cursor: pointer;
     }
 
+    /* ---------- MOBILE TOP NAV (logo + hamburger, replaces the fully-hidden desktop-nav on mobile) ---------- */
+    .mobile-top-nav {
+        display: none; /* shown via the max-width:768px block below */
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        z-index: 1000;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        padding-top: max(12px, env(safe-area-inset-top));
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    .dark .mobile-top-nav {
+        background: rgba(15, 23, 42, 0.9);
+        border-bottom-color: rgba(255,255,255,0.05);
+    }
+    .mobile-top-nav .nav-logo { gap: 6px; }
+    .mobile-top-nav .logo-icon { width: 28px; height: 28px; }
+    .mobile-top-nav .logo-text { font-size: 1.1rem; }
+    .mobile-top-nav-hamburger {
+        width: 40px; height: 40px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem;
+        color: #64748b;
+        cursor: pointer;
+    }
+    .dark .mobile-top-nav-hamburger { color: #94a3b8; }
+
+    /* ---------- MOBILE FOOTER: single Menu button ---------- */
+    .mobile-menu-btn {
+        flex-direction: row;
+        gap: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        padding: 12px;
+    }
+    .mobile-menu-btn i { font-size: 1.1rem; }
+
+    /* ---------- SHORTCUTS SLIDE-UP SHEET ---------- */
+    .shortcuts-overlay {
+        position: fixed; inset: 0;
+        background: rgba(15,23,42,0.45);
+        backdrop-filter: blur(2px);
+        opacity: 0; visibility: hidden;
+        transition: opacity 0.25s ease, visibility 0.25s ease;
+        z-index: 1998;
+    }
+    .shortcuts-overlay.open { opacity: 1; visibility: visible; }
+    .shortcuts-sheet {
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        background: #fff;
+        border-radius: 24px 24px 0 0;
+        padding: 12px 20px max(20px, env(safe-area-inset-bottom));
+        z-index: 1999;
+        transform: translateY(100%);
+        transition: transform 0.35s cubic-bezier(.4,0,.2,1);
+        box-shadow: 0 -8px 30px rgba(0,0,0,0.15);
+    }
+    .shortcuts-sheet.open { transform: translateY(0); }
+    .dark .shortcuts-sheet { background: #1e293b; }
+    .shortcuts-handle {
+        width: 40px; height: 4px;
+        background: #e2e8f0;
+        border-radius: 999px;
+        margin: 0 auto 16px;
+    }
+    .dark .shortcuts-handle { background: #334155; }
+    .shortcuts-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+    .shortcut-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 16px 8px;
+        border-radius: 16px;
+        background: #f8fafc;
+        color: #334155;
+        text-decoration: none;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-align: center;
+    }
+    .dark .shortcut-item { background: #0f172a; color: #e2e8f0; }
+    .shortcut-item i { font-size: 1.4rem; color: #146af5; }
+
     /* ---------- MOBILE SIDEBAR (drawer) ---------- */
     .mobile-sidebar {
         position: fixed;
@@ -453,11 +545,13 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     /* responsive */
     @media (max-width: 768px) {
         .desktop-nav { display: none !important; }
+        .mobile-top-nav { display: flex !important; }
         .mobile-bottom-nav { display: flex !important; }
-        body { padding-top: 0; padding-bottom: 80px; }
+        body { padding-top: 60px; padding-bottom: 80px; }
     }
     @media (min-width: 769px) {
         .desktop-nav { display: block !important; }
+        .mobile-top-nav { display: none !important; }
         .mobile-bottom-nav { display: none !important; }
         body { padding-top: 100px; }
     }
@@ -540,35 +634,48 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     </div>
 </nav>
 
-<!-- MOBILE BOTTOM NAV (logged in only) -->
+<!-- MOBILE TOP NAV: logo left, hamburger right (opens the same profile/settings/logout drawer the hamburger always has) -->
+<div class="mobile-top-nav">
+    <a href="<?php echo $home_link; ?>" class="nav-logo">
+        <img src="/1.png" alt="Abilisto Logo" style="width:28px;height:28px;border-radius:8px;object-fit:cover;">
+        <span class="logo-text">Abi<span>listo</span></span>
+    </a>
+    <?php if (isset($_SESSION['user_id'])): ?>
+    <div class="mobile-top-nav-hamburger" id="mobileMenuToggle">
+        <i class="fa-solid fa-bars"></i>
+    </div>
+    <?php else: ?>
+    <a href="../auth/login.php" class="mobile-top-nav-hamburger" style="font-size:0.85rem;font-weight:700;color:#146af5;width:auto;padding:0 4px;">Login</a>
+    <?php endif; ?>
+</div>
+
+<!-- MOBILE BOTTOM NAV (logged in only) — single Menu button opening the shortcuts sheet -->
 <?php if (isset($_SESSION['user_id'])): ?>
 <div class="mobile-bottom-nav">
-    <?php 
-    // Show first 3 items (excluding Notifications)
-    $mobile_items = array_filter($menu_items, function($item) {
-        return $item['title'] !== 'Notifications';
-    });
-    $mobile_items = array_values($mobile_items); // Reset array keys
-    
-    foreach ($mobile_items as $item): 
-        $is_home = ($item['title'] === 'Home');
-        $is_quick_match = ($item['title'] === 'Quick Match');
-        $additional_class = '';
-        if ($is_quick_match) {
-            $additional_class = 'quick-match-item';
-        } elseif ($is_home) {
-            $additional_class = 'home-item';
-        }
-    ?>
-        <a href="<?php echo $item['url']; ?>" class="nav-item-mobile <?php echo ($current_page == $item['page']) ? 'active' : ''; ?> <?php echo $additional_class; ?>">
+    <div class="nav-item-mobile mobile-menu-btn" id="shortcutsMenuToggle">
+        <i class="fa-solid fa-grip"></i>
+        <span>Menu</span>
+    </div>
+</div>
+
+<!-- Shortcuts slide-up sheet -->
+<div class="shortcuts-overlay" id="shortcutsOverlay"></div>
+<div class="shortcuts-sheet" id="shortcutsSheet">
+    <div class="shortcuts-handle"></div>
+    <div class="shortcuts-grid">
+        <?php
+        // Same items previously shown inline in the footer, now in the sheet.
+        $mobile_items = array_filter($menu_items, function($item) {
+            return $item['title'] !== 'Notifications';
+        });
+        $mobile_items = array_values($mobile_items);
+        foreach ($mobile_items as $item):
+        ?>
+        <a href="<?php echo $item['url']; ?>" class="shortcut-item">
             <i class="fa-solid <?php echo $item['icon']; ?>"></i>
             <span><?php echo $item['title']; ?></span>
         </a>
-    <?php endforeach; ?>
-    <!-- More button (hamburger) -->
-    <div class="nav-item-mobile" id="mobileMenuToggle">
-        <i class="fa-solid fa-bars"></i>
-        <span>More</span>
+        <?php endforeach; ?>
     </div>
 </div>
 
@@ -642,6 +749,23 @@ $current_lang = $_SESSION['lang'] ?? 'en';
         }
         menuToggle.addEventListener('click', openSidebar);
         overlay.addEventListener('click', closeSidebar);
+    }
+
+    // ----- SHORTCUTS SLIDE-UP SHEET (mobile footer Menu button) -----
+    const shortcutsToggle = document.getElementById('shortcutsMenuToggle');
+    const shortcutsSheet = document.getElementById('shortcutsSheet');
+    const shortcutsOverlay = document.getElementById('shortcutsOverlay');
+    if (shortcutsToggle && shortcutsSheet && shortcutsOverlay) {
+        function openShortcuts() {
+            shortcutsSheet.classList.add('open');
+            shortcutsOverlay.classList.add('open');
+        }
+        function closeShortcuts() {
+            shortcutsSheet.classList.remove('open');
+            shortcutsOverlay.classList.remove('open');
+        }
+        shortcutsToggle.addEventListener('click', openShortcuts);
+        shortcutsOverlay.addEventListener('click', closeShortcuts);
     }
 
     // ----- THEME TOGGLE (localStorage + .dark class) -----
