@@ -195,7 +195,7 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
             <?php endif; ?>
         </div>
 
-        <div class="flex items-center gap-1 mb-0.5 lg:mb-1">
+        <div class="flex items-center gap-1 mb-1 lg:mb-1.5">
             <h3 class="text-sm lg:text-base font-bold truncate"><?php echo htmlspecialchars($worker['full_name']); ?></h3>
             <?php if ($badgeIcon): ?>
             <span class="badge-icon shrink-0 <?php echo $badgeCfg[$highestBadge]['bg'] ?? 'bg-slate-100'; ?> <?php echo $badgeCfg[$highestBadge]['text'] ?? 'text-slate-700'; ?>">
@@ -204,7 +204,7 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
             <?php endif; ?>
         </div>
 
-        <div class="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-[11px] lg:text-xs mb-1.5 lg:mb-2 truncate">
+        <div class="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-[11px] lg:text-xs mb-2 lg:mb-2.5 truncate">
             <span class="material-symbols-outlined text-xs lg:text-sm shrink-0">location_on</span>
             <span class="truncate"><?php echo htmlspecialchars($worker['municipality'] ?: 'Location not set'); ?></span>
         </div>
@@ -259,7 +259,7 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
     $extraSkillsCount = count($skills) - count($shownSkills);
     ?>
     <a href="worker_details.php?id=<?php echo $worker['id']; ?>"
-       class="group bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl p-2.5 lg:p-4 border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 min-w-[150px] sm:min-w-[170px] lg:min-w-[240px] w-[170px] lg:w-[240px] flex flex-col flex-shrink-0 h-[230px] lg:h-[385px] worker-card">
+       class="group bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl p-2.5 lg:p-4 border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 min-w-[150px] sm:min-w-[170px] lg:min-w-[240px] w-[170px] lg:w-[240px] flex flex-col flex-shrink-0 h-[236px] lg:h-[392px] worker-card">
 
         <div class="relative w-full shrink-0 aspect-[4/3] lg:aspect-square rounded-lg lg:rounded-xl overflow-hidden mb-2 lg:mb-4 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
             <?php if ($hasImage): ?>
@@ -269,7 +269,7 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
             <?php endif; ?>
         </div>
 
-        <div class="flex items-center gap-1 mb-0.5 lg:mb-1">
+        <div class="flex items-center gap-1 mb-1 lg:mb-1.5">
             <h3 class="text-sm lg:text-base font-bold truncate"><?php echo htmlspecialchars($worker['full_name']); ?></h3>
             <?php if ($badgeIcon): ?>
             <span class="badge-icon shrink-0 <?php echo $badgeCfg[$highestBadge]['bg'] ?? 'bg-slate-100'; ?> <?php echo $badgeCfg[$highestBadge]['text'] ?? 'text-slate-700'; ?>">
@@ -278,7 +278,7 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
             <?php endif; ?>
         </div>
 
-        <div class="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-[11px] lg:text-xs mb-1.5 lg:mb-2 truncate">
+        <div class="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-[11px] lg:text-xs mb-2 lg:mb-2.5 truncate">
             <span class="material-symbols-outlined text-xs lg:text-sm shrink-0">location_on</span>
             <span class="truncate"><?php echo htmlspecialchars($worker['municipality'] ?: 'Location not set'); ?></span>
         </div>
