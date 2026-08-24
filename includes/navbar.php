@@ -318,20 +318,15 @@ $current_lang = $_SESSION['lang'] ?? 'en';
         bottom: 0;
         left: 0;
         width: 100%;
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(12px);
-        border-top: 1px solid rgba(0, 0, 0, 0.05);
+        height: 64px;
+        background: #146af5;
         display: flex;
-        justify-content: space-around;
-        align-items: center;
-        padding: 8px 0 16px;
+        justify-content: center;
+        align-items: flex-start;
+        overflow: visible;
         z-index: 1000;
-        padding-bottom: max(16px, env(safe-area-inset-bottom));
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.03);
-    }
-    .dark .mobile-bottom-nav {
-        background: rgba(15, 23, 42, 0.9);
-        border-top-color: rgba(255,255,255,0.05);
+        padding-bottom: env(safe-area-inset-bottom);
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
     }
     .nav-item-mobile {
         display: flex;
@@ -417,15 +412,68 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     }
     .dark .mobile-top-nav-hamburger { color: #94a3b8; }
 
-    /* ---------- MOBILE FOOTER: single Menu button ---------- */
-    .mobile-menu-btn {
-        flex-direction: row;
-        gap: 8px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        padding: 12px;
+    /* ---------- MOBILE FOOTER: floating circular Menu/Close button ---------- */
+    .mobile-fab-menu {
+        position: absolute;
+        top: -34px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        background: #fff;
+        padding: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        cursor: pointer;
+        z-index: 1001;
     }
-    .mobile-menu-btn i { font-size: 1.1rem; }
+    .dark .mobile-fab-menu { background: #0f172a; }
+    .mobile-fab-ring {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #8b5cf6, #ec4899);
+        padding: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .mobile-fab-core {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background: #146af5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+    .mobile-fab-label {
+        color: #fff;
+        font-weight: 800;
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+        transition: opacity 0.3s ease, transform 0.45s cubic-bezier(.34,1.56,.64,1);
+    }
+    .mobile-fab-close {
+        position: absolute;
+        color: #fff;
+        font-size: 1.5rem;
+        opacity: 0;
+        transform: rotate(-200deg) scale(0.4);
+        transition: opacity 0.3s ease, transform 0.45s cubic-bezier(.34,1.56,.64,1);
+    }
+    .mobile-fab-menu.open .mobile-fab-label {
+        opacity: 0;
+        transform: rotate(200deg) scale(0.4);
+    }
+    .mobile-fab-menu.open .mobile-fab-close {
+        opacity: 1;
+        transform: rotate(0deg) scale(1);
+    }
 
     /* ---------- SHORTCUTS SLIDE-UP SHEET ---------- */
     .shortcuts-overlay {
@@ -547,7 +595,7 @@ $current_lang = $_SESSION['lang'] ?? 'en';
         .desktop-nav { display: none !important; }
         .mobile-top-nav { display: flex !important; }
         .mobile-bottom-nav { display: flex !important; }
-        body { padding-top: 60px; padding-bottom: 80px; }
+        body { padding-top: 60px; padding-bottom: 90px; }
     }
     @media (min-width: 769px) {
         .desktop-nav { display: block !important; }
@@ -652,9 +700,13 @@ $current_lang = $_SESSION['lang'] ?? 'en';
 <!-- MOBILE BOTTOM NAV (logged in only) — single Menu button opening the shortcuts sheet -->
 <?php if (isset($_SESSION['user_id'])): ?>
 <div class="mobile-bottom-nav">
-    <div class="nav-item-mobile mobile-menu-btn" id="shortcutsMenuToggle">
-        <i class="fa-solid fa-grip"></i>
-        <span>Menu</span>
+    <div class="mobile-fab-menu" id="shortcutsMenuToggle">
+        <div class="mobile-fab-ring">
+            <div class="mobile-fab-core">
+                <span class="mobile-fab-label">MENU</span>
+                <i class="fa-solid fa-xmark mobile-fab-close"></i>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -759,12 +811,17 @@ $current_lang = $_SESSION['lang'] ?? 'en';
         function openShortcuts() {
             shortcutsSheet.classList.add('open');
             shortcutsOverlay.classList.add('open');
+            shortcutsToggle.classList.add('open');
         }
         function closeShortcuts() {
             shortcutsSheet.classList.remove('open');
             shortcutsOverlay.classList.remove('open');
+            shortcutsToggle.classList.remove('open');
         }
-        shortcutsToggle.addEventListener('click', openShortcuts);
+        shortcutsToggle.addEventListener('click', function() {
+            if (shortcutsSheet.classList.contains('open')) closeShortcuts();
+            else openShortcuts();
+        });
         shortcutsOverlay.addEventListener('click', closeShortcuts);
     }
 
