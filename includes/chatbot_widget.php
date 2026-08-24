@@ -141,25 +141,24 @@
       visibility: visible !important;
     }
 
-    /* ========== CHAT WINDOW — slide-up sheet covering 80% of the screen ========== */
-    /* Anchored to the viewport edges via CSS (bottom/left/right + dvh height)
-       instead of JS pixel math tied to the toggler's position — that JS
-       repositioning ran on every 'resize' event, including the resize a
-       mobile keyboard fires, which is what caused the whole page to jump. */
+    /* ========== CHAT WINDOW — full-screen sheet ========== */
+    /* top:0 + height:100% (not bottom:0 + vh) because position:fixed
+       elements anchored via `bottom` can end up pinned behind the mobile
+       keyboard on iOS Safari — top+height is the side that stays correct.
+       JS additionally syncs height/top to the visualViewport on keyboard
+       open/close (see script below) since vh/dvh units alone don't
+       reliably shrink for the keyboard on every mobile browser. */
     div[data-orbit-widget="true"] .orbit-window {
       position: fixed !important;
       left: 0 !important;
       right: 0 !important;
-      bottom: 0 !important;
-      top: auto !important;
+      top: 0 !important;
+      bottom: auto !important;
       width: 100% !important;
-      height: 80vh !important;
-      height: 80dvh !important;
-      max-height: 80vh !important;
-      max-height: 80dvh !important;
+      height: 100% !important;
+      height: 100dvh !important;
       background: #d9ecff !important;
-      border: 1px solid #9a8ce0 !important;
-      border-radius: 24px 24px 0 0 !important;
+      border: none !important;
       display: flex !important;
       flex-direction: column !important;
       overflow: hidden !important;
@@ -557,6 +556,25 @@
          focused input's keyboard doesn't drag the whole page up with it
          (the classic mobile-Safari/Chrome fixed-element-plus-focus bug). */
       let scrollY = 0;
+
+      /* Keep the sheet's actual pixel height/offset synced to the visual
+         viewport (the visible area excluding an open keyboard) rather than
+         trusting vh/dvh alone — dvh doesn't shrink for the keyboard on
+         every mobile browser, and a `bottom:0` fixed element can end up
+         pinned behind the keyboard on iOS Safari specifically. This is
+         what keeps the header and input bar actually stuck to the visible
+         top/bottom instead of scrolling away with the page. */
+      function syncViewportHeight() {
+        if (!window.visualViewport) return;
+        const vv = window.visualViewport;
+        win.style.setProperty('height', vv.height + 'px', 'important');
+        win.style.setProperty('top', vv.offsetTop + 'px', 'important');
+      }
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', syncViewportHeight);
+        window.visualViewport.addEventListener('scroll', syncViewportHeight);
+      }
+
       function openSheet() {
         win.classList.add('open');
         overlay.classList.add('open');
@@ -567,6 +585,7 @@
         win.style.setProperty('transform', 'translateY(0)', 'important');
         win.style.setProperty('visibility', 'visible', 'important');
         win.style.setProperty('pointer-events', 'auto', 'important');
+        syncViewportHeight();
         scrollY = window.scrollY;
         document.body.style.position = 'fixed';
         document.body.style.top = -scrollY + 'px';

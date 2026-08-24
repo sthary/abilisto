@@ -113,12 +113,32 @@ $quick_replies = ($role == 'client')
             z-index: 1000; backdrop-filter: blur(5px);
         }
         .dark #loader-overlay { background: rgba(0,0,0,0.8); }
+
+        /* Mobile: pin the whole chat card to the viewport instead of
+           sizing it via 100vh inside normal document flow. A plain
+           in-flow 100vh element has nothing anchoring it, so the browser's
+           "scroll focused input into view" behavior (fired when the
+           keyboard opens on #msgInput) drags the entire card — header
+           included — up with the page scroll. JS below also keeps the
+           card's height/offset synced to the visual viewport so it
+           actually shrinks around the keyboard instead of running behind
+           it. Desktop's centered 85vh floating window is untouched. */
+        @media (max-width: 768px) {
+            body { overflow: hidden; }
+            #chatCard {
+                position: fixed !important;
+                inset: 0 !important;
+                height: 100% !important;
+                max-width: 100% !important;
+                border-radius: 0 !important;
+            }
+        }
     </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
 
 <div class="flex items-center justify-center min-h-screen p-0 md:p-6 lg:p-12">
-    <div class="w-full max-w-4xl h-[100vh] md:h-[85vh] flex flex-col bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl md:rounded-xl shadow-2xl overflow-hidden border border-white/20 relative">
+    <div id="chatCard" class="w-full max-w-4xl h-[100vh] md:h-[85vh] flex flex-col bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl md:rounded-xl shadow-2xl overflow-hidden border border-white/20 relative">
 
         <!-- Header -->
         <header class="chat-gradient px-6 py-4 flex items-center justify-between text-white shadow-lg z-10">
@@ -261,6 +281,30 @@ $quick_replies = ($role == 'client')
 </div>
 
 <script>
+    // Keep the mobile chat card's actual pixel height/offset synced to the
+    // visual viewport (the area not covered by an open keyboard) — vh units
+    // alone don't reliably shrink for the keyboard on every mobile browser.
+    (function () {
+        const card = document.getElementById('chatCard');
+        function syncChatViewport() {
+            if (!window.visualViewport || !card) return;
+            if (!window.matchMedia('(max-width: 768px)').matches) {
+                card.style.removeProperty('height');
+                card.style.removeProperty('top');
+                return;
+            }
+            const vv = window.visualViewport;
+            card.style.setProperty('height', vv.height + 'px', 'important');
+            card.style.setProperty('top', vv.offsetTop + 'px', 'important');
+        }
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', syncChatViewport);
+            window.visualViewport.addEventListener('scroll', syncChatViewport);
+        }
+        window.addEventListener('resize', syncChatViewport);
+        syncChatViewport();
+    })();
+
     var socketUrl = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
         ? "http://localhost:3001"
         : "https://abilisto-chat.onrender.com";
