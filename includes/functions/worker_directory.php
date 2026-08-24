@@ -156,10 +156,10 @@ function renderColoredSkillTags(array $skills, array $badgeCfg, array $subIcons)
         $borderClass = $cfg['border'] ?? 'border-slate-300';
         $textClass = $cfg['text'] ?? 'text-slate-400';
 
-        echo '<span class="skill-tag-colored ' . $bgClass . ' border ' . $borderClass . ' ' . $textClass . '">';
-        echo '<span class="material-symbols-outlined">' . $icon . '</span>';
-        echo htmlspecialchars($s['sub']);
-        echo '</span> ';
+        echo '<span class="skill-tag-colored shrink min-w-0 ' . $bgClass . ' border ' . $borderClass . ' ' . $textClass . '">';
+        echo '<span class="material-symbols-outlined shrink-0">' . $icon . '</span>';
+        echo '<span class="truncate min-w-0">' . htmlspecialchars($s['sub']) . '</span>';
+        echo '</span>';
     }
 }
 
@@ -187,7 +187,7 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
     <a href="worker_details.php?id=<?php echo $worker['id']; ?>"
        class="group bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl p-2.5 lg:p-4 border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 flex flex-col w-full h-full worker-card">
 
-        <div class="relative w-full aspect-[4/3] lg:aspect-square rounded-lg lg:rounded-xl overflow-hidden mb-2 lg:mb-4 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
+        <div class="relative w-full shrink-0 aspect-[4/3] lg:aspect-square rounded-lg lg:rounded-xl overflow-hidden mb-2 lg:mb-4 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
             <?php if ($hasImage): ?>
                 <img src="<?php echo $uploadsDir . htmlspecialchars($worker['profile_pic']); ?>" class="w-full h-full object-cover" alt="">
             <?php else: ?>
@@ -209,7 +209,7 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
             <span class="truncate"><?php echo htmlspecialchars($worker['municipality'] ?: 'Location not set'); ?></span>
         </div>
 
-        <div class="flex flex-wrap items-center gap-1 mb-1.5 lg:mb-3 min-h-[20px] lg:min-h-[40px]">
+        <div class="flex flex-nowrap items-center gap-1 mb-1.5 lg:mb-3 h-[20px] lg:h-[40px] overflow-hidden">
             <?php renderColoredSkillTags($shownSkills, $badgeCfg, $subIcons); ?>
             <?php if ($extraSkillsCount > 0): ?>
             <span class="text-[10px] lg:text-xs font-bold text-slate-400">+<?php echo $extraSkillsCount; ?></span>
@@ -261,7 +261,7 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
     <a href="worker_details.php?id=<?php echo $worker['id']; ?>"
        class="group bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl p-2.5 lg:p-4 border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 min-w-[150px] sm:min-w-[170px] lg:min-w-[240px] w-[170px] lg:w-[240px] flex flex-col flex-shrink-0 h-[225px] lg:h-[340px] worker-card">
 
-        <div class="relative w-full aspect-[4/3] lg:aspect-square rounded-lg lg:rounded-xl overflow-hidden mb-2 lg:mb-4 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
+        <div class="relative w-full shrink-0 aspect-[4/3] lg:aspect-square rounded-lg lg:rounded-xl overflow-hidden mb-2 lg:mb-4 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
             <?php if ($hasImage): ?>
                 <img src="<?php echo $uploadsDir . htmlspecialchars($worker['profile_pic']); ?>" class="w-full h-full object-cover" alt="">
             <?php else: ?>
@@ -283,7 +283,7 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
             <span class="truncate"><?php echo htmlspecialchars($worker['municipality'] ?: 'Location not set'); ?></span>
         </div>
 
-        <div class="flex flex-wrap items-center gap-1 mb-1.5 lg:mb-3 min-h-[20px] lg:min-h-[40px]">
+        <div class="flex flex-nowrap items-center gap-1 mb-1.5 lg:mb-3 h-[20px] lg:h-[40px] overflow-hidden">
             <?php renderColoredSkillTags($shownSkills, $badgeCfg, $subIcons); ?>
             <?php if ($extraSkillsCount > 0): ?>
             <span class="text-[10px] lg:text-xs font-bold text-slate-400">+<?php echo $extraSkillsCount; ?></span>

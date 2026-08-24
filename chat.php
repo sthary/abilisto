@@ -136,6 +136,7 @@ $quick_replies = ($role == 'client')
     </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<?php include 'includes/abilisto_alert.php'; ?>
 
 <div class="flex items-center justify-center min-h-screen p-0 md:p-6 lg:p-12">
     <div id="chatCard" class="w-full max-w-4xl h-[100vh] md:h-[85vh] flex flex-col bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl md:rounded-xl shadow-2xl overflow-hidden border border-white/20 relative">

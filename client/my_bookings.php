@@ -871,8 +871,7 @@ function renderBookingCard($row, $lang, $type, $index = 0) {
         .then(function(data) {
             if (data.success) {
                 closeRescheduleModal();
-                alert('✅ Booking rescheduled! The worker has been notified.');
-                location.reload();
+                abilistoAlert('✅ Booking rescheduled! The worker has been notified.').then(function(){ location.reload(); });
             } else {
                 errorSpan.textContent = data.message || 'Something went wrong. Please try again.';
                 errorEl.classList.remove('hidden');
@@ -900,8 +899,7 @@ function renderBookingCard($row, $lang, $type, $index = 0) {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                alert('Job confirmed! Payment released to worker.');
-                location.reload();
+                abilistoAlert('Job confirmed! Payment released to worker.', 'success').then(function(){ location.reload(); });
             } else {
                 alert('Error: ' + data.message);
             }

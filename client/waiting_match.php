@@ -327,6 +327,7 @@ if (!$broadcast) {
     </style>
 </head>
 <body>
+<?php include '../includes/abilisto_alert.php'; ?>
 
 <!-- City Background -->
 <div class="city-scene" id="cityScene">
@@ -524,8 +525,9 @@ const timerInterval = setInterval(() => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ broadcast_id: broadcastId, reason: 'expired' })
         }).catch(() => {}).finally(() => {
-            alert('No workers accepted in time. Please try again.');
-            window.location.href = 'dashboard.php';
+            abilistoAlert('No workers accepted in time. Please try again.').then(function(){
+                window.location.href = 'dashboard.php';
+            });
         });
         return;
     }

@@ -14,7 +14,8 @@ if (isset($_POST['upload_photo'])) {
         // For this MVP, let's assume a table 'portfolio_images' exists or just list files from folder
         // Here I will use a simple DB insert assuming you add this table
         $conn->prepare("INSERT INTO portfolio_images (user_id, image_path) VALUES (?, ?)")->execute([$worker_id, $file_name]);
-        echo "<script>alert('Photo added to portfolio!');</script>";
+        include '../includes/abilisto_alert.php';
+        echo "<script>abilistoAlert('Photo added to portfolio!');</script>";
     }
 }
 ?>

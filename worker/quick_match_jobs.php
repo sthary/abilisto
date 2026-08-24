@@ -204,6 +204,7 @@ while ($row = $stmt->fetch()) {
     </style>
 </head>
 <body>
+<?php include '../includes/abilisto_alert.php'; ?>
     <div class="container">
         <div class="header">
             <h4 class="fw-bold m-0">

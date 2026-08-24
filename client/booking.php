@@ -19,9 +19,11 @@ if (!isset($_SESSION['is_phone_verified']) || $_SESSION['is_phone_verified'] == 
     if ($db_check && $db_check['is_phone_verified'] == 1) {
         $_SESSION['is_phone_verified'] = 1;
     } else {
+        include '../includes/abilisto_alert.php';
         echo "<script>
-                alert('🚫 Action Denied.\\n\\nYou must verify your phone number before you can book a worker.');
-                window.location.href = '../auth/verify_otp.php?email=' + encodeURIComponent('{$_SESSION['email']}');
+                abilistoAlert('🚫 Action Denied.\\n\\nYou must verify your phone number before you can book a worker.').then(function(){
+                    window.location.href = '../auth/verify_otp.php?email=' + encodeURIComponent('{$_SESSION['email']}');
+                });
               </script>";
         exit();
     }
@@ -151,6 +153,7 @@ $initial_fee      = round(20 + ($initial_distance * 5));
 // 5. PROCESS BOOKING SUBMISSION
 // ============================================
 if (isset($_POST['book_btn'])) {
+    include '../includes/abilisto_alert.php';
     if (empty($_POST['service_date']) || empty($_POST['problem_desc']) || empty($_POST['urgency'])) {
         echo "<script>alert('{$lang['error_fill_all_fields']}');</script>";
     } else {
@@ -275,10 +278,10 @@ if (isset($_POST['book_btn'])) {
 
             $voucher_js_msg = $applied_voucher ? "\\nVoucher {$applied_voucher['promo_code']} applied: -₱{$voucher_discount}" : "";
             if ($payment_method === 'PayMongo') {
-                echo "<script>alert('✅ Booking Created with 10% GCash Discount!\\n\\nOriginal: ₱{$subtotal}\\nDiscounted: ₱{$calculated_fee}\\nYou saved: ₱{$discount_amount}{$voucher_js_msg}\\n\\nYou will now be redirected to payment.');window.location.href='process_payment_paymongo.php?booking_id=$booking_id&amount=$calculated_fee';</script>";
+                echo "<script>abilistoAlert('✅ Booking Created with 10% GCash Discount!\\n\\nOriginal: ₱{$subtotal}\\nDiscounted: ₱{$calculated_fee}\\nYou saved: ₱{$discount_amount}{$voucher_js_msg}\\n\\nYou will now be redirected to payment.', 'success').then(function(){ window.location.href='process_payment_paymongo.php?booking_id=$booking_id&amount=$calculated_fee'; });</script>";
             } else {
                 $cash_msg = ($discount_amount > 0) ? "Note: You could have saved ₱{$discount_amount} by paying with GCash!" : "";
-                echo "<script>alert('✅ Booking Request Sent Successfully!\\n\\n{$urgency_icon} Urgency: {$urgency_label}\\nTotal: ₱{$calculated_fee}{$voucher_js_msg}\\n{$cash_msg}\\nThe worker will be notified immediately.');window.location.href='my_bookings.php';</script>";
+                echo "<script>abilistoAlert('✅ Booking Request Sent Successfully!\\n\\n{$urgency_icon} Urgency: {$urgency_label}\\nTotal: ₱{$calculated_fee}{$voucher_js_msg}\\n{$cash_msg}\\nThe worker will be notified immediately.', 'success').then(function(){ window.location.href='my_bookings.php'; });</script>";
             }
             exit();
         } catch (PDOException $e) {
@@ -357,6 +360,7 @@ $initials = getInitials($worker['full_name']);
     </script>
 </head>
 <body class="bg-background-light dark:bg-background-dark min-h-screen transition-colors duration-300">
+<?php include '../includes/abilisto_alert.php'; ?>
 
 <div class="max-w-4xl mx-auto px-4 py-6 md:py-12">
 

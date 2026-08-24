@@ -398,6 +398,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background-color:#F8FAFC;color:#
 </style>
 </head>
 <body class="bg-[#F8FAFC] text-[#0F172A] min-h-screen">
+<?php include '../includes/abilisto_alert.php'; ?>
 <div class="max-w-4xl mx-auto px-4 py-8 md:py-12">
 <div class="glass rounded-[32px] shadow-xl overflow-hidden p-6 md:p-10">
 

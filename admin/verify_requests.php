@@ -61,7 +61,8 @@ if (isset($_POST['approve_request'])) {
              ->execute([$badge_choice, $worker_id]);
 
         $conn->commit();
-        echo "<script>alert('Worker verified as $badge_choice!'); window.location.href='verify_requests.php';</script>";
+        include '../includes/abilisto_alert.php';
+        echo "<script>abilistoAlert('Worker verified as $badge_choice!').then(function(){ window.location.href='verify_requests.php'; });</script>";
     } catch (Exception $e) {
         $conn->rollBack();
         die("Error: " . $e->getMessage());
@@ -104,9 +105,11 @@ if (isset($_POST['approve_request'])) {
     }
     
     // Redirect with message
+    include '../includes/abilisto_alert.php';
     echo "<script>
-            alert('" . addslashes($success_message ?? $error_message ?? 'Request processed!') . "');
-            window.location.href = 'verify_requests.php';
+            abilistoAlert('" . addslashes($success_message ?? $error_message ?? 'Request processed!') . "').then(function(){
+                window.location.href = 'verify_requests.php';
+            });
           </script>";
     exit();
 }

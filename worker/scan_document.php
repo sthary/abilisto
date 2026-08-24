@@ -435,8 +435,7 @@ $document_type = $_GET['type'] ?? 'id';
                 loadingOverlay.style.display = 'none';
                 
                 if (data.success) {
-                    alert('✅ Document submitted for verification! You will be notified once verified.');
-                    window.location.href = 'verification.php';
+                    abilistoAlert('✅ Document submitted for verification! You will be notified once verified.').then(function(){ window.location.href = 'verification.php'; });
                 } else {
                     alert('Error: ' + data.message);
                 }

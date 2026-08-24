@@ -255,6 +255,7 @@ if ($remaining_balance == 0 && $booking['status'] === 'Completed') {
     </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark font-body text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-300">
+<?php include '../includes/abilisto_alert.php'; ?>
 
 <div class="max-w-screen-xl mx-auto px-4 py-12 flex flex-col items-center animate-fadeIn">
     
@@ -480,8 +481,9 @@ function notifyCashPayment(bookingId) {
     })
     .then(data => {
         if (data.success) {
-            alert('✅ Client has been notified! Waiting for their confirmation.');
-            window.location.reload(); // Reload to show "Waiting for client" state
+            abilistoAlert('✅ Client has been notified! Waiting for their confirmation.').then(function(){
+                window.location.reload(); // Reload to show "Waiting for client" state
+            });
         } else {
             alert('Error: ' + data.message);
             btn.disabled = false;

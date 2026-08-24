@@ -45,6 +45,7 @@ if (isset($_SESSION['user_id'])) {
 $current_lang = $_SESSION['lang'] ?? 'en';
 ?>
 
+<?php include __DIR__ . '/abilisto_alert.php'; ?>
 <!-- Fonts & Icons -->
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
@@ -615,6 +616,13 @@ $current_lang = $_SESSION['lang'] ?? 'en';
         .desktop-nav { display: block !important; }
         .mobile-top-nav { display: none !important; }
         .mobile-bottom-nav { display: none !important; }
+        /* Sheet/overlay live outside .mobile-bottom-nav and normally only
+           slide off-screen via transform; their "bottom: 52px" resting
+           offset assumes the mobile bar's height, which doesn't exist on
+           desktop, so a sliver was left peeking above the viewport edge.
+           Just remove them from layout entirely on desktop — the FAB that
+           opens them is mobile-only anyway. */
+        .shortcuts-sheet, .shortcuts-overlay { display: none !important; }
         body { padding-top: 100px; }
     }
 </style>

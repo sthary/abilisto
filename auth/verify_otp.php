@@ -82,9 +82,11 @@ if (isset($_POST['verify_btn'])) {
         unset($_SESSION['pending_verify_role']);
         $_SESSION['flash_success'] = "✅ Phone verified! Please log in to continue.";
 
+        include '../includes/abilisto_alert.php';
         echo "<script>
-                alert('✅ Phone verified! Please log in to your account.');
-                window.location.href='login.php';
+                abilistoAlert('✅ Phone verified! Please log in to your account.').then(function(){
+                    window.location.href='login.php';
+                });
               </script>";
         exit();
     } else {
@@ -202,6 +204,7 @@ if (isset($_POST['verify_btn'])) {
     </style>
 </head>
 <body class="radial-bg min-h-screen flex items-center justify-center p-4 transition-colors duration-300">
+<?php include '../includes/abilisto_alert.php'; ?>
 
 <div class="w-full max-w-lg animate-slideUp">
     <div class="glass-card rounded-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] p-8 md:p-12 border border-blue-100 dark:border-slate-700/50">

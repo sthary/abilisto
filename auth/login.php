@@ -113,9 +113,11 @@ if (isset($_POST['login_btn'])) {
 
             // Must verify phone before accessing dashboard
             if ($user['is_phone_verified'] == 0) {
+                include '../includes/abilisto_alert.php';
                 echo "<script>
-                        alert('⚠️ Please verify your phone number first.');
-                        window.location.href='verify_otp.php?email=" . urlencode($user['email']) . "';
+                        abilistoAlert('⚠️ Please verify your phone number first.').then(function(){
+                            window.location.href='verify_otp.php?email=" . urlencode($user['email']) . "';
+                        });
                       </script>";
                 exit();
             }
