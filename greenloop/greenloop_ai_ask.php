@@ -58,12 +58,24 @@ final class Config {
     const APP_TITLE      = 'GreenLoop AI';
 
     /**
-     * VERIFIED FREE MODELS on OpenRouter as of 2025
-     * These IDs are confirmed correct. Do NOT add version suffixes
-     * like ":preview" or date strings — they break the lookup.
-     *
-     * To verify any model, visit:
-     * https://openrouter.ai/models?q=free
+     * Re-verified live against OpenRouter directly (curl, not just this
+     * comment) while diagnosing "always having problems": two of these IDs
+     * were actually dead —
+     *   - 'chat' was 'openai/gpt-oss-120b:free', which now 404s outright
+     *     ("model unavailable for free, use openai/gpt-oss-120b instead").
+     *     Since callChat() has no fallback chain (unlike scan mode), EVERY
+     *     chat message was silently falling straight through to the dumb
+     *     keyword-matching rule-based response — the real LLM was never
+     *     actually being reached, ever.
+     *   - 'text_fallback_1' was 'anthropic/claude-opus-4.6-fast', a 404
+     *     ("no endpoints found"). Self-healing via text_fallback_2/3
+     *     below it, but wasted a request + added latency on every scan.
+     * Currently-listed OpenRouter free-tier models (google/gemma-4-31b-it,
+     * z-ai/glm-5.2, etc.) were live-tested too and are presently
+     * rate-limited (429) on the shared free pool — a real, recurring
+     * source of "problems" on its own. Using the paid-but-cheap "nano"
+     * tier for chat instead: a small per-message cost, but it actually
+     * responds reliably, which free-tier availability right now does not.
      */
     const MODELS = [
         // Vision-capable (for image uploads)
@@ -72,12 +84,12 @@ final class Config {
 
         // Text-only identification
         'text_primary'    => 'anthropic/claude-opus-4.7',
-        'text_fallback_1' => 'anthropic/claude-opus-4.6-fast',
+        'text_fallback_1' => 'openai/gpt-5.4-mini',
         'text_fallback_2' => 'openai/gpt-5.4-nano',
         'text_fallback_3' => 'openai/gpt-5.4-mini',
 
         // Chat assistant
-        'chat'            => 'openai/gpt-oss-120b:free',
+        'chat'            => 'openai/gpt-5.4-nano',
     ];
 
     const TIMEOUT_CONNECT  = 15;
@@ -332,17 +344,23 @@ class AILayer {
                 ['type' => 'image_url', 'image_url' => ['url' => "data:{$mime};base64,{$b64}"]],
             ],
         ]];
-        return self::request($messages, $model, 700, true);
+        return self::request($messages, $model, 900, true);
     }
 
     public static function callText(string $description, string $model): ?array {
         $prompt   = "Item to analyze: \"{$description}\"\n\n" . self::identifyPrompt();
         $messages = [['role' => 'user', 'content' => $prompt]];
-        return self::request($messages, $model, 700, true);
+        return self::request($messages, $model, 900, true);
     }
 
     public static function callChat(array $messages, string $model): ?string {
-        $result = self::request($messages, $model, 250, false);
+        // Was 250 — the "under 100 words" instruction in the system prompt
+        // isn't reliably obeyed by the model, so replies routinely ran
+        // past this cap and got cut mid-sentence with no indication
+        // anything was truncated. Generous headroom now; request() below
+        // also flags (and marks) a truncated reply instead of returning it
+        // silently either way.
+        $result = self::request($messages, $model, 600, false);
         return $result['__text'] ?? null;
     }
 
@@ -400,10 +418,26 @@ class AILayer {
 
             $data    = json_decode($raw, true);
             $content = $data['choices'][0]['message']['content'] ?? null;
+            $finish  = $data['choices'][0]['finish_reason'] ?? 'unknown';
 
             if (!$content) {
-                $finish = $data['choices'][0]['finish_reason'] ?? 'unknown';
                 DebugLog::add("[$model] Empty content, finish_reason=$finish");
+                return null;
+            }
+
+            // Previously only the empty-content case above was checked —
+            // a non-empty but mid-sentence-truncated reply (finish_reason
+            // 'length', i.e. max_tokens hit) was returned as-is with no
+            // signal anything was cut off.
+            if ($finish === 'length') {
+                DebugLog::add("[$model] Reply truncated at max_tokens (finish_reason=length)");
+                if (!$parse_json) {
+                    return ['__text' => rtrim(trim($content)) . '…'];
+                }
+                // A truncated JSON payload can't be parsed reliably —
+                // treat it the same as a failed call so the caller's
+                // existing fallback chain (other models / rule engine)
+                // takes over, instead of trying to decode broken JSON.
                 return null;
             }
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Orbit Widget · Draggable</title>
+  <title>Abi Widget · Draggable</title>
   <style>
     div[data-orbit-widget="true"] * {
       margin: 0;
@@ -232,7 +232,7 @@
       50% { transform: scale(1.18); border-color: #c493ff; }
     }
 
-    /* Title area: Orbit + Beta badge (flex to take space) */
+    /* Title area: Abi + Beta badge (flex to take space) */
     .orbit-title-container {
       display: flex !important;
       align-items: baseline !important;
@@ -493,15 +493,15 @@
           </div>
         </div>
         <div class="orbit-title-container">
-          <h4>Orbit</h4>
+          <h4>Abi</h4>
           <span class="beta-badge">Beta</span>
         </div>
         <!-- NEW: (x) button on RIGHT side of modal -->
-        <div class="orbit-close-widget" id="orbitCloseBtn" title="Remove Orbit widget (reappears after refresh)">✕</div>
+        <div class="orbit-close-widget" id="orbitCloseBtn" title="Remove Abi widget (reappears after refresh)">✕</div>
       </div>
 
       <div class="o-messages" id="msgs">
-        <div class="msg incoming">✨ Hi, I'm Orbit, your virtual assistant. How can I help you today?</div>
+        <div class="msg incoming">✨ Hi, I'm Abi, your virtual assistant. How can I help you today?</div>
       </div>
 
       <div class="o-input-bar">
@@ -550,7 +550,7 @@
         }
         const note = document.createElement('div');
         note.className = 'orbit-temp-note';
-        note.textContent = '⚠️ Orbit makes mistakes — please verify important info';
+        note.textContent = '⚠️ Abi makes mistakes — please verify important info';
         document.body.appendChild(note);
         activeNote = note;
         setTimeout(() => {
@@ -710,6 +710,12 @@
       });
 
       /* ── MESSAGES ───────────────────────────────────────────── */
+      // Conversation memory — previously every message was sent in
+      // isolation with no memory of what was said earlier in the same
+      // chat. Kept client-side only (not persisted), same pattern
+      // GreenLoop AI's chat already uses.
+      let chatHistory = [];
+
       function appendMessage(text, type) {
         const el = document.createElement('div');
         if (type === 'thinking') {
@@ -737,20 +743,24 @@
             const response = await fetch('/client/gemini_chat.php', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ message: text })
+              body: JSON.stringify({ message: text, history: chatHistory })
             });
             if (!response.ok) throw new Error();
             const data = await response.json();
             reply = data.reply || 'Got it.';
+            chatHistory.push({ role: 'user', text: text });
+            chatHistory.push({ role: 'model', text: reply });
+            // Keep only the last 20 turns so the request stays small.
+            if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
           } catch (e) {
-            const mock = ['Darker violet, light chat.', 'Cyan background.', 'Orbit resized.', 'I hear you.', 'Tell me more.', 'Constant spin.'];
+            const mock = ['Darker violet, light chat.', 'Cyan background.', 'Abi resized.', 'I hear you.', 'Tell me more.', 'Constant spin.'];
             reply = mock[Math.floor(Math.random() * mock.length)];
           }
           thinking.remove();
           appendMessage(reply, 'incoming');
         } catch (err) {
           thinking.remove();
-          appendMessage('Orbit unreachable.', 'incoming');
+          appendMessage('Abi unreachable.', 'incoming');
         }
       }
 
