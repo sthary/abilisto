@@ -195,7 +195,7 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
             <?php endif; ?>
         </div>
 
-        <div class="flex items-center gap-1 mb-1 lg:mb-1.5">
+        <div class="flex items-center gap-1 mb-1 lg:mb-1.5 shrink-0">
             <h3 class="text-sm lg:text-base font-bold truncate"><?php echo htmlspecialchars($worker['full_name']); ?></h3>
             <?php if ($badgeIcon): ?>
             <span class="badge-icon shrink-0 <?php echo $badgeCfg[$highestBadge]['bg'] ?? 'bg-slate-100'; ?> <?php echo $badgeCfg[$highestBadge]['text'] ?? 'text-slate-700'; ?>">
@@ -204,7 +204,7 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
             <?php endif; ?>
         </div>
 
-        <div class="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-[11px] lg:text-xs mb-2 lg:mb-2.5 truncate">
+        <div class="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-[11px] lg:text-xs mb-2 lg:mb-2.5 truncate shrink-0">
             <span class="material-symbols-outlined text-xs lg:text-sm shrink-0">location_on</span>
             <span class="truncate"><?php echo htmlspecialchars($worker['municipality'] ?: 'Location not set'); ?></span>
         </div>
@@ -216,7 +216,7 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
             <?php endif; ?>
         </div>
 
-        <div class="flex items-center gap-0.5 mt-auto mb-2 lg:mb-4">
+        <div class="flex items-center gap-0.5 mt-auto mb-2 lg:mb-4 shrink-0">
             <?php
             $rating    = round($worker['average_rating'] * 2) / 2;
             $full      = floor($rating);
@@ -269,7 +269,7 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
             <?php endif; ?>
         </div>
 
-        <div class="flex items-center gap-1 mb-1 lg:mb-1.5">
+        <div class="flex items-center gap-1 mb-1 lg:mb-1.5 shrink-0">
             <h3 class="text-sm lg:text-base font-bold truncate"><?php echo htmlspecialchars($worker['full_name']); ?></h3>
             <?php if ($badgeIcon): ?>
             <span class="badge-icon shrink-0 <?php echo $badgeCfg[$highestBadge]['bg'] ?? 'bg-slate-100'; ?> <?php echo $badgeCfg[$highestBadge]['text'] ?? 'text-slate-700'; ?>">
@@ -278,7 +278,7 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
             <?php endif; ?>
         </div>
 
-        <div class="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-[11px] lg:text-xs mb-2 lg:mb-2.5 truncate">
+        <div class="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-[11px] lg:text-xs mb-2 lg:mb-2.5 truncate shrink-0">
             <span class="material-symbols-outlined text-xs lg:text-sm shrink-0">location_on</span>
             <span class="truncate"><?php echo htmlspecialchars($worker['municipality'] ?: 'Location not set'); ?></span>
         </div>
@@ -290,7 +290,7 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
             <?php endif; ?>
         </div>
 
-        <div class="flex items-center gap-0.5 mt-auto mb-2 lg:mb-4">
+        <div class="flex items-center gap-0.5 mt-auto mb-2 lg:mb-4 shrink-0">
             <?php
             $rating = round($worker['average_rating'] * 2) / 2;
             $full   = floor($rating);
