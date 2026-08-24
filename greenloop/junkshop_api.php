@@ -26,6 +26,14 @@ if (empty($_SESSION['junkshop_id'])) {
     exit;
 }
 
+require_once __DIR__ . '/../includes/functions/feature_flags.php';
+if (!isFeatureEnabled($conn, 'feature_greenloop_enabled')) {
+    ob_clean();
+    http_response_code(403);
+    echo json_encode(['error' => 'GreenLoop is temporarily unavailable.']);
+    exit;
+}
+
 $junkshop_id   = (int)$_SESSION['junkshop_id'];
 $junkshop_name = $_SESSION['junkshop_name'] ?? 'A junk shop';
 

@@ -21,14 +21,20 @@ if (isset($_SESSION['user_id'])) {
         $home_link = "../worker/dashboard.php";
     } else {
         // Client Menu
+        require_once __DIR__ . '/functions/feature_flags.php';
         $menu_items = [
     ['title' => 'Home',          'url' => '../client/dashboard.php',        'icon' => 'fa-home',           'page' => 'dashboard.php'],
-    ['title' => 'We Map',        'url' => '../client/we_map.php',           'icon' => 'fa-map-marker-alt', 'page' => 'we_map.php'],
-    ['title' => 'Quick Match',   'url' => '../client/quick_match.php',      'icon' => 'fa-bolt',           'page' => 'quick_match.php'],
+    ['title' => 'We Map',        'url' => '../client/we_map.php',           'icon' => 'fa-map-marker-alt', 'page' => 'we_map.php',           'feature' => 'feature_wemap_enabled'],
+    ['title' => 'Quick Match',   'url' => '../client/quick_match.php',      'icon' => 'fa-bolt',           'page' => 'quick_match.php',      'feature' => 'feature_quickmatch_enabled'],
     ['title' => 'Bookings',      'url' => '../client/my_bookings.php',      'icon' => 'fa-calendar',       'page' => 'my_bookings.php'],
-    ['title' => 'GreenLoop',     'url' => '../greenloop/greenloop_report.php', 'icon' => 'fa-leaf',        'page' => 'greenloop_report.php'],
+    ['title' => 'GreenLoop',     'url' => '../greenloop/greenloop_report.php', 'icon' => 'fa-leaf',        'page' => 'greenloop_report.php', 'feature' => 'feature_greenloop_enabled'],
     ['title' => 'Notifications', 'url' => '../includes/notifications.php',  'icon' => 'fa-bell',           'page' => 'notifications.php'],
-];;
+];
+        if (isset($conn)) {
+            $menu_items = array_values(array_filter($menu_items, function ($item) use ($conn) {
+                return !isset($item['feature']) || isFeatureEnabled($conn, $item['feature']);
+            }));
+        }
         $home_link = "../client/dashboard.php";
     }
 } else {

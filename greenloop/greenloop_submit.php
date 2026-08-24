@@ -16,6 +16,13 @@ if (empty($_SESSION['user_id'])) {
     exit;
 }
 
+require_once __DIR__ . '/../includes/functions/feature_flags.php';
+if (!isFeatureEnabled($conn, 'feature_greenloop_enabled')) {
+    http_response_code(403);
+    echo json_encode(['error' => 'GreenLoop is temporarily unavailable.']);
+    exit;
+}
+
 $client_id = (int)$_SESSION['user_id'];
 $input = json_decode(file_get_contents('php://input'), true);
 

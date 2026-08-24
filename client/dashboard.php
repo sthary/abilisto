@@ -10,6 +10,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
 
 $uid = $_SESSION['user_id'];
 
+require_once '../includes/functions/feature_flags.php';
+$quickmatch_enabled = isFeatureEnabled($conn, 'feature_quickmatch_enabled');
+
 // Tour / Welcome logic
 $tour_check_stmt = $conn->prepare("SELECT has_seen_tour FROM users WHERE id = ?");
 $tour_check_stmt->execute([$uid]);
@@ -481,7 +484,7 @@ if ($chk && $chk['is_email_verified'] == 0): ?>
     </section>
 
     <!-- Quick Match CTA (hidden during tour) -->
-    <?php if (!$show_tour_modal): ?>
+    <?php if (!$show_tour_modal && $quickmatch_enabled): ?>
     <div class="mb-8 flex justify-end" id="tour-quickmatch">
         <a href="quick_match.php" class="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all hover:scale-105">
             <span class="material-symbols-outlined">bolt</span>
@@ -599,7 +602,7 @@ if ($chk && $chk['is_email_verified'] == 0): ?>
 </div>
 <?php endif; ?>
 
-<?php if(!$show_tour_modal && $show_welcome): ?>
+<?php if(!$show_tour_modal && $show_welcome && $quickmatch_enabled): ?>
 <!-- Quick Match Modal (After Tour) -->
 <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4" id="quickMatchModal">
     <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-md w-full p-8 modal-animate">

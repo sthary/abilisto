@@ -16,6 +16,12 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
     exit();
 }
 
+require_once '../includes/functions/feature_flags.php';
+if (!isFeatureEnabled($conn, 'feature_quickmatch_enabled')) {
+    echo json_encode(['success' => false, 'message' => 'Quick Match is temporarily unavailable']);
+    exit();
+}
+
 $client_id   = intval($_SESSION['user_id']);
 $input        = json_decode(file_get_contents('php://input'), true);
 $broadcast_id = intval($input['broadcast_id'] ?? 0);

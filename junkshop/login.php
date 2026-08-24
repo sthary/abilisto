@@ -4,6 +4,7 @@
 // Uses junkshops table (separate from users)
 // ============================================================
 include __DIR__ . '/../db_connect.php';   // $conn (PDO)
+require_once __DIR__ . '/../includes/functions/feature_flags.php';
 
 // Already logged in → go to dashboard
 if (!empty($_SESSION['junkshop_id'])) {
@@ -12,8 +13,12 @@ if (!empty($_SESSION['junkshop_id'])) {
 }
 
 $error = '';
+$greenloop_off = !isFeatureEnabled($conn, 'feature_greenloop_enabled');
+if ($greenloop_off) {
+    $error = 'GreenLoop is temporarily unavailable. Please check back later.';
+}
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$greenloop_off) {
     $email    = trim($_POST['email']    ?? '');
     $password = trim($_POST['password'] ?? '');
 
@@ -114,8 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
       </div>
 
-      <button type="submit"
-              class="w-full py-3.5 bg-green-600 hover:bg-green-700 active:scale-95 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-green-600/20">
+      <button type="submit" <?php echo $greenloop_off ? 'disabled' : ''; ?>
+              class="w-full py-3.5 bg-green-600 hover:bg-green-700 active:scale-95 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-green-600/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100">
         <span>🚛</span> Sign In to Partner Portal
       </button>
 

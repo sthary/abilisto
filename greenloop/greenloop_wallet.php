@@ -7,6 +7,11 @@ session_start();
 
 $client_id = (int)($_SESSION['user_id'] ?? 0);
 if (!$client_id) { header('Location: ../auth/login.php'); exit; }
+
+require_once __DIR__ . '/../includes/functions/feature_flags.php';
+$greenloop_fallback = ($_SESSION['role'] ?? '') === 'worker' ? '../worker/dashboard.php' : '../client/dashboard.php';
+requireFeatureEnabled($conn, 'feature_greenloop_enabled', $greenloop_fallback);
+
 $client_name = htmlspecialchars($_SESSION['full_name'] ?? 'there');
 
 // Handle reward redemption (POST)

@@ -16,6 +16,12 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
     exit;
 }
 
+require_once __DIR__ . '/../includes/functions/feature_flags.php';
+if (!isFeatureEnabled($conn, 'feature_quickmatch_enabled')) {
+    echo json_encode(['success' => true, 'updates' => [], 'timestamp' => time()]);
+    exit;
+}
+
 $worker_id = (int)$_SESSION['user_id'];
 
 // ── Decode arrays sent by the dashboard JS ──────────────────────────────────

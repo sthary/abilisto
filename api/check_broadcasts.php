@@ -9,6 +9,12 @@ require_once '../db_connect.php';
 
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/../includes/functions/feature_flags.php';
+if (!isFeatureEnabled($conn, 'feature_quickmatch_enabled')) {
+    echo json_encode(['statuses' => []]);
+    exit();
+}
+
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
     http_response_code(401);
     echo json_encode(['error' => 'Unauthorized']);

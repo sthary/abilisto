@@ -15,6 +15,12 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
     exit();
 }
 
+require_once '../../includes/functions/feature_flags.php';
+if (!isFeatureEnabled($conn, 'feature_quickmatch_enabled')) {
+    echo json_encode(['status' => 'error', 'message' => 'Quick Match is temporarily unavailable']);
+    exit();
+}
+
 $client_id = $_SESSION['user_id'];
 $client_name = $_SESSION['full_name'] ?? 'A client';
 $action = $_POST['action'] ?? '';

@@ -7,6 +7,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
     exit();
 }
 
+require_once '../includes/functions/feature_flags.php';
+requireFeatureEnabled($conn, 'feature_wemap_enabled', 'dashboard.php');
+
 $client_id = intval($_SESSION['user_id']);
 
 // ── Get client lat/lng ──────────────────────────────────────────────────────

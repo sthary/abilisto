@@ -26,6 +26,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
+require_once __DIR__ . '/../db_connect.php';
+require_once __DIR__ . '/../includes/functions/feature_flags.php';
+if (!isFeatureEnabled($conn, 'feature_greenloop_enabled')) {
+    http_response_code(403);
+    echo json_encode(['error' => 'GreenLoop is temporarily unavailable.']);
+    exit();
+}
+
 // ── DEBUG ENDPOINT: GET ?action=test_models ──────────────────
 // Visit greenloop_ai_ask.php?action=test_models to verify which models work
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'test_models') {

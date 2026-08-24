@@ -10,6 +10,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
     exit();
 }
 
+require_once '../includes/functions/feature_flags.php';
+requireFeatureEnabled($conn, 'feature_quickmatch_enabled', 'dashboard.php');
+
 // ─────────────────────────────────────────────────────────────────────────────
 // AJAX: browser POSTs live lat/lng + reverse-geocoded address once geolocation
 // resolves. This runs AFTER the transaction has committed but BEFORE the page

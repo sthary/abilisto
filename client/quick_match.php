@@ -8,6 +8,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
     exit();
 }
 
+require_once '../includes/functions/feature_flags.php';
+requireFeatureEnabled($conn, 'feature_quickmatch_enabled', 'dashboard.php');
+
 $client_id = $_SESSION['user_id'];
 $step = isset($_GET['step']) ? intval($_GET['step']) : 1;
 

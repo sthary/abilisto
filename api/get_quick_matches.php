@@ -29,6 +29,12 @@ require_once __DIR__ . '/../db_connect.php';   // starts session, gives $pdo / $
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate');
+
+require_once __DIR__ . '/../includes/functions/feature_flags.php';
+if (!isFeatureEnabled($conn, 'feature_quickmatch_enabled')) {
+    echo json_encode(['success' => true, 'matches' => []]);
+    exit();
+}
 header('X-Content-Type-Options: nosniff');
 
 // ── Auth guard ─────────────────────────────────────────────

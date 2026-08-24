@@ -10,6 +10,12 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
     exit();
 }
 
+require_once '../../includes/functions/feature_flags.php';
+if (!isFeatureEnabled($conn, 'feature_quickmatch_enabled')) {
+    echo json_encode(['success' => false, 'message' => 'Quick Match is temporarily unavailable']);
+    exit();
+}
+
 // At the top of accept_quick_match.php, right after session_start()
 error_log("=== ACCEPT QUICK MATCH CALLED ===");
 error_log("POST data: " . file_get_contents('php://input'));

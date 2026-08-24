@@ -8,6 +8,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
     exit();
 }
 
+require_once '../includes/functions/feature_flags.php';
+requireFeatureEnabled($conn, 'feature_quickmatch_enabled', 'dashboard.php');
+
 $broadcast_id = $_GET['broadcast_id'] ?? 0;
 $client_id = $_SESSION['user_id'];
 

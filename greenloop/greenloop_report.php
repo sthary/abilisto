@@ -4,6 +4,13 @@ if (empty($_SESSION['user_id'])) {
     header('Location: ../auth/login.php');
     exit;
 }
+
+require_once __DIR__ . '/../db_connect.php';
+require_once __DIR__ . '/../includes/functions/feature_flags.php';
+// GreenLoop has no role restriction (any logged-in user can reach it), so
+// send a disabled visitor back to whichever dashboard actually matches them.
+$greenloop_fallback = ($_SESSION['role'] ?? '') === 'worker' ? '../worker/dashboard.php' : '../client/dashboard.php';
+requireFeatureEnabled($conn, 'feature_greenloop_enabled', $greenloop_fallback);
 ?>
 <!DOCTYPE html>
 <html lang="en">

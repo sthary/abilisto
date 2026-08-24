@@ -10,6 +10,13 @@ if (empty($_SESSION['junkshop_id'])) {
     exit;
 }
 
+require_once __DIR__ . '/../includes/functions/feature_flags.php';
+if (!isFeatureEnabled($conn, 'feature_greenloop_enabled')) {
+    session_destroy();
+    header('Location: login.php');
+    exit;
+}
+
 $js_id   = (int)$_SESSION['junkshop_id'];
 $js_name = htmlspecialchars($_SESSION['junkshop_name']  ?? 'My Shop');
 $js_own  = htmlspecialchars($_SESSION['junkshop_owner'] ?? '');

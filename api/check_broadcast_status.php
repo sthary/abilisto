@@ -10,6 +10,12 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
     exit();
 }
 
+require_once '../includes/functions/feature_flags.php';
+if (!isFeatureEnabled($conn, 'feature_quickmatch_enabled')) {
+    echo json_encode(['available' => false, 'reason' => 'feature_disabled']);
+    exit();
+}
+
 $booking_id = $_GET['booking_id'] ?? 0;
 
 if (!$booking_id) {

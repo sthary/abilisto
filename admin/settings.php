@@ -76,6 +76,28 @@ if (isset($_POST['save_fees'])) {
     $message_type = "success";
 }
 
+// Save Feature Toggles (app-wide kill-switches)
+if (isset($_POST['save_features'])) {
+    $feature_keys = ['feature_quickmatch_enabled', 'feature_greenloop_enabled', 'feature_wemap_enabled'];
+    $upsert_stmt = $conn->prepare("INSERT INTO settings (setting_key, setting_value)
+                     VALUES (?, ?)
+                     ON CONFLICT (setting_key) DO UPDATE SET setting_value = ?");
+    $changed = [];
+    foreach ($feature_keys as $key) {
+        $new_value = isset($_POST['features'][$key]) ? '1' : '0';
+        $upsert_stmt->execute([$key, $new_value, $new_value]);
+        $changed[] = "$key=$new_value";
+    }
+
+    $details = "Updated feature toggles: " . implode(', ', $changed);
+    $conn->prepare("INSERT INTO system_logs (user_id, action, details, ip_address)
+                  VALUES (?, 'update_features', ?, ?)")
+         ->execute([$current_user_id, $details, $current_ip]);
+
+    $message = "Feature availability updated!";
+    $message_type = "success";
+}
+
 // Clear system logs
 if (isset($_POST['clear_logs'])) {
     $days = intval($_POST['clear_days']);
@@ -100,8 +122,11 @@ while ($row = $settings_result->fetch()) {
 }
 
 $default_settings = [
-    'admin_fee_percentage' => '2.00',
-    'min_payout_amount'    => '100'
+    'admin_fee_percentage'       => '2.00',
+    'min_payout_amount'          => '100',
+    'feature_quickmatch_enabled' => '1',
+    'feature_greenloop_enabled'  => '1',
+    'feature_wemap_enabled'      => '1',
 ];
 
 $default_insert_stmt = $conn->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)");
@@ -343,6 +368,7 @@ if (in_array($active_tab, ['general', 'security'])) {
         <button onclick="switchTab('services')" class="px-6 py-2.5 rounded-xl text-sm font-bold transition-all <?php echo $active_tab == 'services' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'; ?>">Services</button>
         <button onclick="switchTab('fees')" class="px-6 py-2.5 rounded-xl text-sm font-bold transition-all <?php echo $active_tab == 'fees' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'; ?>">Fees &amp; Pricing</button>
         <button onclick="switchTab('logs')" class="px-6 py-2.5 rounded-xl text-sm font-bold transition-all <?php echo $active_tab == 'logs' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'; ?>">System Logs</button>
+        <button onclick="switchTab('features')" class="px-6 py-2.5 rounded-xl text-sm font-bold transition-all <?php echo $active_tab == 'features' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'; ?>">Features</button>
     </div>
     
     <!-- Message -->
@@ -530,7 +556,65 @@ if (in_array($active_tab, ['general', 'security'])) {
         </div>
     </div>
     <?php endif; ?>
-    
+
+    <!-- ===================== FEATURES TAB ===================== -->
+    <?php if ($active_tab == 'features'): ?>
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
+        <form method="POST" class="xl:col-span-8 glass-card p-8 rounded-3xl">
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-2">
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                    <span class="material-icons-round text-primary">toggle_on</span>
+                    Feature Availability
+                </h2>
+                <span class="px-3 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-[10px] font-bold uppercase tracking-widest rounded-full">Kill Switches</span>
+            </div>
+            <p class="text-sm text-slate-400 mb-8">Turning a feature off hides it from navigation and blocks direct access to every page under it, app-wide, until switched back on.</p>
+
+            <div class="space-y-4">
+                <?php
+                $feature_toggle_list = [
+                    'feature_quickmatch_enabled' => ['label' => 'Quick Match', 'desc' => 'Instant job broadcast/matching for clients and workers.', 'icon' => 'bolt'],
+                    'feature_greenloop_enabled'  => ['label' => 'GreenLoop', 'desc' => 'Scrap recycling reports, wallet, and the junkshop partner portal.', 'icon' => 'recycling'],
+                    'feature_wemap_enabled'      => ['label' => 'We Map', 'desc' => "Client-facing live map of nearby workers.", 'icon' => 'map'],
+                ];
+                foreach ($feature_toggle_list as $fkey => $finfo):
+                    $f_active = ($settings[$fkey] ?? '1') == '1';
+                ?>
+                <div class="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4 <?php echo $f_active ? '' : 'opacity-70'; ?>">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 <?php echo $f_active ? 'bg-primary/10 text-primary' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'; ?>">
+                            <span class="material-icons-round"><?php echo $finfo['icon']; ?></span>
+                        </div>
+                        <div>
+                            <span class="text-sm font-bold block leading-tight"><?php echo htmlspecialchars($finfo['label']); ?></span>
+                            <span class="text-[11px] text-slate-400"><?php echo htmlspecialchars($finfo['desc']); ?></span>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                        <input type="checkbox"
+                               name="features[<?php echo $fkey; ?>]"
+                               class="sr-only peer"
+                               value="1"
+                               <?php echo $f_active ? 'checked' : ''; ?>>
+                        <div class="toggle-switch <?php echo $f_active ? 'toggle-active' : 'toggle-inactive'; ?>">
+                            <span class="toggle-dot <?php echo $f_active ? 'translate-x-6' : 'translate-x-1'; ?>"></span>
+                        </div>
+                    </label>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="mt-8 flex justify-end">
+                <button type="submit" name="save_features"
+                        class="bg-gradient-to-r from-primary to-blue-600 text-white px-8 py-3 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all flex items-center gap-2">
+                    <span class="material-icons-round">save</span>
+                    Save Feature Settings
+                </button>
+            </div>
+        </form>
+    </div>
+    <?php endif; ?>
+
     <!-- ===================== LOGS TAB ===================== -->
     <?php if ($active_tab == 'logs'): ?>
     <div class="grid grid-cols-1 gap-8">
