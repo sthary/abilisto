@@ -217,11 +217,36 @@ if (isset($_POST['login_btn'])) {
 </head>
 <body class="radial-bg min-h-screen flex items-center justify-center p-4 transition-colors duration-300">
 
-<div class="w-full max-w-lg animate-slideUp">
-    <div class="glass-card rounded-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] p-8 md:p-12 border border-blue-100 dark:border-slate-700/50">
+<div class="w-full max-w-lg lg:max-w-5xl lg:flex lg:items-stretch animate-slideUp">
 
-        <!-- Logo -->
-        <div class="text-center mb-10">
+    <!-- Desktop-only branding panel — hidden below lg, this + the form card
+         below together fill the wide layout instead of a lone narrow card
+         floating in the middle of the screen. -->
+    <div class="hidden lg:flex lg:w-1/2 lg:flex-col lg:justify-between rounded-l-2xl p-12 relative overflow-hidden text-white"
+         style="background: linear-gradient(135deg, #146af5 0%, #0d4fc2 100%);">
+        <div class="absolute -top-24 -right-24 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-32 -left-16 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
+        <div class="relative z-10">
+            <div class="flex items-center gap-1 mb-1">
+                <span class="text-3xl font-extrabold tracking-tight">Abi</span>
+                <span class="text-3xl font-extrabold tracking-tight text-blue-200">listo</span>
+            </div>
+            <p class="text-xs font-semibold tracking-[0.2em] text-blue-200/80">Abilidad. Bilis. Listo.</p>
+        </div>
+        <div class="relative z-10">
+            <h2 class="text-3xl font-bold leading-snug mb-4">Skilled help, verified and nearby.</h2>
+            <p class="text-blue-100/90 text-sm leading-relaxed">Book trusted, TESDA-certified workers for home repairs — or find work near you, on your own schedule.</p>
+        </div>
+        <div class="relative z-10 flex items-center gap-6 text-[11px] uppercase tracking-widest font-bold text-blue-200/80">
+            <div class="flex items-center gap-1.5"><span class="material-symbols-rounded text-sm">verified_user</span> Verified Workers</div>
+            <div class="flex items-center gap-1.5"><span class="material-symbols-rounded text-sm">bolt</span> Fast Booking</div>
+        </div>
+    </div>
+
+    <div class="glass-card rounded-2xl lg:rounded-l-none lg:rounded-r-2xl lg:w-1/2 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] p-8 md:p-12 border border-blue-100 dark:border-slate-700/50">
+
+        <!-- Logo (mobile/tablet only — desktop shows it in the branding panel) -->
+        <div class="text-center mb-10 lg:hidden">
             <div class="flex items-center justify-center gap-1 mb-2">
                 <span class="text-4xl font-extrabold tracking-tight text-primary">Abi</span>
                 <span class="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">listo</span>
@@ -285,10 +310,15 @@ if (isset($_POST['login_btn'])) {
                         <span class="material-symbols-rounded text-slate-400 group-focus-within:text-primary transition-colors">lock</span>
                     </div>
                     <input type="password"
+                           id="loginPassword"
                            name="password"
-                           class="block w-full pl-12 pr-4 py-4 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all outline-none dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                           class="block w-full pl-12 pr-12 py-4 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all outline-none dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600"
                            placeholder="••••••••"
                            required>
+                    <button type="button" onclick="toggleVis('loginPassword','loginEyeIcon')"
+                            class="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-400 hover:text-primary transition-colors">
+                        <span class="material-symbols-rounded" id="loginEyeIcon">visibility</span>
+                    </button>
                 </div>
                 <div class="flex justify-end">
                     <a class="text-sm font-medium text-primary hover:underline underline-offset-4" href="forgot_pass.php">Forgot password?</a>
@@ -361,6 +391,19 @@ if (isset($_POST['login_btn'])) {
             document.documentElement.classList.add('dark');
         }
     });
+
+    function toggleVis(inputId, iconId) {
+        const input = document.getElementById(inputId);
+        const icon  = document.getElementById(iconId);
+        if (!input || !icon) return;
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.textContent = 'visibility_off';
+        } else {
+            input.type = 'password';
+            icon.textContent = 'visibility';
+        }
+    }
 </script>
 </body>
 </html>

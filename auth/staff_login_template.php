@@ -56,11 +56,36 @@
 </head>
 <body class="radial-bg min-h-screen flex items-center justify-center p-4 transition-colors duration-300">
 
-<div class="w-full max-w-lg animate-slideUp">
-    <div class="glass-card rounded-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] p-8 md:p-12 border border-blue-100 dark:border-slate-700/50">
+<div class="w-full max-w-lg lg:max-w-5xl lg:flex lg:items-stretch animate-slideUp">
 
-        <!-- Logo + role badge -->
-        <div class="text-center mb-10">
+    <!-- Desktop-only branding panel, same treatment as auth/login.php -->
+    <div class="hidden lg:flex lg:w-1/2 lg:flex-col lg:justify-between rounded-l-2xl p-12 relative overflow-hidden text-white"
+         style="background: linear-gradient(135deg, <?php echo $staff_accent; ?> 0%, <?php echo $staff_accent; ?>cc 100%);">
+        <div class="absolute -top-24 -right-24 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-32 -left-16 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
+        <div class="relative z-10">
+            <div class="flex items-center gap-1 mb-1">
+                <span class="text-3xl font-extrabold tracking-tight">Abi</span>
+                <span class="text-3xl font-extrabold tracking-tight text-white/70">listo</span>
+            </div>
+            <p class="text-xs font-semibold tracking-[0.2em] text-white/70">Abilidad. Bilis. Listo.</p>
+        </div>
+        <div class="relative z-10">
+            <div class="inline-flex items-center gap-1.5 mb-4 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-white/15">
+                <span class="material-symbols-rounded text-xs"><?php echo htmlspecialchars($staff_icon); ?></span>
+                <?php echo htmlspecialchars($staff_subtitle); ?>
+            </div>
+            <h2 class="text-3xl font-bold leading-snug">Staff access only.</h2>
+        </div>
+        <div class="relative z-10 text-[11px] uppercase tracking-widest font-bold text-white/70">
+            <div class="flex items-center gap-1.5"><span class="material-symbols-rounded text-sm">lock</span> Internal Portal</div>
+        </div>
+    </div>
+
+    <div class="glass-card rounded-2xl lg:rounded-l-none lg:rounded-r-2xl lg:w-1/2 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] p-8 md:p-12 border border-blue-100 dark:border-slate-700/50">
+
+        <!-- Logo + role badge (mobile/tablet only) -->
+        <div class="text-center mb-10 lg:hidden">
             <div class="flex items-center justify-center gap-1 mb-2">
                 <span class="text-4xl font-extrabold tracking-tight" style="color: <?php echo $staff_accent; ?>">Abi</span>
                 <span class="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">listo</span>
