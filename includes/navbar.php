@@ -528,12 +528,19 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     .shortcuts-sheet {
         position: fixed;
         left: 0; right: 0;
-        bottom: calc(52px + env(safe-area-inset-bottom));
+        /* Docked flush to the true viewport bottom (not the old "52px for
+           the invisible bottom bar" offset) so translateY(100%) — which
+           only ever moves the box by its OWN height — actually clears the
+           full box off-screen when closed instead of leaving a sliver
+           equal to that offset still inside the viewport. The floating
+           FAB button still renders above this (z-index 1000 vs 991) even
+           though the sheet now extends under it when open. */
+        bottom: 0;
         height: 50vh;
         height: 50dvh;
         background: #fff;
         border-radius: 24px 24px 0 0;
-        padding: 12px 20px 20px;
+        padding: 12px 20px max(20px, env(safe-area-inset-bottom));
         z-index: 991;
         transform: translateY(100%);
         transition: transform 0.35s cubic-bezier(.4,0,.2,1);
