@@ -198,7 +198,7 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        if (localStorage.getItem('darkMode') === 'true') {
+        if (localStorage.getItem('theme') === 'dark') {
             document.documentElement.classList.add('dark');
         }
     });

@@ -403,12 +403,19 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     .mobile-top-nav .nav-logo { gap: 6px; }
     .mobile-top-nav .logo-icon { width: 24px; height: 24px; }
     .mobile-top-nav .logo-text { font-size: 1rem; }
+    .mobile-top-nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
     .mobile-top-nav-hamburger {
         width: 32px; height: 32px;
         display: flex; align-items: center; justify-content: center;
         font-size: 1.1rem;
         color: #64748b;
         cursor: pointer;
+        text-decoration: none;
+        position: relative;
     }
     .dark .mobile-top-nav-hamburger { color: #94a3b8; }
 
@@ -696,8 +703,13 @@ $current_lang = $_SESSION['lang'] ?? 'en';
         <span class="logo-text">Abi<span>listo</span></span>
     </a>
     <?php if (isset($_SESSION['user_id'])): ?>
-    <div class="mobile-top-nav-hamburger" id="mobileMenuToggle">
-        <i class="fa-solid fa-bars"></i>
+    <div class="mobile-top-nav-actions">
+        <a href="../includes/notifications.php" class="mobile-top-nav-hamburger">
+            <i class="fa-solid fa-bell"></i>
+        </a>
+        <div class="mobile-top-nav-hamburger" id="mobileMenuToggle">
+            <i class="fa-solid fa-bars"></i>
+        </div>
     </div>
     <?php else: ?>
     <a href="../auth/login.php" class="mobile-top-nav-hamburger" style="font-size:0.85rem;font-weight:700;color:#146af5;width:auto;padding:0 4px;">Login</a>
@@ -749,12 +761,7 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     <a href="<?php echo ($_SESSION['role']=='worker')?'../worker/profile_edit.php':'../client/profile.php'; ?>" class="sidebar-item">
         <i class="fa-solid fa-user"></i> Profile
     </a>
-    
-    <!-- Notifications (moved from bottom nav to here) -->
-    <a href="../includes/notifications.php" class="sidebar-item">
-        <i class="fa-solid fa-bell"></i> Notifications
-    </a>
-    
+
     <!-- Settings (placeholder) -->
     <a href="../settings.php" class="sidebar-item"><i class="fa-solid fa-gear"></i> Settings</a>
     

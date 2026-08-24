@@ -103,6 +103,16 @@ $saved_workers_link = ($user_role === 'client') ? 'client/saved_workers.php' : '
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
     
     <script>
+        // Apply the site-wide dark-mode preference before paint — every
+        // other page does this (see includes/navbar.php's theme toggle,
+        // which is the only place `theme` gets written to localStorage);
+        // this page just never read it back, so it always rendered light
+        // regardless of what the user picked elsewhere.
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+    <script>
         tailwind.config = {
             darkMode: "class",
             theme: {

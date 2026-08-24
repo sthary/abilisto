@@ -297,7 +297,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
+        if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark');
     });
     function toggleVis(inputId, iconId) {
         const input = document.getElementById(inputId);

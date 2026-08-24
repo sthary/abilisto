@@ -187,7 +187,7 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
     <a href="worker_details.php?id=<?php echo $worker['id']; ?>"
        class="group bg-white dark:bg-slate-800 rounded-xl p-2.5 border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 flex flex-col w-full h-full worker-card">
 
-        <div class="relative w-full aspect-square rounded-lg overflow-hidden mb-2 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
+        <div class="relative w-full aspect-[4/3] rounded-lg overflow-hidden mb-2 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
             <?php if ($hasImage): ?>
                 <img src="<?php echo $uploadsDir . htmlspecialchars($worker['profile_pic']); ?>" class="w-full h-full object-cover" alt="">
             <?php else: ?>
@@ -259,52 +259,57 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
         }
     }
     $badgeIcon = $badgeCfg[$highestBadge]['icon'] ?? '';
+    $shownSkills = array_slice($skills, 0, 2);
+    $extraSkillsCount = count($skills) - count($shownSkills);
     ?>
     <a href="worker_details.php?id=<?php echo $worker['id']; ?>"
-       class="group bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 min-w-[240px] sm:min-w-[260px] w-[260px] flex flex-col flex-shrink-0 h-[390px] worker-card">
+       class="group bg-white dark:bg-slate-800 rounded-xl p-2.5 border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 min-w-[150px] sm:min-w-[170px] w-[170px] flex flex-col flex-shrink-0 h-[265px] worker-card">
 
-        <div class="relative w-full aspect-square rounded-xl overflow-hidden mb-3 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
+        <div class="relative w-full aspect-[4/3] rounded-lg overflow-hidden mb-2 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
             <?php if ($hasImage): ?>
                 <img src="<?php echo $uploadsDir . htmlspecialchars($worker['profile_pic']); ?>" class="w-full h-full object-cover" alt="">
             <?php else: ?>
-                <span class="text-3xl font-black text-white/80"><?php echo $initials; ?></span>
+                <span class="text-2xl font-black text-white/80"><?php echo $initials; ?></span>
             <?php endif; ?>
         </div>
 
         <div class="flex items-center gap-1 mb-0.5">
-            <h3 class="text-base font-bold truncate"><?php echo htmlspecialchars($worker['full_name']); ?></h3>
+            <h3 class="text-sm font-bold truncate"><?php echo htmlspecialchars($worker['full_name']); ?></h3>
             <?php if ($badgeIcon): ?>
-            <span class="badge-icon <?php echo $badgeCfg[$highestBadge]['bg'] ?? 'bg-slate-100'; ?> <?php echo $badgeCfg[$highestBadge]['text'] ?? 'text-slate-700'; ?>">
+            <span class="badge-icon shrink-0 <?php echo $badgeCfg[$highestBadge]['bg'] ?? 'bg-slate-100'; ?> <?php echo $badgeCfg[$highestBadge]['text'] ?? 'text-slate-700'; ?>">
                 <span class="material-symbols-outlined"><?php echo $badgeIcon; ?></span>
             </span>
             <?php endif; ?>
         </div>
 
-        <div class="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-xs mb-1.5">
-            <span class="material-symbols-outlined text-sm">location_on</span>
-            <?php echo htmlspecialchars($worker['municipality'] ?: 'Location not set'); ?>
+        <div class="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-[11px] mb-1.5 truncate">
+            <span class="material-symbols-outlined text-xs shrink-0">location_on</span>
+            <span class="truncate"><?php echo htmlspecialchars($worker['municipality'] ?: 'Location not set'); ?></span>
         </div>
 
-        <div class="flex flex-wrap gap-1 mb-2 min-h-[40px]">
-            <?php renderColoredSkillTags($skills, $badgeCfg, $subIcons); ?>
+        <div class="flex flex-wrap items-center gap-1 mb-1.5 min-h-[20px]">
+            <?php renderColoredSkillTags($shownSkills, $badgeCfg, $subIcons); ?>
+            <?php if ($extraSkillsCount > 0): ?>
+            <span class="text-[10px] font-bold text-slate-400">+<?php echo $extraSkillsCount; ?></span>
+            <?php endif; ?>
         </div>
 
-        <div class="flex items-center gap-1 mt-auto mb-2">
+        <div class="flex items-center gap-0.5 mt-auto mb-2">
             <?php
             $rating = round($worker['average_rating'] * 2) / 2;
             $full   = floor($rating);
             $half   = ($rating - $full) >= 0.5;
             for ($i = 1; $i <= 5; $i++) {
-                if ($i <= $full)            echo '<span class="material-symbols-outlined text-yellow-400 text-sm" style="font-variation-settings:\'FILL\' 1">star</span>';
-                elseif ($i==$full+1&&$half) echo '<span class="material-symbols-outlined text-yellow-400 text-sm">star_half</span>';
-                else                        echo '<span class="material-symbols-outlined text-slate-300 dark:text-slate-600 text-sm">star</span>';
+                if ($i <= $full)            echo '<span class="material-symbols-outlined text-yellow-400 text-xs" style="font-variation-settings:\'FILL\' 1">star</span>';
+                elseif ($i==$full+1&&$half) echo '<span class="material-symbols-outlined text-yellow-400 text-xs">star_half</span>';
+                else                        echo '<span class="material-symbols-outlined text-slate-300 dark:text-slate-600 text-xs">star</span>';
             }
             ?>
-            <span class="ml-1 text-xs font-bold"><?php echo number_format($worker['average_rating'], 1); ?></span>
+            <span class="ml-0.5 text-[11px] font-bold"><?php echo number_format($worker['average_rating'], 1); ?></span>
         </div>
 
-        <div class="w-full py-2 bg-blue-50 dark:bg-blue-900/20 text-primary text-xs font-bold rounded-xl flex items-center justify-center gap-2 group-hover:bg-primary group-hover:text-white transition-all mt-auto">
-            View <span class="material-symbols-outlined text-base">arrow_right_alt</span>
+        <div class="w-full py-1.5 bg-blue-50 dark:bg-blue-900/20 text-primary text-xs font-bold rounded-lg flex items-center justify-center gap-1 group-hover:bg-primary group-hover:text-white transition-all mt-auto">
+            View <span class="material-symbols-outlined text-sm">arrow_right_alt</span>
         </div>
     </a>
     <?php
