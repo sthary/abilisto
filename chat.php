@@ -58,11 +58,20 @@ $quick_replies = ($role == 'client')
 ?>
 
 <!DOCTYPE html>
-<html class="light" lang="en">
+<html lang="en">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Chat · Abilisto</title>
+    <script>
+        // Apply the site-wide dark-mode preference before paint — this page
+        // doesn't include includes/navbar.php (where the theme toggle and
+        // its init normally live), so it never picked up the stored choice
+        // and always rendered light regardless of the user's setting.
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -94,6 +103,10 @@ $quick_replies = ($role == 'client')
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255,255,255,0.3);
+        }
+        .dark .glass {
+            background: rgba(30,41,59,0.65);
+            border: 1px solid rgba(255,255,255,0.08);
         }
         .chat-gradient { background: linear-gradient(135deg, #146af5 0%, #8b5cf6 100%); }
         .hide-scrollbar::-webkit-scrollbar { display: none; }

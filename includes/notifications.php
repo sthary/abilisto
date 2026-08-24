@@ -115,26 +115,26 @@ $unread_count = $unread_count_stmt->fetch()['count'] ?? 0;
 <?php include '../includes/navbar.php'; ?>
 <?php include '../includes/chatbot_widget.php'; ?>
 
-<main class="max-w-4xl mx-auto px-4 py-12 md:py-20">
-    
+<main class="max-w-4xl mx-auto px-4 py-5 sm:py-8 md:py-20">
+
     <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+    <div class="flex flex-col md:flex-row md:items-end justify-between mb-4 sm:mb-6 md:mb-8 gap-2 sm:gap-3 md:gap-4">
         <div>
-            <div class="flex items-center gap-3 mb-2">
-                <h1 class="text-3xl md:text-4xl font-extrabold font-display tracking-tight text-slate-900 dark:text-white">
+            <div class="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                <h1 class="text-lg sm:text-2xl md:text-4xl font-extrabold font-display tracking-tight text-slate-900 dark:text-white">
                     Notifications
                 </h1>
-                <span class="glass-badge bg-slate-200/50 dark:bg-slate-700/50 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 border border-slate-300/30 dark:border-slate-600/30">
+                <span class="glass-badge bg-slate-200/50 dark:bg-slate-700/50 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[9px] sm:text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 border border-slate-300/30 dark:border-slate-600/30">
                     <?php echo $unread_count > 0 ? $unread_count . ' new' : 'Recent'; ?>
                 </span>
             </div>
-            <p class="text-slate-500 dark:text-slate-400 text-sm">Stay updated with your latest booking activities</p>
+            <p class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">Stay updated with your latest booking activities</p>
         </div>
-        
+
         <!-- Mark all as read button (only shows if there are unread) -->
         <?php if ($unread_count > 0): ?>
-        <a href="mark_all_read.php" class="flex items-center gap-2 text-sm font-semibold text-primary hover:opacity-80 transition-opacity">
-            <span class="material-symbols-outlined text-[20px]">done_all</span>
+        <a href="mark_all_read.php" class="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold text-primary hover:opacity-80 transition-opacity">
+            <span class="material-symbols-outlined text-[16px] sm:text-[20px]">done_all</span>
             Mark all as read
         </a>
         <?php endif; ?>
@@ -203,31 +203,31 @@ $unread_count = $unread_count_stmt->fetch()['count'] ?? 0;
                    class="relative group cursor-pointer border-b border-slate-100 dark:border-slate-800/50 <?php echo $unreadClass; ?> transition-all duration-200 block no-underline"
                    data-created="<?php echo $n['created_at']; ?>">
                     
-                    <div class="p-5 md:p-6 flex items-start gap-4">
+                    <div class="p-3 sm:p-5 md:p-6 flex items-start gap-2.5 sm:gap-4">
                         <!-- Icon Circle -->
-                        <div class="flex-shrink-0 w-12 h-12 rounded-full <?php echo $iconBgClass; ?> flex items-center justify-center">
-                            <span class="material-symbols-outlined"><?php echo $icon; ?></span>
+                        <div class="flex-shrink-0 w-8 h-8 sm:w-12 sm:h-12 rounded-full <?php echo $iconBgClass; ?> flex items-center justify-center">
+                            <span class="material-symbols-outlined text-base sm:text-xl"><?php echo $icon; ?></span>
                         </div>
-                        
+
                         <!-- Content -->
                         <div class="flex-grow min-w-0">
-                            <div class="flex items-center justify-between mb-1">
-                                <h3 class="font-bold text-slate-900 dark:text-white truncate">
+                            <div class="flex items-center justify-between mb-0.5 sm:mb-1">
+                                <h3 class="font-bold text-xs sm:text-base text-slate-900 dark:text-white truncate">
                                     <?php echo $title; ?>
                                     <?php if ($n['is_read'] == 0): ?>
-                                        <span class="inline-block w-2 h-2 rounded-full bg-primary ml-2"></span>
+                                        <span class="inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-primary ml-1.5 sm:ml-2"></span>
                                     <?php endif; ?>
                                 </h3>
-                                <span class="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap ml-4 time-ago" data-timestamp="<?php echo $n['created_at']; ?>">
+                                <span class="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap ml-2 sm:ml-4 time-ago" data-timestamp="<?php echo $n['created_at']; ?>">
                                     <?php echo $time_ago; ?>
                                 </span>
                             </div>
-                            
-                            <p class="text-slate-600 dark:text-slate-400 text-[15px] leading-relaxed">
+
+                            <p class="text-slate-600 dark:text-slate-400 text-[11px] sm:text-[15px] leading-relaxed">
                                 <?php echo htmlspecialchars($n['message']); ?>
                             </p>
-                            
-                            <p class="text-xs text-slate-400 mt-2 font-medium">
+
+                            <p class="text-[10px] sm:text-xs text-slate-400 mt-1 sm:mt-2 font-medium">
                                 <?php echo $full_date; ?>
                             </p>
                         </div>
@@ -237,21 +237,21 @@ $unread_count = $unread_count_stmt->fetch()['count'] ?? 0;
             <?php endforeach; ?>
         <?php else: ?>
             <!-- Empty State -->
-            <div class="text-center py-16 px-4">
-                <div class="w-24 h-24 mx-auto mb-6 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
-                    <span class="material-symbols-outlined text-4xl text-slate-400">notifications_off</span>
+            <div class="text-center py-8 sm:py-12 md:py-16 px-4">
+                <div class="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 mx-auto mb-3 sm:mb-5 md:mb-6 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+                    <span class="material-symbols-outlined text-2xl sm:text-3xl md:text-4xl text-slate-400">notifications_off</span>
                 </div>
-                <h3 class="text-xl font-bold mb-2 text-slate-900 dark:text-white">No notifications yet</h3>
-                <p class="text-slate-500 dark:text-slate-400">We'll let you know when something important happens.</p>
+                <h3 class="text-sm sm:text-lg md:text-xl font-bold mb-1 sm:mb-2 text-slate-900 dark:text-white">No notifications yet</h3>
+                <p class="text-xs sm:text-sm md:text-base text-slate-500 dark:text-slate-400">We'll let you know when something important happens.</p>
             </div>
         <?php endif; ?>
-        
+
     </div>
-    
+
     <!-- View Older Button (only shows if there are notifications) -->
     <?php if(count($notifs_rows) > 0): ?>
-    <div class="mt-8 text-center">
-        <button class="px-8 py-3 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold text-sm hover:border-primary hover:text-primary transition-all shadow-sm">
+    <div class="mt-4 sm:mt-6 md:mt-8 text-center">
+        <button class="px-4 py-2 sm:px-6 sm:py-2.5 md:px-8 md:py-3 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold text-xs sm:text-sm hover:border-primary hover:text-primary transition-all shadow-sm">
             View Older Notifications
         </button>
     </div>

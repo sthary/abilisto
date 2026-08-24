@@ -320,14 +320,14 @@ $current_lang = $_SESSION['lang'] ?? 'en';
         left: 0;
         width: 100%;
         height: 52px;
-        background: #146af5;
+        background: transparent;
         display: flex;
         justify-content: center;
         align-items: flex-start;
         overflow: visible;
         z-index: 1000;
         padding-bottom: env(safe-area-inset-bottom);
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+        pointer-events: none;
     }
     .nav-item-mobile {
         display: flex;
@@ -420,34 +420,63 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     }
     .dark .mobile-top-nav-hamburger { color: #94a3b8; }
 
-    /* ---------- MOBILE FOOTER: floating circular Menu/Close button ---------- */
+    /* ---------- MOBILE FOOTER: floating circular Menu button (no plate — just the gradient ball) ---------- */
     .mobile-fab-menu {
         position: absolute;
-        top: -24px;
+        top: -20px;
         left: 50%;
         transform: translateX(-50%);
-        width: 72px;
-        height: 72px;
-        border-radius: 50%;
-        background: #fff;
-        padding: 5px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        width: 64px;
+        height: 64px;
         cursor: pointer;
         z-index: 1001;
+        pointer-events: auto;
     }
-    .dark .mobile-fab-menu { background: #0f172a; }
+    /* Spinning gradient glow — separate layer behind the ring so it can
+       rotate freely without dragging the MENU label/close icon with it. */
+    .mobile-fab-glow {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: conic-gradient(from 0deg, #8b5cf6, #146af5, #ec4899, #8b5cf6);
+        opacity: 0;
+        transform: scale(0.75);
+        filter: blur(3px);
+        transition: opacity 0.35s ease, transform 0.4s cubic-bezier(.34,1.56,.64,1);
+    }
+    .mobile-fab-menu.open .mobile-fab-glow {
+        opacity: 1;
+        transform: scale(1.4);
+        animation: fabGlowSpin 2.2s linear infinite;
+    }
+    @keyframes fabGlowSpin {
+        to { transform: scale(1.4) rotate(360deg); }
+    }
     .mobile-fab-ring {
+        position: relative;
+        z-index: 1;
         width: 100%;
         height: 100%;
         border-radius: 50%;
-        background: linear-gradient(135deg, #8b5cf6, #ec4899);
+        background: linear-gradient(135deg, #8b5cf6, #146af5);
         padding: 3px;
         display: flex;
         align-items: center;
         justify-content: center;
+        box-shadow: 0 8px 20px -4px rgba(20,106,245,0.5);
+        transition: transform 0.3s cubic-bezier(.34,1.56,.64,1), box-shadow 0.3s ease;
+    }
+    .mobile-fab-menu.open .mobile-fab-ring {
+        transform: scale(1.08);
+        box-shadow: 0 0 24px 4px rgba(139,92,246,0.55), 0 8px 20px -4px rgba(20,106,245,0.6);
+    }
+    /* Press feedback — squished down like it's being pulled, on both
+       real :active and the JS-driven .pressed class (for touch devices
+       where :active can be unreliable). */
+    .mobile-fab-menu:active .mobile-fab-ring,
+    .mobile-fab-menu.pressed .mobile-fab-ring {
+        transform: scale(0.86) translateY(3px);
+        box-shadow: 0 3px 10px -2px rgba(20,106,245,0.5);
     }
     .mobile-fab-core {
         width: 100%;
@@ -462,14 +491,14 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     .mobile-fab-label {
         color: #fff;
         font-weight: 800;
-        font-size: 0.65rem;
+        font-size: 0.6rem;
         letter-spacing: 0.5px;
         transition: opacity 0.35s ease, transform 0.55s cubic-bezier(.34,1.56,.64,1);
     }
     .mobile-fab-close {
         position: absolute;
         color: #fff;
-        font-size: 1.15rem;
+        font-size: 1.05rem;
         opacity: 0;
         transform: rotate(-200deg) scale(0.4);
         transition: opacity 0.35s ease, transform 0.55s cubic-bezier(.34,1.56,.64,1);
@@ -728,6 +757,7 @@ $current_lang = $_SESSION['lang'] ?? 'en';
 <?php if (isset($_SESSION['user_id'])): ?>
 <div class="mobile-bottom-nav">
     <div class="mobile-fab-menu" id="shortcutsMenuToggle">
+        <div class="mobile-fab-glow"></div>
         <div class="mobile-fab-ring">
             <div class="mobile-fab-core">
                 <span class="mobile-fab-label">MENU</span>
@@ -849,6 +879,17 @@ $current_lang = $_SESSION['lang'] ?? 'en';
             else openShortcuts();
         });
         shortcutsOverlay.addEventListener('click', closeShortcuts);
+
+        // Press feedback (squish down) — driven by JS as well as CSS
+        // :active since :active alone can be flaky on touch devices.
+        function pressFab() { shortcutsToggle.classList.add('pressed'); }
+        function releaseFab() { shortcutsToggle.classList.remove('pressed'); }
+        shortcutsToggle.addEventListener('touchstart', pressFab, { passive: true });
+        shortcutsToggle.addEventListener('touchend', releaseFab);
+        shortcutsToggle.addEventListener('touchcancel', releaseFab);
+        shortcutsToggle.addEventListener('mousedown', pressFab);
+        shortcutsToggle.addEventListener('mouseup', releaseFab);
+        shortcutsToggle.addEventListener('mouseleave', releaseFab);
     }
 
     // ----- THEME TOGGLE (localStorage + .dark class) -----
