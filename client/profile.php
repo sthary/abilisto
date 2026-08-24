@@ -23,39 +23,51 @@ $msg = ""; $msg_type = ""; $otp_modal_open = false;
 if (isset($_POST['update_profile'])) {
     $full_name = $_POST['full_name'];
     $address = $_POST['address'];
-    $municipality = $_POST['municipality'];
+    // Whitelist check — the DB has a CHECK constraint on this column, and
+    // ERRMODE_EXCEPTION means any value outside it used to throw an
+    // uncaught PDOException here that silently killed the WHOLE profile
+    // save (name/address/phone included), not just this field. Failing
+    // clearly here instead of letting a bad value reach the query.
+    $allowed_municipalities = ['Carrascal', 'Cantilan', 'Madrid', 'Carmen', 'Lanuza'];
+    $municipality = in_array($_POST['municipality'] ?? '', $allowed_municipalities, true) ? $_POST['municipality'] : null;
+    if ($municipality === null) {
+        $msg = "Please select a valid municipality.";
+        $msg_type = "error";
+    }
     $new_lat = floatval($_POST['latitude']);
     $new_lng = floatval($_POST['longitude']);
     $new_phone = $_POST['phone'];
 
-    $curr_check_stmt = $conn->prepare("SELECT phone FROM users WHERE id = ?");
-    $curr_check_stmt->execute([$user_id]);
-    $curr_check = $curr_check_stmt->fetch();
-    $current_phone_db = $curr_check['phone'];
+    if ($municipality !== null) {
+        $curr_check_stmt = $conn->prepare("SELECT phone FROM users WHERE id = ?");
+        $curr_check_stmt->execute([$user_id]);
+        $curr_check = $curr_check_stmt->fetch();
+        $current_phone_db = $curr_check['phone'];
 
-    $update_stmt = $conn->prepare("UPDATE users SET
-                   full_name=?,
-                   address=?,
-                   municipality=?,
-                   latitude=?,
-                   longitude=?
-                   WHERE id=?");
-    $update_stmt->execute([$full_name, $address, $municipality, $new_lat, $new_lng, $user_id]);
+        $update_stmt = $conn->prepare("UPDATE users SET
+                       full_name=?,
+                       address=?,
+                       municipality=?,
+                       latitude=?,
+                       longitude=?
+                       WHERE id=?");
+        $update_stmt->execute([$full_name, $address, $municipality, $new_lat, $new_lng, $user_id]);
 
-    if ($new_phone != $current_phone_db) {
-        // Send OTP Logic
-        $otp_response = sendOTP($new_phone);
-        $_SESSION['temp_new_phone'] = $new_phone;
-        
-        if (isset($otp_response['data']['otp_code'])) {
-            $_SESSION['temp_otp'] = $otp_response['data']['otp_code'];
+        if ($new_phone != $current_phone_db) {
+            // Send OTP Logic
+            $otp_response = sendOTP($new_phone);
+            $_SESSION['temp_new_phone'] = $new_phone;
+
+            if (isset($otp_response['data']['otp_code'])) {
+                $_SESSION['temp_otp'] = $otp_response['data']['otp_code'];
+            } else {
+                $_SESSION['temp_otp'] = rand(100000, 999999);
+            }
+            $otp_modal_open = true;
         } else {
-            $_SESSION['temp_otp'] = rand(100000, 999999);
+            $msg = "Profile updated successfully!";
+            $msg_type = "success";
         }
-        $otp_modal_open = true; 
-    } else {
-        $msg = "Profile updated successfully!";
-        $msg_type = "success";
     }
 }
 
@@ -380,12 +392,16 @@ $initials = getInitials($user['full_name']);
                         </div>
                     </div>
 
-                    <!-- Municipality (Text Input) -->
+                    <!-- Municipality (Select — must match the DB's CHECK constraint exactly) -->
                     <div class="space-y-1">
                         <label class="block text-xs font-bold text-primary uppercase tracking-widest ml-1">Municipality</label>
                         <div class="relative">
                             <span class="material-symbols-outlined input-icon">location_city</span>
-                            <input type="text" name="municipality" class="w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary rounded-lg py-2 px-3 pl-10 text-slate-800 dark:text-white text-sm font-medium transition-all" value="<?php echo htmlspecialchars($user['municipality']); ?>" placeholder="Enter municipality" required>
+                            <select name="municipality" class="w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary rounded-lg py-2 px-3 pl-10 text-slate-800 dark:text-white text-sm font-medium transition-all appearance-none" required>
+                                <?php foreach (['Carrascal', 'Cantilan', 'Madrid', 'Carmen', 'Lanuza'] as $muni): ?>
+                                <option value="<?php echo $muni; ?>" <?php echo ($user['municipality'] === $muni) ? 'selected' : ''; ?>><?php echo $muni; ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                     </div>
 

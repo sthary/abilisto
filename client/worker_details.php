@@ -345,6 +345,11 @@ $minRate = number_format($worker['minimum_standard_rate'], 2);
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-300">
 
 <main class="max-w-7xl mx-auto px-4 py-6 lg:py-8 lg:px-8">
+    <button onclick="history.back()"
+            class="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary transition-colors">
+        <span class="material-symbols-outlined text-lg">arrow_back</span>
+        Back
+    </button>
     <div class="flex flex-col lg:flex-row gap-8">
         
         <!-- Left Column - Profile Card -->
