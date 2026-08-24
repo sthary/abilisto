@@ -32,8 +32,9 @@
       /* JS sets top/left after first drag; until then bottom/right CSS handles it */
     }
 
-    /* Only the toggler and open window are interactive */
+    /* Only the toggler, overlay, and open window are interactive */
     div[data-orbit-widget="true"] .orbit-toggler,
+    div[data-orbit-widget="true"] .orbit-overlay.open,
     div[data-orbit-widget="true"] .orbit-window.open,
     div[data-orbit-widget="true"] .orbit-window.open * {
       pointer-events: auto;
@@ -125,34 +126,55 @@
       to { transform: rotate(360deg); }
     }
 
-    /* ========== CHAT WINDOW ========== */
-    div[data-orbit-widget="true"] .orbit-window {
-      /* Size & base styles — position is set entirely by JS */
+    /* ========== BACKDROP ========== */
+    div[data-orbit-widget="true"] .orbit-overlay {
       position: fixed !important;
-      width: 300px !important;
-      max-height: 450px !important;
-      height: 450px !important;
+      inset: 0 !important;
+      background: rgba(15,23,42,0.45) !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      transition: opacity 0.3s ease, visibility 0.3s ease !important;
+      z-index: 999997 !important;
+    }
+    div[data-orbit-widget="true"] .orbit-overlay.open {
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    /* ========== CHAT WINDOW — slide-up sheet covering 80% of the screen ========== */
+    /* Anchored to the viewport edges via CSS (bottom/left/right + dvh height)
+       instead of JS pixel math tied to the toggler's position — that JS
+       repositioning ran on every 'resize' event, including the resize a
+       mobile keyboard fires, which is what caused the whole page to jump. */
+    div[data-orbit-widget="true"] .orbit-window {
+      position: fixed !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      top: auto !important;
+      width: 100% !important;
+      height: 80vh !important;
+      height: 80dvh !important;
+      max-height: 80vh !important;
+      max-height: 80dvh !important;
       background: #d9ecff !important;
       border: 1px solid #9a8ce0 !important;
-      border-radius: 20px !important;
+      border-radius: 24px 24px 0 0 !important;
       display: flex !important;
       flex-direction: column !important;
       overflow: hidden !important;
-      opacity: 0 !important;
       pointer-events: none !important;
       visibility: hidden !important;
-      transition: opacity 0.22s ease, transform 0.22s ease !important;
+      transition: transform 0.35s cubic-bezier(.4,0,.2,1), visibility 0.35s !important;
       z-index: 999998 !important;
       color: #162b3a !important;
-      box-shadow: 0 12px 28px -8px #5068b0 !important;
-      transform: scale(0.96) !important;
-      transform-origin: center center !important;
+      box-shadow: 0 -12px 30px -8px rgba(80,104,176,0.5) !important;
+      transform: translateY(100%) !important;
     }
 
     div[data-orbit-widget="true"] .orbit-window.open {
-      opacity: 1 !important;
       pointer-events: auto !important;
-      transform: scale(1) !important;
+      transform: translateY(0) !important;
       visibility: visible !important;
     }
 
@@ -480,6 +502,9 @@
       </div>
     </div>
 
+    <!-- BACKDROP -->
+    <div class="orbit-overlay" id="orbitOverlay"></div>
+
     <!-- CHAT WINDOW -->
     <div class="orbit-window" id="win">
       <div class="o-header">
@@ -520,15 +545,41 @@
       const root    = document.getElementById('orbitRoot');
       const toggler = document.getElementById('toggler');
       const win     = document.getElementById('win');
+      const overlay = document.getElementById('orbitOverlay');
       const inp     = document.getElementById('inp');
       const sendBtn = document.getElementById('sendBtn');
       const msgs    = document.getElementById('msgs');
       const closeWidgetBtn = document.getElementById('orbitCloseBtn');
 
-      if (!root || !toggler || !win || !inp || !sendBtn || !msgs || !closeWidgetBtn) return;
+      if (!root || !toggler || !win || !overlay || !inp || !sendBtn || !msgs || !closeWidgetBtn) return;
+
+      /* ── SHEET OPEN/CLOSE — also locks body scroll while open so a
+         focused input's keyboard doesn't drag the whole page up with it
+         (the classic mobile-Safari/Chrome fixed-element-plus-focus bug). */
+      let scrollY = 0;
+      function openSheet() {
+        win.classList.add('open');
+        overlay.classList.add('open');
+        scrollY = window.scrollY;
+        document.body.style.position = 'fixed';
+        document.body.style.top = -scrollY + 'px';
+        document.body.style.width = '100%';
+      }
+      function closeSheet() {
+        win.classList.remove('open');
+        overlay.classList.remove('open');
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        window.scrollTo(0, scrollY);
+      }
+      overlay.addEventListener('click', closeSheet);
 
       /* ── 1) CLOSE BUTTON (X) — removes Orbit widget from screen entirely (reappears after relogin/refresh) ── */
       function removeOrbitWidget() {
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
         if (root && root.remove) {
           root.remove();
         } else if (root && root.parentNode) {
@@ -607,42 +658,6 @@
         applyPosition(r.left, r.top);
       }
 
-      function positionChatWindow() {
-        const GAP      = 10;
-        const MARGIN   = 8;
-        const W        = 300;
-        const MAX_H    = 450;
-        const vw       = window.innerWidth;
-        const vh       = window.innerHeight;
-
-        const togglerLeft = parseFloat(root.style.left) || 0;
-        const togglerTop  = parseFloat(root.style.top)  || 0;
-        const togglerSize = 36;
-
-        const spaceAbove = togglerTop - MARGIN;
-        const spaceBelow = vh - (togglerTop + togglerSize) - MARGIN;
-
-        let winH, top;
-        if (spaceAbove >= Math.min(MAX_H, 200)) {
-          winH = Math.min(MAX_H, spaceAbove - GAP);
-          top  = togglerTop - GAP - winH;
-        } else {
-          winH = Math.min(MAX_H, spaceBelow - GAP);
-          top  = togglerTop + togglerSize + GAP;
-        }
-
-        let left = togglerLeft + togglerSize - W;
-        if (left < MARGIN) left = MARGIN;
-        if (left + W > vw - MARGIN) left = vw - MARGIN - W;
-        const finalW = Math.min(W, vw - MARGIN * 2);
-        if (finalW < W) left = MARGIN;
-
-        win.style.left   = left + 'px';
-        win.style.top    = top  + 'px';
-        win.style.width  = finalW + 'px';
-        win.style.height = Math.max(winH, 200) + 'px';
-      }
-
       // Restore saved position on load, or fall back to default bottom-right
       (function restorePosition() {
         const saved = loadPosition();
@@ -689,15 +704,13 @@
 
         if (didDrag) {
           savePosition(parseFloat(root.style.left), parseFloat(root.style.top));
-          if (win.classList.contains('open')) positionChatWindow();
         } else {
-          // It was a tap/click — toggle window
-          positionChatWindow();
+          // It was a tap/click — toggle the sheet
           const wasOpen = win.classList.contains('open');
-          win.classList.toggle('open');
-          
-          // If we are OPENING the modal (was closed, now open), show the temporary note
-          if (!wasOpen && win.classList.contains('open')) {
+          if (wasOpen) {
+            closeSheet();
+          } else {
+            openSheet();
             showTempNote();
             inp.focus();
           }
@@ -767,13 +780,6 @@
       sendBtn.addEventListener('click', sendMessage);
       inp.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
-      // Reposition chat window on screen resize / orientation change
-      window.addEventListener('resize', () => {
-        if (win.classList.contains('open')) positionChatWindow();
-      });
-      
-      // If the user closes the modal (by clicking outside? not available, but we also listen if they click on toggler to close)
-      // The note is only shown when opening, not on close. That's satisfied.
     })();
   </script>
 </body>

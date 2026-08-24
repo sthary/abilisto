@@ -74,7 +74,7 @@ function renderBookingCard($booking, $type) {
     }
 ?>
 
-<div class="ambient-card p-4 sm:p-6 flex flex-col job-card-hover relative <?php echo htmlspecialchars($type); ?><?php echo $isQuickMatch ? ' quick-match' : ''; ?><?php echo ($isExpiredQuickMatch || !$timerIsLive && $isQuickMatch) ? ' qm-expired expired-quick-match' : ''; ?>"
+<div class="ambient-card p-3 sm:p-4 flex flex-col job-card-hover relative <?php echo htmlspecialchars($type); ?><?php echo $isQuickMatch ? ' quick-match' : ''; ?><?php echo ($isExpiredQuickMatch || !$timerIsLive && $isQuickMatch) ? ' qm-expired expired-quick-match' : ''; ?>"
      data-booking-id="<?php echo (int)$booking['id']; ?>"
      <?php if ($broadcastId > 0): ?>
      data-broadcast-id="<?php echo $broadcastId; ?>"
@@ -88,7 +88,7 @@ function renderBookingCard($booking, $type) {
         QUICK MATCH
     </div>
 
-    <div class="mt-5 mb-4 px-3 py-2 rounded-xl flex justify-between items-center gap-3 <?php echo $timerBgClass; ?>">
+    <div class="mt-4 mb-3 px-3 py-2 rounded-xl flex justify-between items-center gap-3 <?php echo $timerBgClass; ?>">
         <span class="text-xs font-medium flex items-center gap-1.5 text-slate-600">
             <span class="material-symbols-outlined" style="font-size:15px;">hourglass_empty</span>
             <span class="hidden xs:inline">Time left:</span>
@@ -102,7 +102,7 @@ function renderBookingCard($booking, $type) {
     </div>
 
     <?php elseif ($isExpiredQuickMatch): ?>
-    <div class="mt-2 mb-4 px-3 py-2 bg-slate-100 rounded-xl text-center text-slate-500 text-xs">
+    <div class="mt-2 mb-3 px-3 py-2 bg-slate-100 rounded-xl text-center text-slate-500 text-xs">
         <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">schedule</span>
         Quick match expired
     </div>
@@ -110,14 +110,14 @@ function renderBookingCard($booking, $type) {
 
     <!-- ── PENDING CONFIRMATION TOP BANNER ────────────────────────────────── -->
     <?php if ($type === 'pending_confirmation'): ?>
-    <div class="mb-4 flex items-center gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl">
+    <div class="mb-3 flex items-center gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl">
         <span class="material-symbols-outlined text-amber-500 flex-shrink-0" style="font-size:18px;font-variation-settings:'FILL' 1">hourglass_top</span>
         <span class="text-xs font-bold text-amber-700">Awaiting client confirmation</span>
     </div>
     <?php endif; ?>
 
     <!-- ── HEADER: Urgency + Booking ID ────────────────────────────────────── -->
-    <div class="flex flex-wrap justify-between items-start gap-2 mb-4 <?php echo ($isQuickMatch || $type === 'pending_confirmation') ? '' : 'mt-2'; ?>">
+    <div class="flex flex-wrap justify-between items-start gap-2 mb-3 <?php echo ($isQuickMatch || $type === 'pending_confirmation') ? '' : 'mt-2'; ?>">
         <div class="flex flex-wrap gap-2">
             <span class="glass-badge px-2.5 py-1 rounded-lg text-xs font-bold"
                   style="background:<?php echo $urgency['bg']; ?>;color:<?php echo $urgency['text']; ?>;">
@@ -146,7 +146,7 @@ function renderBookingCard($booking, $type) {
     </div>
 
     <!-- ── CLIENT INFO ────────────────────────────────────────────────────── -->
-    <div class="flex items-center gap-3 mb-4">
+    <div class="flex items-center gap-3 mb-3">
         <div class="w-11 h-11 sm:w-12 sm:h-12 flex-shrink-0 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-base sm:text-lg">
             <?php echo htmlspecialchars($initials); ?>
         </div>
@@ -157,7 +157,7 @@ function renderBookingCard($booking, $type) {
     </div>
 
     <!-- ── PROBLEM, ADDRESS & BOOKING DATE ───────────────────────────────── -->
-    <div class="space-y-3 mb-5">
+    <div class="space-y-2 mb-4">
         <div class="flex items-start gap-3">
             <span class="material-symbols-outlined text-slate-300 flex-shrink-0" style="font-size:20px;margin-top:1px;">build</span>
             <p class="text-sm text-slate-500 leading-snug">
@@ -183,7 +183,7 @@ function renderBookingCard($booking, $type) {
     </div>
 
     <!-- ── PRICE INFO ─────────────────────────────────────────────────────── -->
-    <div class="flex items-center gap-4 sm:gap-6 mb-5">
+    <div class="flex items-center gap-4 sm:gap-6 mb-4">
         <div class="flex flex-col">
             <span class="text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-400 font-bold">Mobilization</span>
             <span class="text-base sm:text-lg font-bold text-slate-900">₱<?php echo number_format($booking['calculated_fee'], 2); ?></span>

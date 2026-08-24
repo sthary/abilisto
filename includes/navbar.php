@@ -492,6 +492,8 @@ $current_lang = $_SESSION['lang'] ?? 'en';
         position: fixed;
         left: 0; right: 0;
         bottom: calc(52px + env(safe-area-inset-bottom));
+        height: 50vh;
+        height: 50dvh;
         background: #fff;
         border-radius: 24px 24px 0 0;
         padding: 12px 20px 20px;
@@ -499,6 +501,7 @@ $current_lang = $_SESSION['lang'] ?? 'en';
         transform: translateY(100%);
         transition: transform 0.35s cubic-bezier(.4,0,.2,1);
         box-shadow: 0 -8px 30px rgba(0,0,0,0.15);
+        overflow-y: auto;
     }
     .shortcuts-sheet.open { transform: translateY(0); }
     .dark .shortcuts-sheet { background: #1e293b; }
@@ -732,6 +735,10 @@ $current_lang = $_SESSION['lang'] ?? 'en';
             <span><?php echo $item['title']; ?></span>
         </a>
         <?php endforeach; ?>
+        <a href="<?php echo ($_SESSION['role']=='worker')?'../worker/profile_edit.php':'../client/profile.php'; ?>" class="shortcut-item">
+            <i class="fa-solid fa-user"></i>
+            <span>Profile</span>
+        </a>
     </div>
 </div>
 

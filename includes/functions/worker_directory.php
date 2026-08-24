@@ -181,9 +181,9 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
     $badgeIcon = $badgeCfg[$highestBadge]['icon'] ?? '';
     ?>
     <a href="worker_details.php?id=<?php echo $worker['id']; ?>"
-       class="group bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 flex flex-col w-full h-full worker-card">
+       class="group bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 flex flex-col w-full h-full worker-card">
 
-        <div class="relative w-full aspect-square rounded-xl overflow-hidden mb-4 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
+        <div class="relative w-full aspect-square rounded-xl overflow-hidden mb-3 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
             <?php if ($hasImage): ?>
                 <img src="<?php echo $uploadsDir . htmlspecialchars($worker['profile_pic']); ?>" class="w-full h-full object-cover" alt="">
             <?php else: ?>
@@ -200,16 +200,16 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
             <?php endif; ?>
         </div>
 
-        <div class="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-xs mb-2">
+        <div class="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-xs mb-1.5">
             <span class="material-symbols-outlined text-sm">location_on</span>
             <?php echo htmlspecialchars($worker['municipality'] ?: 'Location not set'); ?>
         </div>
 
-        <div class="flex flex-wrap gap-1 mb-3 min-h-[48px]">
+        <div class="flex flex-wrap gap-1 mb-2 min-h-[40px]">
             <?php renderColoredSkillTags($skills, $badgeCfg, $subIcons); ?>
         </div>
 
-        <div class="flex items-center gap-1 mt-auto mb-4">
+        <div class="flex items-center gap-1 mt-auto mb-3">
             <?php
             $rating    = round($worker['average_rating'] * 2) / 2;
             $full      = floor($rating);
@@ -227,12 +227,12 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
         </div>
 
         <?php if ($worker['minimum_standard_rate'] > 0): ?>
-        <div class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+        <div class="text-xs text-slate-500 dark:text-slate-400 mb-2">
             from <strong class="text-primary">₱<?php echo number_format($worker['minimum_standard_rate']); ?></strong>/job
         </div>
         <?php endif; ?>
 
-        <div class="w-full py-2.5 bg-blue-50 dark:bg-blue-900/20 text-primary text-sm font-bold rounded-xl flex items-center justify-center gap-2 group-hover:bg-primary group-hover:text-white transition-all mt-auto">
+        <div class="w-full py-2 bg-blue-50 dark:bg-blue-900/20 text-primary text-sm font-bold rounded-xl flex items-center justify-center gap-2 group-hover:bg-primary group-hover:text-white transition-all mt-auto">
             View Profile <span class="material-symbols-outlined text-lg">arrow_right_alt</span>
         </div>
     </a>
@@ -257,9 +257,9 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
     $badgeIcon = $badgeCfg[$highestBadge]['icon'] ?? '';
     ?>
     <a href="worker_details.php?id=<?php echo $worker['id']; ?>"
-       class="group bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 min-w-[240px] sm:min-w-[260px] w-[260px] flex flex-col flex-shrink-0 h-[420px] worker-card">
+       class="group bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 min-w-[240px] sm:min-w-[260px] w-[260px] flex flex-col flex-shrink-0 h-[390px] worker-card">
 
-        <div class="relative w-full aspect-square rounded-xl overflow-hidden mb-4 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
+        <div class="relative w-full aspect-square rounded-xl overflow-hidden mb-3 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
             <?php if ($hasImage): ?>
                 <img src="<?php echo $uploadsDir . htmlspecialchars($worker['profile_pic']); ?>" class="w-full h-full object-cover" alt="">
             <?php else: ?>
@@ -276,16 +276,16 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
             <?php endif; ?>
         </div>
 
-        <div class="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-xs mb-2">
+        <div class="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-xs mb-1.5">
             <span class="material-symbols-outlined text-sm">location_on</span>
             <?php echo htmlspecialchars($worker['municipality'] ?: 'Location not set'); ?>
         </div>
 
-        <div class="flex flex-wrap gap-1 mb-3 min-h-[48px]">
+        <div class="flex flex-wrap gap-1 mb-2 min-h-[40px]">
             <?php renderColoredSkillTags($skills, $badgeCfg, $subIcons); ?>
         </div>
 
-        <div class="flex items-center gap-1 mt-auto mb-3">
+        <div class="flex items-center gap-1 mt-auto mb-2">
             <?php
             $rating = round($worker['average_rating'] * 2) / 2;
             $full   = floor($rating);

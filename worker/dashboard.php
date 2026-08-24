@@ -786,7 +786,7 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 <?php if (!$canAccept): ?>
 <!-- Admin-disabled global banner -->
-<div class="mx-4 sm:mx-6 md:mx-8 lg:mx-12 mt-6 max-w-7xl lg:max-w-7xl">
+<div class="mx-4 sm:mx-5 md:mx-6 lg:mx-8 mt-4 max-w-7xl lg:max-w-7xl">
     <div class="flex items-start gap-3 px-5 py-4 bg-red-50 border border-red-200 rounded-2xl">
         <span class="material-symbols-outlined text-red-500 flex-shrink-0 mt-0.5" style="font-size:22px;font-variation-settings:'FILL' 1">block</span>
         <div>
@@ -797,7 +797,7 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 </div>
 <?php endif; ?>
 
-<main class="p-4 sm:p-6 md:p-8 lg:p-12 space-y-6 sm:space-y-8 md:space-y-10 max-w-7xl mx-auto">
+<main class="p-4 sm:p-5 md:p-6 lg:p-8 space-y-5 sm:space-y-6 md:space-y-8 max-w-7xl mx-auto">
 
     <!-- ── Welcome Hero ─────────────────────────── -->
     <section>
@@ -839,11 +839,11 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     </section>
 
     <!-- ── Stats Bento Grid ─────────────────────── -->
-    <section id="tour-stats" class="grid grid-cols-3 gap-3 md:gap-6">
+    <section id="tour-stats" class="grid grid-cols-3 gap-2 md:gap-4">
 
         <!-- Jobs Done -->
-        <div class="group relative overflow-hidden bg-surface-container-lowest p-4 md:p-8 rounded-xl shadow-[0_10px_40px_0_rgba(43,47,52,0.03)] transition-all hover:translate-y-[-4px]">
-            <div class="flex justify-between items-start mb-3 md:mb-6">
+        <div class="group relative overflow-hidden bg-surface-container-lowest p-3 md:p-5 rounded-xl shadow-[0_10px_40px_0_rgba(43,47,52,0.03)] transition-all hover:translate-y-[-4px]">
+            <div class="flex justify-between items-start mb-2 md:mb-4">
                 <div class="w-8 h-8 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                     <span class="material-symbols-outlined text-lg md:text-2xl" style="font-variation-settings:'FILL' 1">check_circle</span>
                 </div>
@@ -856,8 +856,8 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         </div>
 
         <!-- Listo Points -->
-        <div class="group relative overflow-hidden bg-surface-container-lowest p-4 md:p-8 rounded-xl shadow-[0_10px_40px_0_rgba(43,47,52,0.03)] transition-all hover:translate-y-[-4px]">
-            <div class="flex justify-between items-start mb-3 md:mb-6">
+        <div class="group relative overflow-hidden bg-surface-container-lowest p-3 md:p-5 rounded-xl shadow-[0_10px_40px_0_rgba(43,47,52,0.03)] transition-all hover:translate-y-[-4px]">
+            <div class="flex justify-between items-start mb-2 md:mb-4">
                 <div class="w-8 h-8 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-tertiary-container/30 flex items-center justify-center text-tertiary">
                     <span class="material-symbols-outlined text-lg md:text-2xl" style="font-variation-settings:'FILL' 1">stars</span>
                 </div>
@@ -870,8 +870,8 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         </div>
 
         <!-- Wallet Balance -->
-        <div class="group relative overflow-hidden bg-primary p-4 md:p-8 rounded-xl shadow-[0_20px_40px_rgba(20,106,245,0.15)] transition-all hover:translate-y-[-4px]">
-            <div class="flex justify-between items-start mb-3 md:mb-6">
+        <div class="group relative overflow-hidden bg-primary p-3 md:p-5 rounded-xl shadow-[0_20px_40px_rgba(20,106,245,0.15)] transition-all hover:translate-y-[-4px]">
+            <div class="flex justify-between items-start mb-2 md:mb-4">
                 <div class="w-8 h-8 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-white/20 flex items-center justify-center text-white">
                     <span class="material-symbols-outlined text-lg md:text-2xl">payments</span>
                 </div>
@@ -888,7 +888,7 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     <!-- ══════════════════════════════════════════
          ACTIVE JOBS + PENDING REQUESTS (side by side on lg)
     ══════════════════════════════════════════ -->
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6">
 
         <!-- ── Active Jobs ── -->
         <div id="tour-active-jobs" class="space-y-5">
@@ -983,7 +983,7 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         <p class="text-on-surface-variant text-sm -mt-2">
             You've confirmed payment on these jobs. Funds will be released once the client confirms completion.
         </p>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             <?php
             include_once 'partials/booking_card.php';
             foreach ($pending_conf_rows as $conf_job):
@@ -1006,7 +1006,7 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         </div>
 
         <?php if (count($history_rows) > 0): ?>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             <?php
             include_once 'partials/booking_card.php';
             foreach ($history_rows as $job):

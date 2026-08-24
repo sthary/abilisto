@@ -125,7 +125,7 @@ $page_title = $filter_sub ? "Workers offering: $filter_sub"
     <h1 class="text-lg md:text-2xl font-bold mb-5 tracking-tight"><?php echo htmlspecialchars($page_title); ?></h1>
 
     <?php if (count($workers) > 0): ?>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <?php foreach ($workers as $worker): renderWorkerCard($worker, $BADGE_CONFIG, $SUB_ICONS); endforeach; ?>
     </div>
     <?php else: ?>

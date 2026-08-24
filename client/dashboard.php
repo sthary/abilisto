@@ -305,10 +305,10 @@ if ($chk && $chk['is_email_verified'] == 0): ?>
 </div>
 <?php endif; ?>
 
-<main class="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
+<main class="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-6">
 
     <!-- Hero / Search -->
-    <section class="relative hero-gradient rounded-2xl md:rounded-3xl overflow-hidden p-6 md:p-16 mb-8 md:mb-12" id="tour-search">
+    <section class="relative hero-gradient rounded-2xl md:rounded-3xl overflow-hidden p-5 md:p-10 mb-6 md:mb-8" id="tour-search">
         <div class="absolute inset-0 opacity-20 pointer-events-none">
             <svg height="100%" preserveAspectRatio="none" viewBox="0 0 100 100" width="100%">
                 <path d="M0 100 C 20 0 50 0 100 100 Z" fill="white"></path>
@@ -343,7 +343,7 @@ if ($chk && $chk['is_email_verified'] == 0): ?>
     </section>
 
     <!-- Category filter pills -->
-    <section class="mb-8 md:mb-12" id="tour-categories">
+    <section class="mb-6 md:mb-8" id="tour-categories">
         <div class="flex overflow-x-auto no-scrollbar gap-2 md:gap-3 pb-2">
             <a href="dashboard.php<?php echo $search_q ? '?search='.urlencode($search_q) : ''; ?>"
                class="whitespace-nowrap <?php echo (empty($filter_main) && empty($filter_sub)) ? 'bg-primary text-white' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'; ?> px-4 md:px-5 py-2.5 rounded-full text-xs md:text-sm font-semibold flex items-center gap-2 hover:border-primary/50 shrink-0 transition-all">
@@ -366,7 +366,7 @@ if ($chk && $chk['is_email_verified'] == 0): ?>
 
     <!-- Quick Match CTA (hidden during tour) -->
     <?php if (!$show_tour_modal && $quickmatch_enabled): ?>
-    <div class="mb-8 flex justify-end" id="tour-quickmatch">
+    <div class="mb-6 flex justify-end" id="tour-quickmatch">
         <a href="quick_match.php" class="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all hover:scale-105">
             <span class="material-symbols-outlined">bolt</span>
             Try Quick Match Now!
@@ -384,9 +384,9 @@ if ($chk && $chk['is_email_verified'] == 0): ?>
                            : ($filter_main ? $filter_main
                            : 'Search results for "'.htmlspecialchars($search_q).'"');
             ?>
-            <div class="mb-10" id="tour-workers">
-                <h2 class="text-lg md:text-2xl font-bold mb-6 tracking-tight"><?php echo $section_title; ?></h2>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div class="mb-8" id="tour-workers">
+                <h2 class="text-lg md:text-2xl font-bold mb-4 tracking-tight"><?php echo $section_title; ?></h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                     <?php foreach ($all_workers as $worker):
                         renderWorkerCard($worker, $BADGE_CONFIG, $SUB_ICONS);
                     endforeach; ?>
@@ -400,8 +400,8 @@ if ($chk && $chk['is_email_verified'] == 0): ?>
                 $cfg = $MAIN_CATEGORIES[$main] ?? ['icon'=>'work'];
                 $sectionId = ($index === 0) ? 'tour-category-section' : '';
             ?>
-            <div class="mb-12" id="<?php echo $sectionId; ?>">
-                <div class="flex items-center justify-between mb-4">
+            <div class="mb-8" id="<?php echo $sectionId; ?>">
+                <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-2 md:gap-3">
                         <div class="w-8 h-8 md:w-10 md:h-10 bg-blue-100 dark:bg-blue-900/30 text-primary rounded-lg md:rounded-xl flex items-center justify-center">
                             <span class="material-symbols-outlined text-xl"><?php echo $cfg['icon']; ?></span>
@@ -416,7 +416,7 @@ if ($chk && $chk['is_email_verified'] == 0): ?>
                     </a>
                 </div>
                 <!-- Horizontal scroll -->
-                <div class="flex overflow-x-auto no-scrollbar gap-4 pb-4 -mx-4 px-4">
+                <div class="flex overflow-x-auto no-scrollbar gap-3 pb-3 -mx-4 px-4">
                     <?php foreach ($workers_by_main[$main] as $worker):
                         renderWorkerCardHorizontal($worker, $BADGE_CONFIG, $SUB_ICONS);
                     endforeach; ?>
