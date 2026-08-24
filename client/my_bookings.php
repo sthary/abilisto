@@ -104,40 +104,40 @@ function renderBookingCard($row, $lang, $type, $index = 0) {
     $isoDate = $row['booking_date'];
 
     echo '
-    <div class="booking-card group relative bg-white dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/50 rounded-2xl p-6 shadow-soft hover:shadow-xl transition-all duration-300 overflow-hidden"
+    <div class="booking-card group relative bg-white dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/50 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 lg:p-6 shadow-soft hover:shadow-xl transition-all duration-300 overflow-hidden"
          data-date="' . $isoDate . '"
          style="animation-delay: ' . $delay . 's;">
         <div class="absolute -right-20 -top-20 w-40 h-40 ' . $cardAccent . ' rounded-full blur-3xl group-hover:opacity-75 transition-opacity"></div>
 
         <!-- FIX: flex layout corrected so buttons stack vertically on all screen sizes -->
-        <div class="flex flex-col lg:flex-row lg:items-start gap-6 relative z-10">
+        <div class="flex flex-col lg:flex-row lg:items-start gap-3 sm:gap-4 lg:gap-6 relative z-10">
 
             <!-- Worker Info -->
-            <div class="flex items-center gap-5 lg:min-w-[260px]">
+            <div class="flex items-center gap-3 sm:gap-4 lg:gap-5 lg:min-w-[260px]">
                 <div class="relative shrink-0">
                     ';
                     if ($hasImage) {
-                        echo '<img src="' . $avatar . '" class="w-20 h-20 rounded-full object-cover border-4 border-slate-50 dark:border-slate-700 shadow-md" alt="' . htmlspecialchars($row['worker_name']) . '">';
+                        echo '<img src="' . $avatar . '" class="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-full object-cover border-2 sm:border-4 border-slate-50 dark:border-slate-700 shadow-md" alt="' . htmlspecialchars($row['worker_name']) . '">';
                     } else {
-                        echo '<div class="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-2xl border-4 border-slate-50 dark:border-slate-700 shadow-md">' . $initials . '</div>';
+                        echo '<div class="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm sm:text-xl lg:text-2xl border-2 sm:border-4 border-slate-50 dark:border-slate-700 shadow-md">' . $initials . '</div>';
                     }
 
                     if (in_array($row['status'], ['Accepted', 'In Progress', 'On The Way', 'Pending Confirmation'])) {
-                        echo '<div class="absolute bottom-0 right-0 w-6 h-6 bg-green-500 border-4 border-white dark:border-slate-800 rounded-full"></div>';
+                        echo '<div class="absolute bottom-0 right-0 w-3.5 h-3.5 sm:w-5 sm:h-5 lg:w-6 lg:h-6 bg-green-500 border-2 sm:border-4 border-white dark:border-slate-800 rounded-full"></div>';
                     } elseif ($row['status'] == 'Pending') {
-                        echo '<div class="absolute bottom-0 right-0 w-6 h-6 bg-amber-500 border-4 border-white dark:border-slate-800 rounded-full animate-pulse"></div>';
+                        echo '<div class="absolute bottom-0 right-0 w-3.5 h-3.5 sm:w-5 sm:h-5 lg:w-6 lg:h-6 bg-amber-500 border-2 sm:border-4 border-white dark:border-slate-800 rounded-full animate-pulse"></div>';
                     }
                     echo '
                 </div>
                 <div>
-                    <h3 class="text-xl font-bold text-slate-900 dark:text-white">' . htmlspecialchars($row['worker_name']) . '</h3>
-                    <div class="mt-2 space-y-1">
-                        <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
-                            <span class="material-symbols-rounded text-[18px]">calendar_month</span>
+                    <h3 class="text-sm sm:text-lg lg:text-xl font-bold text-slate-900 dark:text-white">' . htmlspecialchars($row['worker_name']) . '</h3>
+                    <div class="mt-1 sm:mt-2 space-y-0.5 sm:space-y-1">
+                        <div class="flex items-center gap-1.5 sm:gap-2 text-slate-500 dark:text-slate-400 text-[11px] sm:text-sm">
+                            <span class="material-symbols-rounded text-[13px] sm:text-[18px]">calendar_month</span>
                             <span>' . $bookingDate . '</span>
                         </div>
-                        <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
-                            <span class="material-symbols-rounded text-[18px]">schedule</span>
+                        <div class="flex items-center gap-1.5 sm:gap-2 text-slate-500 dark:text-slate-400 text-[11px] sm:text-sm">
+                            <span class="material-symbols-rounded text-[13px] sm:text-[18px]">schedule</span>
                             <span>' . $bookingTime . '</span>
                         </div>
                     </div>
@@ -145,31 +145,31 @@ function renderBookingCard($row, $lang, $type, $index = 0) {
             </div>
 
             <!-- Booking Details -->
-            <div class="flex-1 space-y-4 min-w-0">
-                <div class="flex flex-wrap items-center gap-3">
+            <div class="flex-1 space-y-2.5 sm:space-y-3 lg:space-y-4 min-w-0">
+                <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 lg:gap-3">
                     <!-- Status Badge -->
-                    <span class="glass-badge ' . $statusStyle['bg'] . ' ' . $statusStyle['color'] . ' px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                        <span class="material-symbols-rounded text-[16px]">' . $statusStyle['icon'] . '</span>
+                    <span class="glass-badge ' . $statusStyle['bg'] . ' ' . $statusStyle['color'] . ' px-2.5 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1 sm:gap-2">
+                        <span class="material-symbols-rounded text-[13px] sm:text-[16px]">' . $statusStyle['icon'] . '</span>
                         ' . $row['status'] . '
                     </span>';
 
     // Urgency badge (if not Normal)
     if ($row['urgency_level'] && $row['urgency_level'] != 'Normal') {
-        echo '<span class="glass-badge ' . $urgencyStyle['bg'] . ' ' . $urgencyStyle['color'] . ' px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                <span class="material-symbols-rounded text-[16px]">' . $urgencyStyle['icon'] . '</span>
+        echo '<span class="glass-badge ' . $urgencyStyle['bg'] . ' ' . $urgencyStyle['color'] . ' px-2.5 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1 sm:gap-2">
+                <span class="material-symbols-rounded text-[13px] sm:text-[16px]">' . $urgencyStyle['icon'] . '</span>
                 ' . $urgencyStyle['label'] . '
               </span>';
     }
 
     // Payment badge
-    echo '<span class="glass-badge bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-            <span class="material-symbols-rounded text-[16px]">' . ($row['payment_method'] == 'PayMongo' ? 'smartphone' : 'payments') . '</span>
+    echo '<span class="glass-badge bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2.5 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1 sm:gap-2">
+            <span class="material-symbols-rounded text-[13px] sm:text-[16px]">' . ($row['payment_method'] == 'PayMongo' ? 'smartphone' : 'payments') . '</span>
             ' . htmlspecialchars($row['payment_method']) . ' • ' . htmlspecialchars($row['payment_status']) . '
           </span>';
 
     // Price tag
     if (!empty($row['calculated_fee'])) {
-        echo '<span class="bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 px-4 py-1.5 rounded-full text-sm font-bold">
+        echo '<span class="bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 px-2.5 py-1 sm:px-4 sm:py-1.5 rounded-full text-xs sm:text-sm font-bold">
                 ₱ ' . number_format($row['calculated_fee'], 2) . '
               </span>';
     }
@@ -177,27 +177,27 @@ function renderBookingCard($row, $lang, $type, $index = 0) {
     echo '</div>';
 
     // Problem description
-    echo '<div class="flex gap-3 text-slate-600 dark:text-slate-300 italic">
-            <span class="material-symbols-rounded text-blue-400 shrink-0">format_quote</span>
-            <p class="leading-relaxed">' . htmlspecialchars($row['problem_desc']) . '</p>
+    echo '<div class="flex gap-2 sm:gap-3 text-slate-600 dark:text-slate-300 italic">
+            <span class="material-symbols-rounded text-blue-400 shrink-0 text-lg sm:text-xl">format_quote</span>
+            <p class="leading-relaxed text-xs sm:text-sm lg:text-base">' . htmlspecialchars($row['problem_desc']) . '</p>
           </div>';
 
     echo '</div>';
 
     // FIX: Action Buttons — always stacked vertically (flex-col), proper min-width
-    echo '<div class="flex flex-col gap-3 lg:min-w-[180px] w-full lg:w-auto shrink-0">';
+    echo '<div class="flex flex-col gap-2 sm:gap-2.5 lg:gap-3 lg:min-w-[180px] w-full lg:w-auto shrink-0">';
 
     if ($type == 'active') {
         // Chat button for all active
-        echo '<a href="../chat.php?booking_id=' . $row['id'] . '" class="flex items-center justify-center gap-2 bg-primary hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-xl transition-all shadow-lg shadow-blue-500/20 whitespace-nowrap">
-                <span class="material-symbols-rounded">chat</span>
+        echo '<a href="../chat.php?booking_id=' . $row['id'] . '" class="flex items-center justify-center gap-1.5 sm:gap-2 bg-primary hover:bg-blue-700 text-white font-bold text-xs sm:text-sm lg:text-base py-2 sm:py-2.5 lg:py-3 px-3 sm:px-4 lg:px-5 rounded-lg sm:rounded-xl transition-all shadow-lg shadow-blue-500/20 whitespace-nowrap">
+                <span class="material-symbols-rounded text-base sm:text-lg lg:text-xl">chat</span>
                 Chat
               </a>';
 
         // Track button for Accepted, In Progress, and On The Way
         if (in_array($row['status'], ['Accepted', 'In Progress', 'On The Way'])) {
-            echo '<a href="track_worker.php?booking_id=' . $row['id'] . '" class="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-5 rounded-xl transition-all shadow-lg shadow-emerald-500/20 whitespace-nowrap">
-                    <span class="material-symbols-rounded">location_on</span>
+            echo '<a href="track_worker.php?booking_id=' . $row['id'] . '" class="flex items-center justify-center gap-1.5 sm:gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm lg:text-base py-2 sm:py-2.5 lg:py-3 px-3 sm:px-4 lg:px-5 rounded-lg sm:rounded-xl transition-all shadow-lg shadow-emerald-500/20 whitespace-nowrap">
+                    <span class="material-symbols-rounded text-base sm:text-lg lg:text-xl">location_on</span>
                     Track Live
                   </a>';
         }
@@ -207,22 +207,22 @@ function renderBookingCard($row, $lang, $type, $index = 0) {
         if ($row['status'] == 'Pending') {
             // Pass current booking_date so flatpickr can pre-fill it
             $currentDateISO = date('Y-m-d H:i:s', strtotime($row['booking_date']));
-            echo '<div class="flex gap-2">
+            echo '<div class="flex gap-1.5 sm:gap-2">
                     <!-- Cancel: icon only, red -->
                     <a href="cancel_booking.php?id=' . $row['id'] . '"
-                       onclick="return confirm(\'Cancel this booking?\')"
+                       onclick="return handleCancelBooking(event, this.href)"
                        title="Cancel Booking"
-                       class="flex-1 flex items-center justify-center bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 font-bold py-3 rounded-xl transition-all"
+                       class="flex-1 flex items-center justify-center bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 font-bold py-2 sm:py-2.5 lg:py-3 rounded-lg sm:rounded-xl transition-all"
                     >
-                        <span class="material-symbols-rounded text-[20px]">close</span>
+                        <span class="material-symbols-rounded text-[16px] sm:text-[20px]">close</span>
                     </a>
                     <!-- Reschedule: icon only, amber -->
                     <button
                        onclick="openRescheduleModal(' . $row['id'] . ', \'' . addslashes($row['worker_name']) . '\', \'' . $currentDateISO . '\', ' . $row['worker_id'] . ')"
                        title="Reschedule Booking"
-                       class="flex-1 flex items-center justify-center bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-600 dark:text-amber-400 font-bold py-3 rounded-xl transition-all"
+                       class="flex-1 flex items-center justify-center bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-600 dark:text-amber-400 font-bold py-2 sm:py-2.5 lg:py-3 rounded-lg sm:rounded-xl transition-all"
                     >
-                        <span class="material-symbols-rounded text-[20px]">calendar_month</span>
+                        <span class="material-symbols-rounded text-[16px] sm:text-[20px]">calendar_month</span>
                     </button>
                   </div>';
         }
@@ -237,8 +237,8 @@ function renderBookingCard($row, $lang, $type, $index = 0) {
                 ? 'Confirm Cash Received'
                 : 'Confirm Job Done';
 
-            echo '<button onclick="confirmCompletion(' . $row['id'] . ')" class="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-5 rounded-xl transition-all shadow-lg shadow-emerald-500/20 whitespace-nowrap animate-pulse">
-                    <span class="material-symbols-rounded">check_circle</span>
+            echo '<button onclick="confirmCompletion(' . $row['id'] . ')" class="flex items-center justify-center gap-1.5 sm:gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm lg:text-base py-2 sm:py-2.5 lg:py-3 px-3 sm:px-4 lg:px-5 rounded-lg sm:rounded-xl transition-all shadow-lg shadow-emerald-500/20 whitespace-nowrap animate-pulse">
+                    <span class="material-symbols-rounded text-base sm:text-lg lg:text-xl">check_circle</span>
                     ' . $btn_label . '
                   </button>';
         }
@@ -248,37 +248,37 @@ function renderBookingCard($row, $lang, $type, $index = 0) {
         if ($row['status'] == 'Completed') {
             if ($row['review_id']) {
                 // Already rated
-                echo '<div class="flex items-center justify-center gap-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                echo '<div class="flex items-center justify-center gap-1.5 sm:gap-2 p-2 sm:p-2.5 lg:p-3 bg-slate-50 dark:bg-slate-800 rounded-lg sm:rounded-xl">
                         <div class="flex gap-0.5 text-amber-400">';
-                for ($i = 0; $i < $row['my_rating']; $i++)           echo '<span class="material-symbols-rounded text-[18px]">star</span>';
-                for ($i = $row['my_rating']; $i < 5; $i++)            echo '<span class="material-symbols-rounded text-[18px] text-slate-300 dark:text-slate-600">star</span>';
+                for ($i = 0; $i < $row['my_rating']; $i++)           echo '<span class="material-symbols-rounded text-[14px] sm:text-[18px]">star</span>';
+                for ($i = $row['my_rating']; $i < 5; $i++)            echo '<span class="material-symbols-rounded text-[14px] sm:text-[18px] text-slate-300 dark:text-slate-600">star</span>';
                 echo '      </div>
-                        <span class="text-xs text-slate-500 whitespace-nowrap">You rated</span>
+                        <span class="text-[10px] sm:text-xs text-slate-500 whitespace-nowrap">You rated</span>
                       </div>';
 
                 // Re-book button
-                echo '<a href="booking.php?worker_id=' . $row['worker_id'] . '" class="flex items-center justify-center gap-2 bg-primary hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-xl transition-all shadow-lg shadow-blue-500/20 whitespace-nowrap">
-                        <span class="material-symbols-rounded">calendar_add_on</span>
+                echo '<a href="booking.php?worker_id=' . $row['worker_id'] . '" class="flex items-center justify-center gap-1.5 sm:gap-2 bg-primary hover:bg-blue-700 text-white font-bold text-xs sm:text-sm lg:text-base py-2 sm:py-2.5 lg:py-3 px-3 sm:px-4 lg:px-5 rounded-lg sm:rounded-xl transition-all shadow-lg shadow-blue-500/20 whitespace-nowrap">
+                        <span class="material-symbols-rounded text-base sm:text-lg lg:text-xl">calendar_add_on</span>
                         Book Again
                       </a>';
             } else {
                 // Rate button
-                echo '<button onclick="openRateModal(' . $row['id'] . ', ' . $row['worker_id'] . ', \'' . addslashes($row['worker_name']) . '\')" class="flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-5 rounded-xl transition-all shadow-lg shadow-amber-500/20 whitespace-nowrap">
-                        <span class="material-symbols-rounded">star</span>
+                echo '<button onclick="openRateModal(' . $row['id'] . ', ' . $row['worker_id'] . ', \'' . addslashes($row['worker_name']) . '\')" class="flex items-center justify-center gap-1.5 sm:gap-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs sm:text-sm lg:text-base py-2 sm:py-2.5 lg:py-3 px-3 sm:px-4 lg:px-5 rounded-lg sm:rounded-xl transition-all shadow-lg shadow-amber-500/20 whitespace-nowrap">
+                        <span class="material-symbols-rounded text-base sm:text-lg lg:text-xl">star</span>
                         Rate Worker
                       </button>';
             }
         } else {
             // Cancelled/Rejected status
-            echo '<div class="flex items-center justify-center gap-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                    <span class="material-symbols-rounded ' . $statusStyle['color'] . '">' . $statusStyle['icon'] . '</span>
-                    <span class="text-sm font-medium">' . $row['status'] . '</span>
+            echo '<div class="flex items-center justify-center gap-1.5 sm:gap-2 p-2 sm:p-2.5 lg:p-3 bg-slate-50 dark:bg-slate-800 rounded-lg sm:rounded-xl">
+                    <span class="material-symbols-rounded text-lg sm:text-xl ' . $statusStyle['color'] . '">' . $statusStyle['icon'] . '</span>
+                    <span class="text-xs sm:text-sm font-medium">' . $row['status'] . '</span>
                   </div>';
         }
 
         // FIX: Report button for ALL history bookings
-        echo '<button onclick="openReportModal(' . $row['id'] . ', \'' . addslashes($row['worker_name']) . '\')" class="flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-700/60 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 font-bold py-3 px-5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-rose-300 dark:hover:border-rose-700 transition-all whitespace-nowrap">
-                <span class="material-symbols-rounded text-[18px]">flag</span>
+        echo '<button onclick="openReportModal(' . $row['id'] . ', \'' . addslashes($row['worker_name']) . '\')" class="flex items-center justify-center gap-1.5 sm:gap-2 bg-slate-100 dark:bg-slate-700/60 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 font-bold text-xs sm:text-sm lg:text-base py-2 sm:py-2.5 lg:py-3 px-3 sm:px-4 lg:px-5 rounded-lg sm:rounded-xl border border-slate-200 dark:border-slate-700 hover:border-rose-300 dark:hover:border-rose-700 transition-all whitespace-nowrap">
+                <span class="material-symbols-rounded text-[14px] sm:text-[18px]">flag</span>
                 Report
               </button>';
     }
@@ -887,9 +887,19 @@ function renderBookingCard($row, $lang, $type, $index = 0) {
         });
     }
 
+    // ── Cancel booking ──────────────────────────────────────────────
+    function handleCancelBooking(evt, href) {
+        evt.preventDefault();
+        abilistoConfirm('Cancel this booking?', { danger: true, confirmText: 'Yes, Cancel' }).then(function (ok) {
+            if (ok) window.location.href = href;
+        });
+        return false;
+    }
+
     // ── Confirm completion ─────────────────────────────────────────
-    function confirmCompletion(bookingId) {
-        if (!confirm('Have you confirmed that the job is complete? Payment will be released to the worker.')) return;
+    async function confirmCompletion(bookingId) {
+        const ok = await abilistoConfirm('Have you confirmed that the job is complete? Payment will be released to the worker.', { confirmText: 'Yes, Confirm' });
+        if (!ok) return;
 
         fetch('../api/client_booking_actions.php', {
             method: 'POST',
