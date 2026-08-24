@@ -97,6 +97,32 @@
             </div>
         </div>
 
+        <!-- Role switcher — hop between the 3 staff portals -->
+        <?php
+        $staff_portals = [
+            'Admin'   => ['href' => 'admin_login.php',   'icon' => 'admin_panel_settings', 'accent' => '#146af5'],
+            'Finance' => ['href' => 'finance_login.php',  'icon' => 'account_balance',      'accent' => '#16a34a'],
+            'HR'      => ['href' => 'hr_login.php',       'icon' => 'badge',                'accent' => '#9333ea'],
+        ];
+        ?>
+        <div class="flex items-center justify-center gap-2 mb-8">
+            <?php foreach ($staff_portals as $portal_label => $portal): $is_active = ($portal_label === $staff_role_label); ?>
+            <?php if ($is_active): ?>
+            <span class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold"
+                  style="background: <?php echo $portal['accent']; ?>; color: white;">
+                <span class="material-symbols-rounded text-sm"><?php echo $portal['icon']; ?></span>
+                <?php echo $portal_label; ?>
+            </span>
+            <?php else: ?>
+            <a href="<?php echo $portal['href']; ?>"
+               class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                <span class="material-symbols-rounded text-sm"><?php echo $portal['icon']; ?></span>
+                <?php echo $portal_label; ?>
+            </a>
+            <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
+
         <!-- Header -->
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-slate-900 dark:text-white mb-2"><?php echo htmlspecialchars($staff_role_label); ?> Sign In</h1>
@@ -113,18 +139,18 @@
 
         <!-- Login Form -->
         <form method="POST" action="" class="space-y-6">
-            <!-- Email -->
+            <!-- Email or Phone -->
             <div class="space-y-2">
-                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Email Address</label>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Email or Phone Number</label>
                 <div class="relative group">
                     <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                        <span class="material-symbols-rounded text-slate-400 group-focus-within:text-primary transition-colors">mail</span>
+                        <span class="material-symbols-rounded text-slate-400 group-focus-within:text-primary transition-colors">badge</span>
                     </div>
-                    <input type="email"
-                           name="email"
+                    <input type="text"
+                           name="identifier"
                            class="block w-full pl-12 pr-4 py-4 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all outline-none dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600"
-                           placeholder="you@abilisto.com"
-                           value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : (isset($_GET['email']) ? htmlspecialchars($_GET['email']) : ''); ?>"
+                           placeholder="you@abilisto.com or 09123456789"
+                           value="<?php echo isset($_POST['identifier']) ? htmlspecialchars($_POST['identifier']) : (isset($_GET['email']) ? htmlspecialchars($_GET['email']) : ''); ?>"
                            required>
                 </div>
             </div>

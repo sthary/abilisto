@@ -6,13 +6,13 @@
 // signup+OTP flow, so there's no reason to require a phone number here) and
 // no Google OAuth (not needed for staff).
 
-function handleStaffLogin($conn, $expectedRole, $dashboardUrl) {
-    $email    = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
+require_once __DIR__ . '/../includes/functions/identify_user.php';
 
-    $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
-    $stmt->execute([$email]);
-    $user = $stmt->fetch();
+function handleStaffLogin($conn, $expectedRole, $dashboardUrl) {
+    $identifier = trim($_POST['identifier'] ?? '');
+    $password   = $_POST['password'] ?? '';
+
+    $user = findUserByIdentifier($conn, $identifier);
 
     if (!$user) {
         return "User not found!";

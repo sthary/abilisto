@@ -4,6 +4,7 @@ session_start();
 include '../includes/init_lang.php';
 include '../db_connect.php';
 include 'google_config.php';
+require_once '../includes/functions/identify_user.php';
 
 $error = '';
 $flash_success = '';
@@ -91,14 +92,12 @@ if (isset($_SESSION['flash_error']) && empty($error)) {
 // NORMAL EMAIL/PASSWORD LOGIN
 // ============================================================
 if (isset($_POST['login_btn'])) {
-    $email    = $_POST['email'];
-    $password = $_POST['password'];
+    $identifier = $_POST['identifier'];
+    $password   = $_POST['password'];
 
-    $sql    = "SELECT * FROM users WHERE email = ?";
-    $stmt   = $conn->prepare($sql);
-    $stmt->execute([$email]);
+    $user = findUserByIdentifier($conn, $identifier);
 
-    if ($user = $stmt->fetch()) {
+    if ($user) {
 
         if (!empty($user['password']) && password_verify($password, $user['password'])) {
 
@@ -286,18 +285,18 @@ if (isset($_POST['login_btn'])) {
 
         <!-- Login Form -->
         <form method="POST" action="" class="space-y-6">
-            <!-- Email -->
+            <!-- Email or Phone -->
             <div class="space-y-2">
-                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Email Address</label>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Email or Phone Number</label>
                 <div class="relative group">
                     <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                        <span class="material-symbols-rounded text-slate-400 group-focus-within:text-primary transition-colors">mail</span>
+                        <span class="material-symbols-rounded text-slate-400 group-focus-within:text-primary transition-colors">badge</span>
                     </div>
-                    <input type="email"
-                           name="email"
+                    <input type="text"
+                           name="identifier"
                            class="block w-full pl-12 pr-4 py-4 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all outline-none dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600"
-                           placeholder="juandelacruz@gmail.com"
-                           value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>"
+                           placeholder="juandelacruz@gmail.com or 09123456789"
+                           value="<?php echo isset($_POST['identifier']) ? htmlspecialchars($_POST['identifier']) : ''; ?>"
                            required>
                 </div>
             </div>
