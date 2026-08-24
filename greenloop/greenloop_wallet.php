@@ -566,6 +566,22 @@ body::before {
   font-size: 13px; color: var(--c-text-3);
   line-height: 1.6; font-family: var(--f-mono);
 }
+
+/* ═══ DESKTOP ═══ — mobile rules above stay the default; these widen the
+   shell and reflow the card lists into columns past 1024px. */
+@media (min-width: 1024px) {
+  .app-shell { max-width: 980px; border-left: none; border-right: none; }
+  .nav { padding-left: 32px; padding-right: 32px; }
+  .hero, .section { padding-left: 32px; padding-right: 32px; }
+
+  .section { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: stretch; }
+  .section-label { flex: 1 1 100%; }
+
+  .reward-card, .report-item, .redemption-card, .tx-item {
+    flex: 1 1 calc(50% - 8px);
+    margin-bottom: 0;
+  }
+}
 </style>
 </head>
 <body>

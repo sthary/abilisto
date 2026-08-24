@@ -1225,6 +1225,16 @@ body::before {
   flex-shrink: 0;
 }
 .btn-chat-send:hover { transform: scale(1.08); }
+
+/* ═══ DESKTOP ═══ — mobile rules above stay the default; this just gives
+   the report/scan flow breathing room past 1024px instead of a 480px
+   island centered on a wide screen. Left as a single wider column (not
+   reflowed into multiple columns) since this is a linear step wizard,
+   not a list of cards. */
+@media (min-width: 1024px) {
+  .app-shell { max-width: 720px; border-left: none; border-right: none; }
+  .nav, .section { padding-left: 32px; padding-right: 32px; }
+}
 </style>
 </head>
 <body>
