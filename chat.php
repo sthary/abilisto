@@ -141,7 +141,7 @@ $quick_replies = ($role == 'client')
     <div id="chatCard" class="w-full max-w-4xl h-[100vh] md:h-[85vh] flex flex-col bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl md:rounded-xl shadow-2xl overflow-hidden border border-white/20 relative">
 
         <!-- Header -->
-        <header class="chat-gradient px-6 py-4 flex items-center justify-between text-white shadow-lg z-10">
+        <header class="chat-gradient px-6 py-4 flex items-center justify-between text-white shadow-lg z-10 shrink-0">
             <div class="flex items-center gap-4">
                 <a href="<?php echo $exit_link; ?>" class="hover:bg-white/20 p-2 rounded-full transition-colors">
                     <span class="material-symbols-outlined text-2xl">arrow_back</span>
@@ -172,7 +172,7 @@ $quick_replies = ($role == 'client')
         </div>
 
         <!-- Chat Box -->
-        <main class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 hide-scrollbar bg-slate-50/30 dark:bg-slate-900/30" id="chatBox">
+        <main class="flex-1 min-h-0 overflow-y-auto p-4 md:p-8 space-y-6 hide-scrollbar bg-slate-50/30 dark:bg-slate-900/30" id="chatBox">
 
             <?php if (count($history_rows) == 0): ?>
                 <div class="flex flex-col items-center justify-center h-full text-center text-slate-400 dark:text-slate-500" id="emptyState">
@@ -247,7 +247,7 @@ $quick_replies = ($role == 'client')
         </main>
 
         <!-- Footer -->
-        <footer class="p-4 md:p-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-800/50">
+        <footer class="p-4 md:p-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-800/50 shrink-0">
             <div class="flex gap-2 overflow-x-auto hide-scrollbar mb-4 pb-2">
                 <?php foreach ($quick_replies as $reply): ?>
                     <button class="whitespace-nowrap px-5 py-2 rounded-full glass hover:bg-primary/10 hover:border-primary/30 transition-all text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-200/50"
