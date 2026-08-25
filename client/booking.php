@@ -577,8 +577,8 @@ $initials = getInitials($worker['full_name']);
                 <div id="selectedLocationInfo" class="hidden bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-3 md:p-4 border border-slate-200 dark:border-slate-700">
                     <div class="flex flex-col sm:flex-row sm:items-start gap-3">
                         <div class="flex items-center gap-3 sm:gap-4">
-                            <div class="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                <span class="material-symbols-outlined text-primary text-lg">location_on</span>
+                            <div class="w-6 h-6 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                <span class="material-symbols-outlined text-primary text-xs sm:text-lg">location_on</span>
                             </div>
                             <div class="sm:hidden font-bold text-sm text-slate-900 dark:text-white">📍 Location Pin Dropped!</div>
                         </div>
@@ -586,9 +586,9 @@ $initials = getInitials($worker['full_name']);
                             <div class="hidden sm:block font-bold text-sm text-slate-900 dark:text-white mb-1">📍 Location Pin Dropped!</div>
                             <div id="locationCoordinates" class="text-xs text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1"></div>
                             <div class="mt-1">
-                                <label class="text-xs font-medium text-slate-600 dark:text-slate-300 mb-1 block">Address / Landmarks:</label>
+                                <label class="text-[10px] sm:text-xs font-medium text-slate-600 dark:text-slate-300 mb-1 block">Address / Landmarks:</label>
                                 <input type="text" id="location_address" name="location_address"
-                                       class="w-full p-2.5 md:p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm"
+                                       class="w-full p-2.5 md:p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs sm:text-sm"
                                        placeholder="e.g., Purok 3, near the basketball court" value="">
                             </div>
                         </div>

@@ -338,21 +338,21 @@ if (isset($_POST['login_btn'])) {
         </div>
     </div>
 
-    <div class="glass-card rounded-2xl lg:rounded-l-none lg:rounded-r-2xl lg:w-1/2 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] p-8 md:p-12 border border-blue-100 dark:border-slate-700/50">
+    <div class="glass-card rounded-2xl lg:rounded-l-none lg:rounded-r-2xl lg:w-1/2 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] p-5 sm:p-8 md:p-12 border border-blue-100 dark:border-slate-700/50">
 
         <!-- Logo (mobile/tablet only — desktop shows it in the branding panel) -->
-        <div class="text-center mb-10 lg:hidden">
+        <div class="text-center mb-6 sm:mb-10 lg:hidden">
             <div class="flex items-center justify-center gap-1 mb-2">
-                <span class="text-4xl font-extrabold tracking-tight text-primary">Abi</span>
-                <span class="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">listo</span>
+                <span class="text-2xl sm:text-4xl font-extrabold tracking-tight text-primary">Abi</span>
+                <span class="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">listo</span>
             </div>
-            <p class="text-xs font-semibold tracking-[0.2em] text-slate-400 dark:text-slate-500">Abilidad. Bilis. Listo.</p>
+            <p class="text-[10px] sm:text-xs font-semibold tracking-[0.2em] text-slate-400 dark:text-slate-500">Abilidad. Bilis. Listo.</p>
         </div>
 
         <!-- Header -->
-        <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-slate-900 dark:text-white mb-2">Welcome Back!</h1>
-            <p class="text-slate-500 dark:text-slate-400">Sign in to continue your journey</p>
+        <div class="text-center mb-5 sm:mb-8">
+            <h1 class="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-1 sm:mb-2">Welcome Back!</h1>
+            <p class="text-sm sm:text-base text-slate-500 dark:text-slate-400">Sign in to continue your journey</p>
         </div>
 
         <!-- Flash: Success (e.g. after phone verification or new Google signup) -->
@@ -380,17 +380,17 @@ if (isset($_POST['login_btn'])) {
         <?php endif; ?>
 
         <!-- Login Form -->
-        <form method="POST" action="" class="space-y-6">
+        <form method="POST" action="" class="space-y-4 sm:space-y-6">
             <!-- Email or Phone -->
-            <div class="space-y-2">
-                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Email or Phone Number</label>
+            <div class="space-y-1.5 sm:space-y-2">
+                <label class="block text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Email or Phone Number</label>
                 <div class="relative group">
-                    <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                        <span class="material-symbols-rounded text-slate-400 group-focus-within:text-primary transition-colors">badge</span>
+                    <div class="absolute inset-y-0 left-0 pl-4 sm:pl-5 flex items-center pointer-events-none">
+                        <span class="material-symbols-rounded text-base sm:text-xl text-slate-400 group-focus-within:text-primary transition-colors">badge</span>
                     </div>
                     <input type="text"
                            name="identifier"
-                           class="block w-full pl-12 pr-4 py-4 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all outline-none dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                           class="block w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-4 text-sm sm:text-base rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all outline-none dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600"
                            placeholder="juandelacruz@gmail.com or 09123456789"
                            value="<?php echo isset($_POST['identifier']) ? htmlspecialchars($_POST['identifier']) : ''; ?>"
                            required>
@@ -398,52 +398,52 @@ if (isset($_POST['login_btn'])) {
             </div>
 
             <!-- Password -->
-            <div class="space-y-2">
-                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Password</label>
+            <div class="space-y-1.5 sm:space-y-2">
+                <label class="block text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Password</label>
                 <div class="relative group">
-                    <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                        <span class="material-symbols-rounded text-slate-400 group-focus-within:text-primary transition-colors">lock</span>
+                    <div class="absolute inset-y-0 left-0 pl-4 sm:pl-5 flex items-center pointer-events-none">
+                        <span class="material-symbols-rounded text-base sm:text-xl text-slate-400 group-focus-within:text-primary transition-colors">lock</span>
                     </div>
                     <input type="password"
                            id="loginPassword"
                            name="password"
-                           class="block w-full pl-12 pr-12 py-4 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all outline-none dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                           class="block w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-2.5 sm:py-4 text-sm sm:text-base rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all outline-none dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600"
                            placeholder="••••••••"
                            required>
                     <button type="button" onclick="toggleVis('loginPassword','loginEyeIcon')"
-                            class="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-400 hover:text-primary transition-colors">
-                        <span class="material-symbols-rounded" id="loginEyeIcon">visibility</span>
+                            class="absolute inset-y-0 right-0 pr-4 sm:pr-5 flex items-center text-slate-400 hover:text-primary transition-colors">
+                        <span class="material-symbols-rounded text-base sm:text-xl" id="loginEyeIcon">visibility</span>
                     </button>
                 </div>
                 <div class="flex justify-end">
-                    <a class="text-sm font-medium text-primary hover:underline underline-offset-4" href="forgot_pass.php">Forgot password?</a>
+                    <a class="text-xs sm:text-sm font-medium text-primary hover:underline underline-offset-4" href="forgot_pass.php">Forgot password?</a>
                 </div>
             </div>
 
             <!-- Login Button -->
-            <button type="submit" name="login_btn" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-bold py-4 rounded-xl transition-all transform active:scale-[0.98] shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 group inner-glow">
-                <span class="material-symbols-rounded">login</span>
+            <button type="submit" name="login_btn" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-bold text-sm sm:text-base py-3 sm:py-4 rounded-xl transition-all transform active:scale-[0.98] shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 group inner-glow">
+                <span class="material-symbols-rounded text-base sm:text-xl">login</span>
                 Sign In
             </button>
 
             <!-- Divider -->
-            <div class="relative py-4">
+            <div class="relative py-3 sm:py-4">
                 <div class="absolute inset-0 flex items-center">
                     <div class="w-full border-t border-slate-200 dark:border-slate-700"></div>
                 </div>
-                <div class="relative flex justify-center text-xs uppercase">
+                <div class="relative flex justify-center text-[10px] sm:text-xs uppercase">
                     <span class="bg-background-light dark:bg-slate-800 px-4 text-slate-400 dark:text-slate-500 font-semibold tracking-wider">or continue with</span>
                 </div>
             </div>
 
             <!-- Google Login -->
             <a href="<?php echo $google_login_url; ?>"
-               class="w-full flex items-center justify-center gap-3 bg-white/50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 py-4 rounded-xl transition-all font-semibold text-slate-700 dark:text-slate-200">
-                <img alt="Google Logo" class="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5c9Dhl8fxgeTa5OeZOc5UG5d_tm9abWpRhGmofKFXfzuaMTCxjCSfHgvHHsewBGkfoyWFVrZhHOoE3lWQTmCW2XEIc_c9t4qGyR8REpR5z5LPpIezEDvoHAW52FtpHgvhfvZnNH8RW1tPrfN2ogD1BlQqBtteTxuVgSqdPju_Qt1RR8WtK8DSwC2aTBDNc1jIce6lkzGM7EKVnbRs_Re6nNrhHGnnTXPw2vWJheGjvMpIDs-hEi2-8dxU_XKP08EmNpah2X0oGTsG"/>
+               class="w-full flex items-center justify-center gap-3 bg-white/50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 py-3 sm:py-4 text-sm sm:text-base rounded-xl transition-all font-semibold text-slate-700 dark:text-slate-200">
+                <img alt="Google Logo" class="w-4 h-4 sm:w-5 sm:h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5c9Dhl8fxgeTa5OeZOc5UG5d_tm9abWpRhGmofKFXfzuaMTCxjCSfHgvHHsewBGkfoyWFVrZhHOoE3lWQTmCW2XEIc_c9t4qGyR8REpR5z5LPpIezEDvoHAW52FtpHgvhfvZnNH8RW1tPrfN2ogD1BlQqBtteTxuVgSqdPju_Qt1RR8WtK8DSwC2aTBDNc1jIce6lkzGM7EKVnbRs_Re6nNrhHGnnTXPw2vWJheGjvMpIDs-hEi2-8dxU_XKP08EmNpah2X0oGTsG"/>
                 Google Account
             </a>
 
-            <p class="text-xs text-center text-slate-400 mt-4">
+            <p class="text-[11px] sm:text-xs text-center text-slate-400 mt-4">
                 By continuing, you agree to Abilisto's
                 <a href="../privacy.html" class="underline">Privacy Policy</a> and
                 <a href="../terms.html" class="underline">Terms of Service</a>.
@@ -451,22 +451,22 @@ if (isset($_POST['login_btn'])) {
         </form>
 
         <!-- Sign Up -->
-        <div class="mt-10 text-center space-y-6">
-            <div class="space-y-4">
-                <p class="text-sm font-medium text-slate-500 dark:text-slate-400">New to Abilisto?</p>
-                <a href="signup_role.php" class="w-full inline-block py-4 px-6 bg-blue-50 dark:bg-blue-900/20 text-primary font-bold rounded-xl border border-blue-100 dark:border-blue-800/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all flex items-center justify-center gap-2">
-                    <span class="material-symbols-rounded">send</span>
+        <div class="mt-6 sm:mt-10 text-center space-y-4 sm:space-y-6">
+            <div class="space-y-3 sm:space-y-4">
+                <p class="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">New to Abilisto?</p>
+                <a href="signup_role.php" class="w-full inline-block py-3 px-4 sm:py-4 sm:px-6 text-sm sm:text-base bg-blue-50 dark:bg-blue-900/20 text-primary font-bold rounded-xl border border-blue-100 dark:border-blue-800/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all flex items-center justify-center gap-2">
+                    <span class="material-symbols-rounded text-base sm:text-xl">send</span>
                     Create an Account
                 </a>
             </div>
-            <a class="inline-flex items-center gap-2 text-sm font-medium text-slate-400 dark:text-slate-500 hover:text-primary dark:hover:text-primary transition-colors" href="../index.php">
-                <span class="material-symbols-rounded text-lg">arrow_back</span>
+            <a class="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-slate-400 dark:text-slate-500 hover:text-primary dark:hover:text-primary transition-colors" href="../index.php">
+                <span class="material-symbols-rounded text-base sm:text-lg">arrow_back</span>
                 Back to Home
             </a>
         </div>
 
         <!-- Trust Features -->
-        <div class="mt-12 pt-8 border-t border-slate-100 dark:border-slate-800 flex flex-wrap justify-center gap-x-8 gap-y-4">
+        <div class="mt-8 pt-5 sm:mt-12 sm:pt-8 border-t border-slate-100 dark:border-slate-800 flex flex-wrap justify-center gap-x-5 gap-y-3 sm:gap-x-8 sm:gap-y-4">
             <div class="flex items-center gap-2 text-[10px] uppercase tracking-widest font-bold text-slate-400 dark:text-slate-600">
                 <span class="material-symbols-rounded text-xs">verified_user</span> Secure Login
             </div>
