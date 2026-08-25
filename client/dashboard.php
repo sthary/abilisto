@@ -29,10 +29,17 @@ $filter_main = isset($_GET['main'])  ? trim($_GET['main'])  : '';
 $search_q    = isset($_GET['search'])? trim($_GET['search']): '';
 
 // ── Badge config / categories / query — includes/functions/worker_directory.php ──
+// Geofence: only show workers within 30km of the client's saved location
+// (clients with no saved location yet see unfiltered results).
+$client_coords = getUserCoords($conn, $uid);
+
 $all_workers = searchWorkers($conn, [
-    'sub'  => $filter_sub,
-    'main' => $filter_main,
-    'q'    => $search_q,
+    'sub'        => $filter_sub,
+    'main'       => $filter_main,
+    'q'          => $search_q,
+    'client_lat' => $client_coords['lat'],
+    'client_lng' => $client_coords['lng'],
+    'radius_km'  => 30,
 ]);
 
 // Organise rows
@@ -47,7 +54,12 @@ $active_mains = array_keys($workers_by_main);
 // Top Rated Workers preview — only shown on the default, unfiltered view.
 $top_rated_preview = [];
 if ($filter_main === '' && $filter_sub === '' && $search_q === '') {
-    $top_rated_preview = array_slice(searchWorkers($conn, ['sort' => 'rating']), 0, 8);
+    $top_rated_preview = array_slice(searchWorkers($conn, [
+        'sort'       => 'rating',
+        'client_lat' => $client_coords['lat'],
+        'client_lng' => $client_coords['lng'],
+        'radius_km'  => 30,
+    ]), 0, 8);
 }
 ?>
 <!DOCTYPE html>

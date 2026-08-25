@@ -97,10 +97,15 @@ $workers_sql = "
       AND u.latitude != 0
       AND u.longitude != 0
       AND u.location_sharing_enabled = TRUE  -- Only workers who have consented
+      AND (6371 * acos(LEAST(1, GREATEST(-1,
+              cos(radians(?)) * cos(radians(u.latitude)) *
+              cos(radians(u.longitude) - radians(?)) +
+              sin(radians(?)) * sin(radians(u.latitude))
+          )))) <= 30  -- 30km geofence
     ORDER BY wp.average_rating DESC
 ";
 $workers_stmt = $conn->prepare($workers_sql);
-$workers_stmt->execute();
+$workers_stmt->execute([$clientLat, $clientLng, $clientLat]);
 $workers = [];
 $workers_with_offset = [];
 

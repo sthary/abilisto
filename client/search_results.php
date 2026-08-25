@@ -1,6 +1,7 @@
 <?php
 // client/search_results.php — results screen: pinned editable search bar,
-// category/municipality/sort filters, and the (padding-fixed) worker grid.
+// category/sort filters, and the (padding-fixed) worker grid. Results are
+// geofenced to workers within 30km of the client's saved location.
 session_start();
 include '../db_connect.php';
 include '../includes/init_lang.php';
@@ -12,18 +13,22 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
 
 require_once '../includes/functions/worker_directory.php';
 
-$q            = isset($_GET['q'])            ? trim($_GET['q'])            : '';
-$filter_main  = isset($_GET['main'])         ? trim($_GET['main'])         : '';
-$filter_sub   = isset($_GET['sub'])          ? trim($_GET['sub'])          : '';
-$municipality = isset($_GET['municipality']) ? trim($_GET['municipality']) : '';
+$q            = isset($_GET['q'])    ? trim($_GET['q'])    : '';
+$filter_main  = isset($_GET['main']) ? trim($_GET['main']) : '';
+$filter_sub   = isset($_GET['sub'])  ? trim($_GET['sub'])  : '';
 $sort         = isset($_GET['sort']) && $_GET['sort'] === 'jobs' ? 'jobs' : 'rating';
 
+// Geofence: only show workers within 30km of the client's saved location.
+$client_coords = getUserCoords($conn, (int)$_SESSION['user_id']);
+
 $workers = searchWorkers($conn, [
-    'q'            => $q,
-    'main'         => $filter_main,
-    'sub'          => $filter_sub,
-    'municipality' => $municipality,
-    'sort'         => $sort,
+    'q'          => $q,
+    'main'       => $filter_main,
+    'sub'        => $filter_sub,
+    'sort'       => $sort,
+    'client_lat' => $client_coords['lat'],
+    'client_lng' => $client_coords['lng'],
+    'radius_km'  => 30,
 ]);
 
 $page_title = $filter_sub ? "Workers offering: $filter_sub"
@@ -90,7 +95,6 @@ $page_title = $filter_sub ? "Workers offering: $filter_sub"
                    class="flex-1 bg-transparent border-none focus:ring-0 text-sm md:text-base p-0"
                    placeholder="Name, skill, or location...">
             <?php if ($filter_main)  echo '<input type="hidden" name="main" value="'.htmlspecialchars($filter_main).'">'; ?>
-            <?php if ($municipality) echo '<input type="hidden" name="municipality" value="'.htmlspecialchars($municipality).'">'; ?>
             <?php if ($sort !== 'rating') echo '<input type="hidden" name="sort" value="'.htmlspecialchars($sort).'">'; ?>
             <button type="submit" class="text-primary font-bold text-sm px-2">Go</button>
         </form>
@@ -111,19 +115,11 @@ $page_title = $filter_sub ? "Workers offering: $filter_sub"
         <?php endforeach; ?>
     </div>
 
-    <!-- Municipality + Sort filters -->
+    <!-- Sort filter -->
     <form method="GET" action="search_results.php" class="flex flex-wrap items-center gap-3 mb-6">
         <?php if ($q)           echo '<input type="hidden" name="q" value="'.htmlspecialchars($q).'">'; ?>
         <?php if ($filter_main) echo '<input type="hidden" name="main" value="'.htmlspecialchars($filter_main).'">'; ?>
         <?php if ($filter_sub)  echo '<input type="hidden" name="sub" value="'.htmlspecialchars($filter_sub).'">'; ?>
-
-        <select name="municipality" onchange="this.form.submit()"
-                class="text-xs md:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg py-2 px-3">
-            <option value="">All Municipalities</option>
-            <?php foreach ($MUNICIPALITIES as $m): ?>
-            <option value="<?php echo htmlspecialchars($m); ?>" <?php echo $municipality === $m ? 'selected' : ''; ?>><?php echo htmlspecialchars($m); ?></option>
-            <?php endforeach; ?>
-        </select>
 
         <select name="sort" onchange="this.form.submit()"
                 class="text-xs md:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg py-2 px-3">

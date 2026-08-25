@@ -13,7 +13,15 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
 
 require_once '../includes/functions/worker_directory.php';
 
-$workers = searchWorkers($conn, ['sort' => 'rating']);
+// Geofence: only show workers within 30km of the client's saved location.
+$client_coords = getUserCoords($conn, (int)$_SESSION['user_id']);
+
+$workers = searchWorkers($conn, [
+    'sort'       => 'rating',
+    'client_lat' => $client_coords['lat'],
+    'client_lng' => $client_coords['lng'],
+    'radius_km'  => 30,
+]);
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo $_SESSION['lang'] ?? 'en'; ?>">

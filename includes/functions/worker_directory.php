@@ -49,47 +49,86 @@ $SUB_ICONS = [
     'Others'        => 'more_horiz',
 ];
 
-// The app's fixed 5-municipality enum (schema_postgres.sql CHECK constraint).
-$MUNICIPALITIES = ['Carrascal', 'Cantilan', 'Madrid', 'Carmen', 'Lanuza'];
+/**
+ * Looks up a user's saved latitude/longitude (captured during
+ * auth/profile_setup.php for both clients and workers). Returns
+ * ['lat' => null, 'lng' => null] when the user hasn't set a location yet,
+ * so callers can decide whether to skip geofencing.
+ */
+function getUserCoords($conn, int $userId): array {
+    $stmt = $conn->prepare("SELECT latitude, longitude FROM users WHERE id = ?");
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch();
+    $lat = $row['latitude'] ?? null;
+    $lng = $row['longitude'] ?? null;
+    if ($lat === null || $lng === null || (float)$lat == 0 || (float)$lng == 0) {
+        return ['lat' => null, 'lng' => null];
+    }
+    return ['lat' => (float)$lat, 'lng' => (float)$lng];
+}
 
 /**
  * Runs the worker-search query with optional filters. Returns raw rows
  * (each with 'main_category' + 'skill_badge_data' for parseSkillBadges()).
  *
- * @param array $opts sub, main, q, municipality, sort ('rating'|'jobs')
+ * @param array $opts sub, main, q, sort ('rating'|'jobs'), client_lat,
+ *                     client_lng, radius_km (geofence only applied when
+ *                     both client_lat and client_lng are given — a client
+ *                     with no saved location sees unfiltered results)
  */
 function searchWorkers($conn, array $opts = []): array {
-    $sub          = trim($opts['sub'] ?? '');
-    $main         = trim($opts['main'] ?? '');
-    $q            = trim($opts['q'] ?? '');
-    $municipality = trim($opts['municipality'] ?? '');
-    $sort         = ($opts['sort'] ?? 'rating') === 'jobs' ? 'jobs' : 'rating';
+    $sub       = trim($opts['sub'] ?? '');
+    $main      = trim($opts['main'] ?? '');
+    $q         = trim($opts['q'] ?? '');
+    $sort      = ($opts['sort'] ?? 'rating') === 'jobs' ? 'jobs' : 'rating';
+    $clientLat = $opts['client_lat'] ?? null;
+    $clientLng = $opts['client_lng'] ?? null;
+    $radiusKm  = $opts['radius_km'] ?? 30;
+    $geofence  = ($clientLat !== null && $clientLng !== null);
+
+    // Haversine distance in km, clamped to [-1,1] before acos() to avoid a
+    // Postgres domain error from floating-point rounding pushing the cosine
+    // sum a hair outside that range.
+    $distanceExpr = $geofence
+        ? "(6371 * acos(LEAST(1, GREATEST(-1,
+                cos(radians(?)) * cos(radians(u.latitude)) *
+                cos(radians(u.longitude) - radians(?)) +
+                sin(radians(?)) * sin(radians(u.latitude))
+            ))))"
+        : "NULL";
 
     $sql = "
-        SELECT
-            u.id,
-            u.full_name,
-            u.municipality,
-            u.profile_pic,
-            wp.average_rating,
-            wp.rating_count,
-            wp.jobs_completed,
-            wp.minimum_standard_rate,
-            ws.main_category,
-            STRING_AGG(
-                CONCAT_WS('||', ws.sub_category, ws.badge_level, COALESCE(ws.nc_level,''), CASE WHEN ws.is_verified THEN '1' ELSE '0' END),
-                ';;'
-                ORDER BY
-                    CASE ws.badge_level WHEN 'Gold' THEN 1 WHEN 'Silver' THEN 2 WHEN 'Bronze' THEN 3 WHEN 'Community' THEN 4 WHEN 'Unverified' THEN 5 ELSE 6 END,
-                    ws.sub_category
-            ) AS skill_badge_data
-        FROM users u
-        JOIN worker_profiles wp ON wp.user_id = u.id
-        JOIN worker_skills    ws ON ws.worker_id = u.id
-        WHERE u.role = 'worker'
+        SELECT * FROM (
+            SELECT
+                u.id,
+                u.full_name,
+                u.municipality,
+                u.profile_pic,
+                wp.average_rating,
+                wp.rating_count,
+                wp.jobs_completed,
+                wp.minimum_standard_rate,
+                ws.main_category,
+                STRING_AGG(
+                    CONCAT_WS('||', ws.sub_category, ws.badge_level, COALESCE(ws.nc_level,''), CASE WHEN ws.is_verified THEN '1' ELSE '0' END),
+                    ';;'
+                    ORDER BY
+                        CASE ws.badge_level WHEN 'Gold' THEN 1 WHEN 'Silver' THEN 2 WHEN 'Bronze' THEN 3 WHEN 'Community' THEN 4 WHEN 'Unverified' THEN 5 ELSE 6 END,
+                        ws.sub_category
+                ) AS skill_badge_data,
+                $distanceExpr AS distance_km
+            FROM users u
+            JOIN worker_profiles wp ON wp.user_id = u.id
+            JOIN worker_skills    ws ON ws.worker_id = u.id
+            WHERE u.role = 'worker'
     ";
 
     $params = [];
+    if ($geofence) {
+        $params[] = $clientLat;
+        $params[] = $clientLng;
+        $params[] = $clientLat;
+    }
 
     if ($sub !== '') {
         $sql .= " AND ws.sub_category = ?";
@@ -97,11 +136,6 @@ function searchWorkers($conn, array $opts = []): array {
     } elseif ($main !== '') {
         $sql .= " AND ws.main_category = ?";
         $params[] = $main;
-    }
-
-    if ($municipality !== '') {
-        $sql .= " AND u.municipality = ?";
-        $params[] = $municipality;
     }
 
     if ($q !== '') {
@@ -118,10 +152,19 @@ function searchWorkers($conn, array $opts = []): array {
         $params[] = $like_q;
     }
 
-    $sql .= " GROUP BY u.id, wp.user_id, ws.main_category ORDER BY ";
+    $sql .= " GROUP BY u.id, wp.user_id, ws.main_category
+        ) sub
+    ";
+
+    if ($geofence) {
+        $sql .= " WHERE sub.distance_km IS NOT NULL AND sub.distance_km <= ?";
+        $params[] = $radiusKm;
+    }
+
+    $sql .= " ORDER BY ";
     $sql .= $sort === 'jobs'
-        ? "wp.jobs_completed DESC, wp.average_rating DESC"
-        : "wp.average_rating DESC, wp.jobs_completed DESC";
+        ? "jobs_completed DESC, average_rating DESC"
+        : "average_rating DESC, jobs_completed DESC";
 
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
