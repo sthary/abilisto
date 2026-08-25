@@ -481,7 +481,7 @@ define('ABI_WIDGET_INCLUDED', true);
           <span class="beta-badge">Beta</span>
         </div>
         <!-- (x) button on RIGHT side of modal -->
-        <div class="orbit-close-widget" id="orbitCloseBtn" title="Remove Abi widget (reappears after refresh)">✕</div>
+        <div class="orbit-close-widget" id="orbitCloseBtn" title="Close">✕</div>
       </div>
 
       <div class="o-messages" id="msgs">
@@ -610,29 +610,12 @@ define('ABI_WIDGET_INCLUDED', true);
         }
       };
 
-      /* ── CLOSE BUTTON (X) — removes the Abi widget from the page
-         entirely (reappears after relogin/refresh), and disables the
-         external nav trigger buttons to match since they're the only
-         way to reopen it. ── */
-      function removeOrbitWidget() {
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        if (root && root.remove) {
-          root.remove();
-        } else if (root && root.parentNode) {
-          root.parentNode.removeChild(root);
-        }
-        document.querySelectorAll('.abi-nav-toggler').forEach(function (btn) {
-          btn.style.opacity = '0.4';
-          btn.style.pointerEvents = 'none';
-          btn.setAttribute('aria-disabled', 'true');
-        });
-        window.abiToggle = function () {};
-      }
+      /* ── CLOSE BUTTON (X) — just closes the sheet, same as clicking the
+         backdrop. The nav trigger buttons stay live so Abi can be
+         reopened right away. ── */
       closeWidgetBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        removeOrbitWidget();
+        closeSheet();
       });
 
       /* ── TEMPORARY NOTE (appears only when modal is opened, disappears after 5 seconds) ── */
