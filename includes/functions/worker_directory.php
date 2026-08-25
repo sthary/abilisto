@@ -336,9 +336,9 @@ function renderWorkerCardList(array $worker, array $badgeCfg, array $subIcons): 
     $topSkill    = $skills[0] ?? null;
     ?>
     <a href="worker_details.php?id=<?php echo $worker['id']; ?>"
-       class="group flex items-center gap-3 md:gap-4 bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl card-shadow hover:shadow-lg transition-all duration-300 p-2.5 md:p-3 w-full worker-card-list">
+       class="group flex items-stretch bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl card-shadow hover:shadow-lg transition-all duration-300 overflow-hidden w-full min-h-[92px] md:min-h-[104px] worker-card-list">
 
-        <div class="relative w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden shrink-0 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
+        <div class="relative w-20 md:w-24 shrink-0 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
             <?php if ($hasImage): ?>
                 <img src="<?php echo $uploadsDir . htmlspecialchars($worker['profile_pic']); ?>" class="w-full h-full object-cover" alt="">
             <?php else: ?>
@@ -346,7 +346,7 @@ function renderWorkerCardList(array $worker, array $badgeCfg, array $subIcons): 
             <?php endif; ?>
         </div>
 
-        <div class="flex-1 min-w-0">
+        <div class="flex-1 min-w-0 p-2.5 md:p-3">
             <div class="flex items-center gap-1">
                 <h3 class="text-sm md:text-base font-bold truncate"><?php echo htmlspecialchars($worker['full_name']); ?></h3>
                 <?php if ($badgeIcon): ?>
