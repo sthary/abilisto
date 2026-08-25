@@ -43,6 +43,12 @@ foreach ($all_workers as $row) {
 
 // Available main categories
 $active_mains = array_keys($workers_by_main);
+
+// Top Rated Workers preview — only shown on the default, unfiltered view.
+$top_rated_preview = [];
+if ($filter_main === '' && $filter_sub === '' && $search_q === '') {
+    $top_rated_preview = array_slice(searchWorkers($conn, ['sort' => 'rating']), 0, 5);
+}
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo $_SESSION['lang'] ?? 'en'; ?>">
@@ -407,6 +413,26 @@ if ($chk && $chk['is_email_verified'] == 0): ?>
 
         <!-- No filter: grouped horizontal scroll by main_category -->
         <?php else: ?>
+
+            <?php if (!empty($top_rated_preview)): ?>
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-2.5">
+                    <div class="flex items-center gap-1.5 md:gap-3">
+                        <div class="w-6 h-6 md:w-10 md:h-10 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-lg md:rounded-xl flex items-center justify-center">
+                            <span class="material-symbols-outlined text-sm md:text-xl">military_tech</span>
+                        </div>
+                        <h2 class="text-xs md:text-xl font-bold tracking-tight">Top Rated Workers</h2>
+                    </div>
+                    <a href="top_rated.php" class="text-primary text-[11px] md:text-sm font-bold flex items-center gap-1 hover:underline">
+                        View All <span class="material-symbols-outlined text-sm md:text-lg">arrow_right_alt</span>
+                    </a>
+                </div>
+                <div class="space-y-2.5 md:space-y-3">
+                    <?php foreach ($top_rated_preview as $worker): renderWorkerCardList($worker, $BADGE_CONFIG, $SUB_ICONS); endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <?php foreach ($active_mains as $index => $main):
                 if (empty($workers_by_main[$main])) continue;
                 $cfg = $MAIN_CATEGORIES[$main] ?? ['icon'=>'work'];

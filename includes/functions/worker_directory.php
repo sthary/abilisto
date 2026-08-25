@@ -310,3 +310,76 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
     </a>
     <?php
 }
+
+/**
+ * Wide horizontal list-row card — photo on the left, name/badge, location,
+ * a single top skill, and rating on the right. Used for the "Top Rated
+ * Workers" section (dashboard preview + its View All page), which is a
+ * plain vertical list rather than a grid/carousel.
+ */
+function renderWorkerCardList(array $worker, array $badgeCfg, array $subIcons): void {
+    $skills     = parseSkillBadges($worker['skill_badge_data'] ?? '');
+    $uploadsDir = '../uploads/profiles/';
+    $hasImage   = !empty($worker['profile_pic']) && file_exists($uploadsDir . $worker['profile_pic']);
+    $initials   = getInitials($worker['full_name']);
+
+    $highestBadge = 'Unverified';
+    foreach ($skills as $s) {
+        if ($s['badge'] !== 'Unverified') {
+            $badgePriority = ['Gold' => 4, 'Silver' => 3, 'Bronze' => 2, 'Community' => 1, 'Unverified' => 0];
+            if ($badgePriority[$s['badge']] > $badgePriority[$highestBadge]) {
+                $highestBadge = $s['badge'];
+            }
+        }
+    }
+    $badgeIcon   = $badgeCfg[$highestBadge]['icon'] ?? '';
+    $topSkill    = $skills[0] ?? null;
+    ?>
+    <a href="worker_details.php?id=<?php echo $worker['id']; ?>"
+       class="group flex items-center gap-3 md:gap-4 bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 card-shadow hover:shadow-lg hover:border-primary/30 transition-all duration-300 p-2.5 md:p-3 w-full worker-card-list">
+
+        <div class="relative w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden shrink-0 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
+            <?php if ($hasImage): ?>
+                <img src="<?php echo $uploadsDir . htmlspecialchars($worker['profile_pic']); ?>" class="w-full h-full object-cover" alt="">
+            <?php else: ?>
+                <span class="text-lg md:text-xl font-black text-white/80"><?php echo $initials; ?></span>
+            <?php endif; ?>
+        </div>
+
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1">
+                <h3 class="text-sm md:text-base font-bold truncate"><?php echo htmlspecialchars($worker['full_name']); ?></h3>
+                <?php if ($badgeIcon): ?>
+                <span class="badge-icon shrink-0 <?php echo $badgeCfg[$highestBadge]['bg'] ?? 'bg-slate-100'; ?> <?php echo $badgeCfg[$highestBadge]['text'] ?? 'text-slate-700'; ?>">
+                    <span class="material-symbols-outlined"><?php echo $badgeIcon; ?></span>
+                </span>
+                <?php endif; ?>
+            </div>
+
+            <div class="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-[11px] md:text-xs mb-1.5 md:mb-2 truncate">
+                <span class="material-symbols-outlined text-xs md:text-sm shrink-0">location_on</span>
+                <span class="truncate"><?php echo htmlspecialchars($worker['municipality'] ?: 'Location not set'); ?></span>
+            </div>
+
+            <div class="flex items-center gap-2 flex-wrap">
+                <?php if ($topSkill): ?>
+                    <?php renderColoredSkillTags([$topSkill], $badgeCfg, $subIcons); ?>
+                <?php endif; ?>
+                <div class="flex items-center gap-0.5">
+                    <?php
+                    $rating = round($worker['average_rating'] * 2) / 2;
+                    $full   = floor($rating);
+                    $half   = ($rating - $full) >= 0.5;
+                    for ($i = 1; $i <= 5; $i++) {
+                        if ($i <= $full)            echo '<span class="material-symbols-outlined text-yellow-400 rating-star" style="font-size:10px;font-variation-settings:\'FILL\' 1">star</span>';
+                        elseif ($i==$full+1&&$half) echo '<span class="material-symbols-outlined text-yellow-400 rating-star" style="font-size:10px">star_half</span>';
+                        else                        echo '<span class="material-symbols-outlined text-slate-300 dark:text-slate-600 rating-star" style="font-size:10px">star</span>';
+                    }
+                    ?>
+                    <span class="ml-0.5 text-[10px] md:text-sm font-bold"><?php echo number_format($worker['average_rating'], 1); ?></span>
+                </div>
+            </div>
+        </div>
+    </a>
+    <?php
+}
