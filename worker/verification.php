@@ -140,7 +140,7 @@ $user_id = (int)$_SESSION['user_id'];
 
 $worker_skills = [];
 try {
-    $stmt = $pdo->prepare("SELECT sub_category, main_category FROM worker_skills WHERE worker_id = ? ORDER BY id ASC LIMIT 3");
+    $stmt = $pdo->prepare("SELECT sub_category, main_category FROM worker_skills WHERE worker_id = ? ORDER BY id ASC");
     $stmt->execute([$user_id]);
     $worker_skills = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $ex) { app_log('Error fetching worker skills', ['msg' => $ex->getMessage()]); }
