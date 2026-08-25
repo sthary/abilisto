@@ -67,17 +67,61 @@
             50%      { border-radius: 60% 40% 45% 55% / 40% 60% 40% 60%; }
             75%      { border-radius: 40% 60% 55% 45% / 60% 40% 60% 40%; }
         }
-        .auth-spotlight {
+        /* Faint monochrome "map" texture — see auth/login.php for the
+           identical treatment. */
+        .auth-map {
             position: absolute;
             inset: 0;
             pointer-events: none;
-            background: radial-gradient(circle 260px at var(--mx, 50%) var(--my, 30%), rgba(255,255,255,0.16), transparent 70%);
-            opacity: 0;
-            transition: opacity 0.4s ease;
+            opacity: 0.5;
+            background-image:
+                repeating-linear-gradient(0deg,  rgba(255,255,255,0.07) 0px, rgba(255,255,255,0.07) 1px, transparent 1px, transparent 64px),
+                repeating-linear-gradient(90deg, rgba(255,255,255,0.07) 0px, rgba(255,255,255,0.07) 1px, transparent 1px, transparent 64px),
+                repeating-linear-gradient(35deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 96px);
         }
-        .auth-brand-panel:hover .auth-spotlight { opacity: 1; }
+        .auth-house {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            color: #fff;
+            opacity: 0.22;
+            transform: translate(-50%, -50%) scale(1);
+            transition: transform 0.4s cubic-bezier(.34,1.56,.64,1), opacity 0.4s ease;
+            pointer-events: none;
+        }
+        .auth-house.zoomed { transform: translate(-50%, -50%) scale(1.8); opacity: 0.6; }
+        .auth-house svg { width: 100%; height: 100%; display: block; }
+
+        .auth-magnifier {
+            position: absolute;
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            border: 2.5px solid rgba(255,255,255,0.6);
+            background: rgba(255,255,255,0.05);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.18), inset 0 0 14px rgba(255,255,255,0.1);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+        }
+        .auth-magnifier::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 3px;
+            background: rgba(255,255,255,0.6);
+            border-radius: 2px;
+            bottom: -3px;
+            right: -13px;
+            transform: rotate(45deg);
+            transform-origin: left center;
+        }
+        .auth-brand-panel:hover .auth-magnifier { opacity: 1; }
         @media (prefers-reduced-motion: reduce) {
             .auth-blob { animation: none; transition: none; }
+            .auth-house, .auth-magnifier { transition: none; }
         }
     </style>
 </head>
@@ -90,7 +134,18 @@
          style="background: linear-gradient(135deg, <?php echo $staff_accent; ?> 0%, <?php echo $staff_accent; ?>cc 100%);">
         <div class="absolute -top-24 -right-24 w-72 h-72 bg-white/10 rounded-full blur-3xl auth-blob" id="authBlob1"></div>
         <div class="absolute -bottom-32 -left-16 w-72 h-72 bg-white/10 rounded-full blur-3xl auth-blob" id="authBlob2"></div>
-        <div class="auth-spotlight" id="authSpotlight"></div>
+        <div class="auth-map"></div>
+        <?php
+        $auth_house_svg = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 12h3v8h5v-6h4v6h5v-8h3z"/></svg>';
+        $auth_house_positions = [
+            [14,16], [76,12], [42,24], [88,42], [22,52],
+            [58,60], [8,74], [33,86], [70,80],
+        ];
+        foreach ($auth_house_positions as $hp):
+        ?>
+        <div class="auth-house" data-house style="left:<?php echo $hp[0]; ?>%; top:<?php echo $hp[1]; ?>%;"><?php echo $auth_house_svg; ?></div>
+        <?php endforeach; ?>
+        <div class="auth-magnifier" id="authMagnifier"></div>
         <div class="relative z-10">
             <div class="flex items-center gap-1 mb-1">
                 <span class="text-3xl font-extrabold tracking-tight">Abi</span>
@@ -250,15 +305,26 @@
         const panel = document.getElementById('authBrandPanel');
         const blob1 = document.getElementById('authBlob1');
         const blob2 = document.getElementById('authBlob2');
-        const spotlight = document.getElementById('authSpotlight');
-        if (!panel || !blob1 || !blob2 || !spotlight) return;
+        const magnifier = document.getElementById('authMagnifier');
+        const houses = Array.prototype.slice.call(document.querySelectorAll('.auth-house'));
+        if (!panel || !blob1 || !blob2 || !magnifier) return;
+
+        const ZOOM_RADIUS = 42;
 
         panel.addEventListener('mousemove', function (e) {
             const rect = panel.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-            spotlight.style.setProperty('--mx', (x / rect.width * 100) + '%');
-            spotlight.style.setProperty('--my', (y / rect.height * 100) + '%');
+
+            magnifier.style.left = x + 'px';
+            magnifier.style.top  = y + 'px';
+
+            houses.forEach(function (house) {
+                const hx = (parseFloat(house.style.left) / 100) * rect.width;
+                const hy = (parseFloat(house.style.top)  / 100) * rect.height;
+                const dist = Math.hypot(x - hx, y - hy);
+                house.classList.toggle('zoomed', dist < ZOOM_RADIUS);
+            });
 
             const dx = (x - rect.width / 2) / rect.width;
             const dy = (y - rect.height / 2) / rect.height;
@@ -268,6 +334,7 @@
         panel.addEventListener('mouseleave', function () {
             blob1.style.transform = '';
             blob2.style.transform = '';
+            houses.forEach(function (house) { house.classList.remove('zoomed'); });
         });
     })();
 </script>
