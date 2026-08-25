@@ -187,7 +187,7 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
     <a href="worker_details.php?id=<?php echo $worker['id']; ?>"
        class="group bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 flex flex-col w-full h-full overflow-hidden worker-card">
 
-        <div class="relative w-full shrink-0 aspect-[4/3] lg:aspect-square <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
+        <div class="relative w-full shrink-0 overflow-hidden aspect-[4/3] lg:aspect-square <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
             <?php if ($hasImage): ?>
                 <img src="<?php echo $uploadsDir . htmlspecialchars($worker['profile_pic']); ?>" class="w-full h-full object-cover" alt="">
             <?php else: ?>
@@ -263,7 +263,7 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
     <a href="worker_details.php?id=<?php echo $worker['id']; ?>"
        class="group bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 min-w-[150px] sm:min-w-[170px] lg:min-w-[240px] w-[170px] lg:w-[240px] flex flex-col flex-shrink-0 h-[252px] lg:h-[430px] overflow-hidden worker-card">
 
-        <div class="relative w-full shrink-0 aspect-[4/3] lg:aspect-square <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
+        <div class="relative w-full shrink-0 overflow-hidden aspect-[4/3] lg:aspect-square <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
             <?php if ($hasImage): ?>
                 <img src="<?php echo $uploadsDir . htmlspecialchars($worker['profile_pic']); ?>" class="w-full h-full object-cover" alt="">
             <?php else: ?>
