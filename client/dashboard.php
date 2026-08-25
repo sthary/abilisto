@@ -427,7 +427,12 @@ if ($chk && $chk['is_email_verified'] == 0): ?>
                         View All <span class="material-symbols-outlined text-sm md:text-lg">arrow_right_alt</span>
                     </a>
                 </div>
-                <div class="space-y-2.5 md:space-y-3">
+                <!-- Mobile: 2 rows, horizontally-scrolling columns -->
+                <div class="md:hidden grid grid-rows-2 grid-flow-col auto-cols-[82%] gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
+                    <?php foreach ($top_rated_preview as $worker): renderWorkerCardList($worker, $BADGE_CONFIG, $SUB_ICONS); endforeach; ?>
+                </div>
+                <!-- Desktop: plain vertical list -->
+                <div class="hidden md:block space-y-3">
                     <?php foreach ($top_rated_preview as $worker): renderWorkerCardList($worker, $BADGE_CONFIG, $SUB_ICONS); endforeach; ?>
                 </div>
             </div>
