@@ -41,6 +41,18 @@ if (isset($_SESSION['user_id'])) {
     $home_link = "index.php";
 }
 
+// Unread notification count, used to show a red dot on the bell/menu item.
+$unread_notif_count = 0;
+if (isset($_SESSION['user_id']) && isset($conn)) {
+    try {
+        $unread_stmt = $conn->prepare("SELECT COUNT(*) AS count FROM notifications WHERE user_id = ? AND is_read = 0");
+        $unread_stmt->execute([$_SESSION['user_id']]);
+        $unread_notif_count = (int)($unread_stmt->fetch()['count'] ?? 0);
+    } catch (Exception $e) {
+        $unread_notif_count = 0;
+    }
+}
+
 // Language helper (will be used in More dropdown)
 $current_lang = $_SESSION['lang'] ?? 'en';
 ?>
@@ -139,6 +151,21 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     .dark .user-menu-item { color: #94a3b8; } /* Lighter gray for dark mode */
     .dark .user-menu-item:hover,
     .dark .user-menu-item.active { color: #146af5; }
+
+    /* Unread-notification red dot — desktop text link and mobile bell icon */
+    .notif-dot {
+        position: absolute;
+        top: -2px;
+        right: -10px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #ef4444;
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.03);
+    }
+    .dark .notif-dot { border-color: #0f172a; }
+    .mobile-top-nav-hamburger .notif-dot { top: 2px; right: 2px; }
 
     /* Special styling for Quick Match */
     .user-menu-item.quick-match {
@@ -685,6 +712,9 @@ $current_lang = $_SESSION['lang'] ?? 'en';
                     ?>
                     <a href="<?php echo $item['url']; ?>" class="user-menu-item <?php echo $additional_class; ?> <?php echo ($current_page == $item['page']) ? 'active' : ''; ?>">
                         <?php echo $item['title']; ?>
+                        <?php if ($item['title'] === 'Notifications' && $unread_notif_count > 0): ?>
+                        <span class="notif-dot"></span>
+                        <?php endif; ?>
                     </a>
                 <?php endforeach; ?>
             </div>
@@ -762,6 +792,9 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     <div class="mobile-top-nav-actions">
         <a href="../includes/notifications.php" class="mobile-top-nav-hamburger">
             <i class="fa-solid fa-bell"></i>
+            <?php if ($unread_notif_count > 0): ?>
+            <span class="notif-dot"></span>
+            <?php endif; ?>
         </a>
         <div class="mobile-top-nav-hamburger" id="mobileMenuToggle">
             <i class="fa-solid fa-bars"></i>
