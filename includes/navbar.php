@@ -165,7 +165,7 @@ $current_lang = $_SESSION['lang'] ?? 'en';
     .nav-actions {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 2px;
     }
 
     /* --- MORE DROPDOWN (desktop) --- */
@@ -692,7 +692,7 @@ $current_lang = $_SESSION['lang'] ?? 'en';
             <!-- Right side: MORE dropdown + (optionally no separate lang/logout) -->
             <div class="nav-actions">
                 <?php if (defined('ABI_WIDGET_INCLUDED')): ?>
-                <button type="button" id="abiTogglerDesktop" class="abi-nav-toggler more-btn" title="Chat with Abi">
+                <button type="button" id="abiTogglerDesktop" class="abi-nav-toggler more-btn" title="Chat with Abi" style="padding-right:8px;">
                     <span class="abi-nav-orb">
                         <span class="abi-nav-orb-ball"></span>
                         <span class="abi-nav-orb-ring"></span>

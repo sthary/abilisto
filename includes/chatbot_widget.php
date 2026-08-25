@@ -26,8 +26,8 @@ define('ABI_WIDGET_INCLUDED', true);
     .abi-nav-orb {
       position: relative;
       display: inline-block;
-      width: 24px;
-      height: 24px;
+      width: 16px;
+      height: 16px;
       flex-shrink: 0;
     }
     .abi-nav-orb-ball {
@@ -40,12 +40,12 @@ define('ABI_WIDGET_INCLUDED', true);
     }
     .abi-nav-orb-ring {
       position: absolute;
-      width: 34px;
-      height: 34px;
+      width: 24px;
+      height: 24px;
       top: 50%;
       left: 50%;
-      margin-left: -17px;
-      margin-top: -17px;
+      margin-left: -12px;
+      margin-top: -12px;
       border-radius: 50%;
       border: 1.5px solid #8d6de8;
       animation: orbit-ringPulse 10s ease-in-out infinite;
@@ -54,12 +54,12 @@ define('ABI_WIDGET_INCLUDED', true);
     }
     .abi-nav-orb-scaler {
       position: absolute;
-      width: 34px;
-      height: 34px;
+      width: 24px;
+      height: 24px;
       top: 50%;
       left: 50%;
-      margin-left: -17px;
-      margin-top: -17px;
+      margin-left: -12px;
+      margin-top: -12px;
       animation: orbit-ringPulse 10s ease-in-out infinite;
       pointer-events: none;
     }
@@ -71,12 +71,12 @@ define('ABI_WIDGET_INCLUDED', true);
     }
     .abi-nav-orb-dot {
       position: absolute;
-      width: 4px;
-      height: 4px;
+      width: 3px;
+      height: 3px;
       background: linear-gradient(145deg, #ffffff, #d0aeff);
       border: 1px solid #a14ef0;
       border-radius: 50%;
-      top: -2px;
+      top: -1.5px;
       left: 50%;
       transform: translateX(-50%);
       pointer-events: none;
