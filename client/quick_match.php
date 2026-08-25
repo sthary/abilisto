@@ -177,7 +177,12 @@ function getInitials($name) {
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['step1'])) {
+    // Steps 1-3 now run entirely client-side in one shared <form> (see the
+    // wizard markup below) - this single "find_workers" submit is the only
+    // real round trip between the initial page load and step 4, replacing
+    // what used to be three separate step1/step2/step3 POST-and-redirect
+    // cycles (one full page reload per step).
+    if (isset($_POST['find_workers'])) {
         // Save real geolocation if provided
         if (!empty($_POST['geo_lat']) && !empty($_POST['geo_lng'])) {
             $gLat = floatval($_POST['geo_lat']);
@@ -187,21 +192,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $clientLat = $gLat;
             $clientLng = $gLng;
         }
-        // [CHANGED] Store sub_category instead of category
-        $_SESSION['quick_match']['sub_category'] = $_POST['category'];
+        $_SESSION['quick_match']['sub_category']  = $_POST['category'] ?? '';
         $_SESSION['quick_match']['main_category'] = $_POST['main_category'] ?? '';
-        header("Location: quick_match.php?step=2");
-        exit();
-    }
-    if (isset($_POST['step2'])) {
-        $_SESSION['quick_match']['problems'] = $_POST['problems'] ?? [];
-        header("Location: quick_match.php?step=3");
-        exit();
-    }
-    if (isset($_POST['step3'])) {
-        $_SESSION['quick_match']['urgency'] = $_POST['urgency'];
-        if (!isset($_POST['terms'])) {
-            $error = "You must agree to the terms";
+        $_SESSION['quick_match']['problems']      = $_POST['problems'] ?? [];
+        $_SESSION['quick_match']['urgency']       = $_POST['urgency'] ?? '';
+        if (empty($_SESSION['quick_match']['sub_category']) || empty($_POST['urgency']) || !isset($_POST['terms'])) {
+            $error = "Please select a category, urgency, and agree to the terms";
         } else {
             header("Location: quick_match.php?step=4");
             exit();
@@ -754,12 +750,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </span>
             </div>
 
-            <!-- STEP 1: Category/Sub-category Selection (UI unchanged but now shows sub-categories) -->
-            <div class="step-content p-8 <?php echo $step !== 1 ? 'step-hidden' : ''; ?>" id="step-1">
+            <?php if ($no_categories): ?>
+            <!-- STEP 1: no categories available — nothing to wizard through -->
+            <div class="step-content p-8" id="step-1">
                 <h1 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">What do you need?</h1>
                 <p class="text-slate-500 dark:text-slate-400 mb-8">Select a service category to begin</p>
-
-                <?php if ($no_categories): ?>
                 <div class="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 p-6 rounded-2xl mb-8 text-center">
                     <span class="material-icons-round text-4xl mb-2">info</span>
                     <p class="font-bold">No services available at the moment</p>
@@ -768,140 +763,133 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="flex gap-4">
                     <a href="dashboard.php" class="w-full py-4 px-6 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all text-center">Back to Dashboard</a>
                 </div>
-                <?php else: ?>
-                <form method="POST" id="step1Form">
-                    <div class="grid grid-cols-2 gap-4 mb-8">
-                        <?php
-                        // [CHANGED] Use $enabled_categories which now contains sub-categories
-                        $icon_map = [
-                            'Electrical' => 'electrical_services',
-                            'Plumbing'   => 'plumbing',
-                            'Carpentry'  => 'handyman',
-                            'Automotive' => 'directions_car',
-                            'Electronics' => 'memory',
-                            'Aircon_Ref' => 'ac_unit',
-                            'Masonry' => 'domain',
-                            'Welding' => 'whatshot',
-                            'Construction' => 'build',
-                            'Motorcycle' => 'two_wheeler',
-                            'Aircon Ref' => 'ac_unit',
-                            'Computer Tech' => 'computer',
-                            'Domestic Work' => 'cleaning_services',
-                            'Caregiving' => 'elderly',
-                            'Massage' => 'spa',
-                            'Beauty Care' => 'content_cut',
-                            'Cookery' => 'restaurant',
-                            'Baking' => 'bakery_dining',
-                            'Graphic_Design'=> 'palette',
-                            'Photography' => 'camera_alt',
-                            'Videography' => 'videocam',
-                            'Music' => 'music_note',
-                            'Arts Crafts' => 'brush',
-                            'Others' => 'more_horiz',
-                        ];
-                        foreach ($enabled_categories as $key => $cat):
-                            $icon = $icon_map[$key] ?? 'build';
-                        ?>
-                        <button type="button"
-                                class="category-hover flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-2xl transition-all"
-                                onclick="selectCategory('<?php echo $key; ?>', this)">
-                            <span class="material-icons-round text-primary text-4xl mb-3"><?php echo $icon; ?></span>
-                            <span class="font-semibold text-slate-700 dark:text-slate-200"><?php echo $cat['name']; ?></span>
-                            <span class="text-xs text-slate-400 mt-1"><?php echo $cat['count'] ?? ''; ?></span>
-                        </button>
-                        <?php endforeach; ?>
-                    </div>
-                    <!-- [CHANGED] Add hidden main_category field -->
-                    <input type="hidden" name="main_category" id="selectedMain" value="">
-                    <input type="hidden" name="category" id="selectedCategory" required>
-                    <input type="hidden" name="geo_lat" id="geoLat" value="">
-                    <input type="hidden" name="geo_lng" id="geoLng" value="">
-                    <input type="hidden" name="step1" value="1">
-                    <div class="flex gap-4">
-                        <a href="dashboard.php" class="flex-1 py-4 px-6 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all text-center">Cancel</a>
-                        <button type="submit" class="flex-[2] py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed" id="step1NextBtn" disabled>Next Step</button>
-                    </div>
-                </form>
-                <?php endif; ?>
+            </div>
+            <?php else: ?>
+            <!-- STEPS 1–3 run entirely client-side (no page reload between them) —
+                 one shared <form> collects every field; the only real POST/redirect
+                 is the "Find Workers" submit on step 3, which needs the server to
+                 populate session state and query nearby workers for step 4/5. -->
+            <form method="POST" id="wizardForm">
+            <!-- STEP 1: Category/Sub-category Selection -->
+            <div class="step-content p-8 <?php echo $step !== 1 ? 'step-hidden' : ''; ?>" id="step-1">
+                <h1 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">What do you need?</h1>
+                <p class="text-slate-500 dark:text-slate-400 mb-8">Select a service category to begin</p>
+                <div class="grid grid-cols-2 gap-4 mb-8">
+                    <?php
+                    $icon_map = [
+                        'Electrical' => 'electrical_services',
+                        'Plumbing'   => 'plumbing',
+                        'Carpentry'  => 'handyman',
+                        'Automotive' => 'directions_car',
+                        'Electronics' => 'memory',
+                        'Aircon_Ref' => 'ac_unit',
+                        'Masonry' => 'domain',
+                        'Welding' => 'whatshot',
+                        'Construction' => 'build',
+                        'Motorcycle' => 'two_wheeler',
+                        'Aircon Ref' => 'ac_unit',
+                        'Computer Tech' => 'computer',
+                        'Domestic Work' => 'cleaning_services',
+                        'Caregiving' => 'elderly',
+                        'Massage' => 'spa',
+                        'Beauty Care' => 'content_cut',
+                        'Cookery' => 'restaurant',
+                        'Baking' => 'bakery_dining',
+                        'Graphic_Design'=> 'palette',
+                        'Photography' => 'camera_alt',
+                        'Videography' => 'videocam',
+                        'Music' => 'music_note',
+                        'Arts Crafts' => 'brush',
+                        'Others' => 'more_horiz',
+                    ];
+                    foreach ($enabled_categories as $key => $cat):
+                        $icon = $icon_map[$key] ?? 'build';
+                    ?>
+                    <button type="button"
+                            class="category-hover flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-2xl transition-all"
+                            onclick="selectCategory('<?php echo $key; ?>', this)">
+                        <span class="material-icons-round text-primary text-4xl mb-3"><?php echo $icon; ?></span>
+                        <span class="font-semibold text-slate-700 dark:text-slate-200"><?php echo $cat['name']; ?></span>
+                        <span class="text-xs text-slate-400 mt-1"><?php echo $cat['count'] ?? ''; ?></span>
+                    </button>
+                    <?php endforeach; ?>
+                </div>
+                <input type="hidden" name="main_category" id="selectedMain" value="<?php echo htmlspecialchars($_SESSION['quick_match']['main_category'] ?? ''); ?>">
+                <input type="hidden" name="category" id="selectedCategory" value="<?php echo htmlspecialchars($_SESSION['quick_match']['sub_category'] ?? ''); ?>" required>
+                <input type="hidden" name="geo_lat" id="geoLat" value="">
+                <input type="hidden" name="geo_lng" id="geoLng" value="">
+                <div class="flex gap-4">
+                    <a href="dashboard.php" class="flex-1 py-4 px-6 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all text-center">Cancel</a>
+                    <button type="button" class="flex-[2] py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed" id="step1NextBtn" onclick="goNext(2)" disabled>Next Step</button>
+                </div>
             </div>
 
-            <!-- STEP 2: Problem Selection -->
-            <?php
-            $sub_category = $_SESSION['quick_match']['sub_category'] ?? '';
-            $problems = $problemsDB[$sub_category] ?? ['General Repair', 'Maintenance', 'Installation'];
-            ?>
+            <!-- STEP 2: Problem Selection — chips are populated client-side by
+                 goNext(2) from PROBLEMS_DB, keyed off the step-1 selection, so
+                 no server round trip is needed to know which list to show. -->
             <div class="step-content p-8 <?php echo $step !== 2 ? 'step-hidden' : ''; ?>" id="step-2">
                 <h1 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">What's the problem?</h1>
                 <p class="text-slate-500 dark:text-slate-400 mb-8">Select all issues that apply</p>
-                <form method="POST" id="step2Form">
-                    <div class="flex flex-wrap gap-3 mb-12" id="problemsContainer">
-                        <?php foreach ($problems as $problem): ?>
-                        <button type="button"
-                                class="px-5 py-3 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-medium border border-transparent hover:border-primary/30 transition-all"
-                                onclick="toggleChip(this, '<?php echo $problem; ?>')"><?php echo $problem; ?></button>
-                        <?php endforeach; ?>
-                    </div>
-                    <div id="hiddenInputsContainer"></div>
-                    <input type="hidden" name="step2" value="1">
-                    <div class="flex gap-4">
-                        <button type="button" class="flex-1 py-4 px-6 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" onclick="nextStep(1)">Back</button>
-                        <button type="submit" class="flex-[2] py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed" id="step2NextBtn" disabled>Next Step</button>
-                    </div>
-                </form>
+                <div class="flex flex-wrap gap-3 mb-12" id="problemsContainer"></div>
+                <div id="hiddenInputsContainer"></div>
+                <div class="flex gap-4">
+                    <button type="button" class="flex-1 py-4 px-6 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" onclick="goBack(1)">Back</button>
+                    <button type="button" class="flex-[2] py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed" id="step2NextBtn" onclick="goNext(3)" disabled>Next Step</button>
+                </div>
             </div>
 
-            <!-- STEP 3: Urgency Selection -->
+            <!-- STEP 3: Urgency Selection — the only step that actually submits -->
             <div class="step-content p-8 <?php echo $step !== 3 ? 'step-hidden' : ''; ?>" id="step-3">
                 <h1 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">How urgent is it?</h1>
                 <p class="text-slate-500 dark:text-slate-400 mb-8">Choose your response time</p>
-                <form method="POST" id="step3Form">
-                    <div class="space-y-4 mb-6">
-                        <label class="relative flex items-center p-4 cursor-pointer rounded-2xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all group">
-                            <input type="radio" name="urgency" value="Urgent" class="hidden peer" onchange="checkUrgency()">
-                            <div class="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                                <span class="material-icons-round text-amber-500">bolt</span>
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="font-bold text-slate-800 dark:text-white">Urgent (30m – 1h)</h3>
-                                <p class="text-sm text-slate-500 dark:text-slate-400">Priority matching (+₱20)</p>
-                            </div>
-                            <div class="w-6 h-6 border-2 border-slate-200 dark:border-slate-600 rounded-full peer-checked:border-primary peer-checked:bg-primary transition-all relative">
-                                <div class="absolute inset-1 bg-white rounded-full"></div>
-                            </div>
-                        </label>
-                        <label class="relative flex items-center p-4 cursor-pointer rounded-2xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all group">
-                            <input type="radio" name="urgency" value="Emergency" class="hidden peer" onchange="checkUrgency()">
-                            <div class="w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-900/30 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                                <span class="material-icons-round text-rose-500">emergency</span>
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="font-bold text-rose-600 dark:text-rose-400">EMERGENCY (Now!)</h3>
-                                <p class="text-sm text-slate-500 dark:text-slate-400">Within 30 mins (+₱30)</p>
-                            </div>
-                            <div class="w-6 h-6 border-2 border-slate-200 dark:border-slate-600 rounded-full peer-checked:border-primary peer-checked:bg-primary transition-all relative">
-                                <div class="absolute inset-1 bg-white rounded-full"></div>
-                            </div>
-                        </label>
-                    </div>
-                    <div class="bg-slate-50 dark:bg-slate-800/30 p-4 rounded-2xl mb-6 border border-slate-100 dark:border-slate-700">
-                        <div class="flex items-start gap-3">
-                            <input type="checkbox" id="terms" name="terms" class="mt-1 rounded text-primary focus:ring-primary/20" onchange="checkUrgency()">
-                            <div>
-                                <p class="text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Terms Agreement:</p>
-                                <ul class="text-xs text-slate-500 dark:text-slate-400 list-disc pl-4">
-                                    <li>Payment will be <strong>CASH ON COMPLETION</strong></li>
-                                    <li>You cannot cancel after a worker accepts</li>
-                                </ul>
-                            </div>
+                <div class="space-y-4 mb-6">
+                    <label class="relative flex items-center p-4 cursor-pointer rounded-2xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all group">
+                        <input type="radio" name="urgency" value="Urgent" class="hidden peer" onchange="checkUrgency()">
+                        <div class="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                            <span class="material-icons-round text-amber-500">bolt</span>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-slate-800 dark:text-white">Urgent (30m – 1h)</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Priority matching (+₱20)</p>
+                        </div>
+                        <div class="w-6 h-6 border-2 border-slate-200 dark:border-slate-600 rounded-full peer-checked:border-primary peer-checked:bg-primary transition-all relative">
+                            <div class="absolute inset-1 bg-white rounded-full"></div>
+                        </div>
+                    </label>
+                    <label class="relative flex items-center p-4 cursor-pointer rounded-2xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all group">
+                        <input type="radio" name="urgency" value="Emergency" class="hidden peer" onchange="checkUrgency()">
+                        <div class="w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-900/30 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                            <span class="material-icons-round text-rose-500">emergency</span>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-rose-600 dark:text-rose-400">EMERGENCY (Now!)</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Within 30 mins (+₱30)</p>
+                        </div>
+                        <div class="w-6 h-6 border-2 border-slate-200 dark:border-slate-600 rounded-full peer-checked:border-primary peer-checked:bg-primary transition-all relative">
+                            <div class="absolute inset-1 bg-white rounded-full"></div>
+                        </div>
+                    </label>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800/30 p-4 rounded-2xl mb-6 border border-slate-100 dark:border-slate-700">
+                    <div class="flex items-start gap-3">
+                        <input type="checkbox" id="terms" name="terms" class="mt-1 rounded text-primary focus:ring-primary/20" onchange="checkUrgency()">
+                        <div>
+                            <p class="text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Terms Agreement:</p>
+                            <ul class="text-xs text-slate-500 dark:text-slate-400 list-disc pl-4">
+                                <li>Payment will be <strong>CASH ON COMPLETION</strong></li>
+                                <li>You cannot cancel after a worker accepts</li>
+                            </ul>
                         </div>
                     </div>
-                    <input type="hidden" name="step3" value="1">
-                    <div class="flex gap-4">
-                        <button type="button" class="flex-1 py-4 px-6 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" onclick="nextStep(2)">Back</button>
-                        <button type="submit" class="flex-[2] py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed" id="step3NextBtn" disabled>Find Workers</button>
-                    </div>
-                </form>
+                </div>
+                <input type="hidden" name="find_workers" value="1">
+                <div class="flex gap-4">
+                    <button type="button" class="flex-1 py-4 px-6 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" onclick="goBack(2)">Back</button>
+                    <button type="submit" class="flex-[2] py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed" id="step3NextBtn" disabled>Find Workers</button>
+                </div>
             </div>
+            </form>
+            <?php endif; ?>
 
         </div><!-- wizard-card -->
     </div>
@@ -1187,6 +1175,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <script>
+    // Client-side problem list per category, so step 2 never needs a server
+    // round trip just to know which chips to show for the picked category.
+    const PROBLEMS_DB = <?php echo json_encode($problemsDB); ?>;
+    const DEFAULT_PROBLEMS = ['General Repair', 'Maintenance', 'Installation'];
+
+    // nextStep() still does a real page navigation — it's only used to jump
+    // BETWEEN the wizard (steps 1-3, one page/DOM) and the separate step 4/5
+    // scenes (each its own server-rendered page), e.g. step 5's "Search
+    // Again" button. Moving within steps 1-3 uses goNext()/goBack() instead
+    // (see below), which never reload the page.
     function nextStep(step) {
         const card = document.getElementById('wizard-card');
         if (card) {
@@ -1238,6 +1236,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         });
     }
 
+    // Builds step 2's problem chips for the given category from PROBLEMS_DB
+    // and resets any previous selection — called both by goNext(2) (normal
+    // interactive flow) and once on load if the page was opened/reloaded
+    // directly on step 2 or 3 (see bootstrapWizardStep() below).
+    function populateProblems(category) {
+        const list = PROBLEMS_DB[category] || DEFAULT_PROBLEMS;
+        const container = document.getElementById('problemsContainer');
+        container.innerHTML = '';
+        list.forEach(function (problem) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'px-5 py-3 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-medium border border-transparent hover:border-primary/30 transition-all';
+            btn.textContent = problem;
+            btn.addEventListener('click', function () { toggleChip(btn, problem); });
+            container.appendChild(btn);
+        });
+        selectedProblems = [];
+        updateProblemInputs();
+        document.getElementById('step2NextBtn').disabled = true;
+    }
+
     function checkUrgency() {
         const urgencyOk = document.querySelector('input[name="urgency"]:checked') !== null;
         const termsOk   = document.getElementById('terms')?.checked;
@@ -1248,18 +1267,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         document.documentElement.classList.add('dark');
     }
 
-    (function animateStepDots() {
-        const currentStep = <?php echo $step; ?>;
-        const activeDot = document.getElementById('dot-' + currentStep);
-        if (!activeDot) return;
-        activeDot.classList.remove('w-8', 'bg-primary');
-        activeDot.classList.add('w-2', 'bg-slate-200');
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                activeDot.classList.remove('w-2', 'bg-slate-200');
-                activeDot.classList.add('w-8', 'bg-primary');
-            });
-        });
+    /* ── CLIENT-SIDE WIZARD STEP SWITCHING (steps 1-3) ──
+       Forward/back moves between these three just toggle which
+       .step-content is visible — no navigation, no reload. Only step 3's
+       actual form submit ("Find Workers") talks to the server. */
+    function setStepDots(n) {
+        for (let i = 1; i <= 5; i++) {
+            const dot = document.getElementById('dot-' + i);
+            if (!dot) continue;
+            dot.className = 'transition-all duration-300 rounded-full ' +
+                (i === n ? 'w-8 h-2 bg-primary' : i < n ? 'w-2 h-2 bg-emerald-400' : 'w-2 h-2 bg-slate-200 dark:bg-slate-700');
+        }
+    }
+    function showWizardStep(n) {
+        for (let i = 1; i <= 3; i++) {
+            const el = document.getElementById('step-' + i);
+            if (el) el.classList.toggle('step-hidden', i !== n);
+        }
+        setStepDots(n);
+    }
+    function goNext(step) {
+        if (step === 2) populateProblems(document.getElementById('selectedCategory').value);
+        showWizardStep(step);
+    }
+    function goBack(step) {
+        showWizardStep(step);
+    }
+
+    // If the page loads (or is reloaded) directly on step 2 or 3 - a
+    // bookmark, a browser back/forward, a manual URL - reproduce what the
+    // old full-reload version got for free: populate step 2's chips (and
+    // re-enable step2/3's Next buttons appropriately) from the category
+    // already saved in the session for this request.
+    (function bootstrapWizardStep() {
+        const initialStep = <?php echo (int)$step; ?>;
+        if (initialStep === 1) { setStepDots(1); return; }
+        if (initialStep === 2 || initialStep === 3) {
+            const category = document.getElementById('selectedCategory')?.value || '';
+            if (category) {
+                document.getElementById('step1NextBtn').disabled = false;
+                populateProblems(category);
+            }
+            if (initialStep === 3) checkUrgency();
+            setStepDots(initialStep);
+        }
     })();
     </script>
 
