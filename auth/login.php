@@ -159,7 +159,13 @@ if (isset($_POST['login_btn'])) {
             exit();
 
         } else {
-            $error = "Incorrect Password!";
+            // A NULL/empty stored password means this account was created
+            // via Google Sign-In and never had a real password set — tell
+            // them that instead of the generic message, which reads as if
+            // they mistyped a password they never actually had.
+            $error = empty($user['password'])
+                ? "This account signed up with Google. Please use the \"Google Account\" button below, or reset your password to log in with email instead."
+                : "Incorrect Password!";
         }
     } else {
         $error = "User not found!";
