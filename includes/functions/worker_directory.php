@@ -185,9 +185,9 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
     $extraSkillsCount = count($skills) - count($shownSkills);
     ?>
     <a href="worker_details.php?id=<?php echo $worker['id']; ?>"
-       class="group bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl p-2.5 lg:p-4 border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 flex flex-col w-full h-full worker-card">
+       class="group bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 flex flex-col w-full h-full overflow-hidden worker-card">
 
-        <div class="relative w-full shrink-0 aspect-[4/3] lg:aspect-square rounded-lg lg:rounded-xl overflow-hidden mb-2 lg:mb-4 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
+        <div class="relative w-full shrink-0 aspect-[4/3] lg:aspect-square <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
             <?php if ($hasImage): ?>
                 <img src="<?php echo $uploadsDir . htmlspecialchars($worker['profile_pic']); ?>" class="w-full h-full object-cover" alt="">
             <?php else: ?>
@@ -195,6 +195,7 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
             <?php endif; ?>
         </div>
 
+        <div class="flex flex-col flex-1 p-2.5 lg:p-4">
         <div class="flex items-center gap-1 mb-1 lg:mb-1.5 shrink-0">
             <h3 class="text-sm lg:text-base font-bold truncate"><?php echo htmlspecialchars($worker['full_name']); ?></h3>
             <?php if ($badgeIcon): ?>
@@ -235,6 +236,7 @@ function renderWorkerCard(array $worker, array $badgeCfg, array $subIcons): void
             from <strong class="text-primary">₱<?php echo number_format($worker['minimum_standard_rate']); ?></strong>/job
         </div>
         <?php endif; ?>
+        </div>
     </a>
     <?php
 }
@@ -259,9 +261,9 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
     $extraSkillsCount = count($skills) - count($shownSkills);
     ?>
     <a href="worker_details.php?id=<?php echo $worker['id']; ?>"
-       class="group bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl p-2.5 lg:p-4 border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 min-w-[150px] sm:min-w-[170px] lg:min-w-[240px] w-[170px] lg:w-[240px] flex flex-col flex-shrink-0 h-[238px] lg:h-[392px] worker-card">
+       class="group bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl border border-slate-200 dark:border-slate-700 card-shadow hover:scale-[1.02] hover:shadow-xl transition-all duration-300 min-w-[150px] sm:min-w-[170px] lg:min-w-[240px] w-[170px] lg:w-[240px] flex flex-col flex-shrink-0 h-[252px] lg:h-[430px] overflow-hidden worker-card">
 
-        <div class="relative w-full shrink-0 aspect-[4/3] lg:aspect-square rounded-lg lg:rounded-xl overflow-hidden mb-2 lg:mb-4 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
+        <div class="relative w-full shrink-0 aspect-[4/3] lg:aspect-square <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
             <?php if ($hasImage): ?>
                 <img src="<?php echo $uploadsDir . htmlspecialchars($worker['profile_pic']); ?>" class="w-full h-full object-cover" alt="">
             <?php else: ?>
@@ -269,6 +271,7 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
             <?php endif; ?>
         </div>
 
+        <div class="flex flex-col flex-1 p-2.5 lg:p-4">
         <div class="flex items-center gap-1 mb-1 lg:mb-1.5 shrink-0">
             <h3 class="text-sm lg:text-base font-bold truncate"><?php echo htmlspecialchars($worker['full_name']); ?></h3>
             <?php if ($badgeIcon): ?>
@@ -302,6 +305,7 @@ function renderWorkerCardHorizontal(array $worker, array $badgeCfg, array $subIc
             }
             ?>
             <span class="ml-0.5 text-[10px] lg:text-sm font-bold"><?php echo number_format($worker['average_rating'], 1); ?></span>
+        </div>
         </div>
     </a>
     <?php
