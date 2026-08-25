@@ -132,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
             $ext = strtolower(pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION));
             if (!in_array($ext, ['jpg','jpeg','png','webp'])) { echo json_encode(['success'=>false,'error'=>'Invalid type']); exit; }
-            if ($_FILES['photo']['size'] > 5*1024*1024) { echo json_encode(['success'=>false,'error'=>'Too large']); exit; }
+            if ($_FILES['photo']['size'] > 10*1024*1024) { echo json_encode(['success'=>false,'error'=>'Too large']); exit; }
             $fname = 'profile_'.$user_id.'_'.time().'.'.$ext;
             $dest  = '../uploads/profiles/'.$fname;
             if (move_uploaded_file($_FILES['photo']['tmp_name'], $dest)) {
@@ -621,7 +621,7 @@ $total_steps   = $is_worker ? 5 : 1;
                     <span class="material-icons-round text-5xl text-slate-300 dark:text-slate-600">cloud_upload</span>
                     <p class="text-slate-500 dark:text-slate-400 text-center text-sm leading-relaxed">
                         <span class="font-semibold" style="color:<?php echo $role_color;?>">Click to upload</span> or drag & drop<br>
-                        <span class="text-xs opacity-70">JPG, PNG, WEBP · max 5MB</span>
+                        <span class="text-xs opacity-70">JPG, PNG, WEBP · max 10MB</span>
                     </p>
                 </div>
                 <input type="file" id="photo-file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="previewPhoto(this)">

@@ -13,17 +13,8 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'worker') {
 $worker_id = $_SESSION['user_id'];
 $msg = ""; $msg_type = "";
 
-// A. Handle Profile Picture Upload
-if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] == 0) {
-    $target_dir = "../uploads/profiles/";
-    if (!is_dir($target_dir)) mkdir($target_dir, 0777, true);
-    $fname = "pfp_" . $worker_id . time() . ".jpg";
-    if(move_uploaded_file($_FILES['profile_pic']['tmp_name'], $target_dir.$fname)) {
-        $pic_stmt = $conn->prepare("UPDATE users SET profile_pic=? WHERE id=?");
-        $pic_stmt->execute([$fname, $worker_id]);
-        header("Location: profile_edit.php"); exit();
-    }
-}
+// Profile picture is now edited on its own dedicated crop page
+// (edit_profile_photo.php) instead of a raw, unvalidated auto-submit here.
 
 // B. Handle Portfolio Upload
 if (isset($_FILES['portfolio_imgs'])) {
@@ -329,17 +320,14 @@ function shouldShowVerifyNow($badge) {
                     <?php else: ?>
                         <div class="w-24 h-24 md:w-28 md:h-28 rounded-full vibrant-gradient flex items-center justify-center text-white text-4xl md:text-5xl font-extrabold shadow-xl border-4 border-white dark:border-slate-800"><?php echo $initials; ?></div>
                     <?php endif; ?>
-                    <div onclick="document.getElementById('pfp-input').click()" class="absolute bottom-0 right-0 bg-white dark:bg-slate-800 text-primary p-1.5 rounded-full border-4 border-white dark:border-slate-800 flex items-center justify-center shadow-lg cursor-pointer hover:bg-primary hover:text-white transition-colors">
+                    <a href="edit_profile_photo.php" class="absolute bottom-0 right-0 bg-white dark:bg-slate-800 text-primary p-1.5 rounded-full border-4 border-white dark:border-slate-800 flex items-center justify-center shadow-lg cursor-pointer hover:bg-primary hover:text-white transition-colors">
                         <span class="material-symbols-outlined text-base">photo_camera</span>
-                    </div>
+                    </a>
                     <?php if($data['is_verified']): ?>
                     <div class="absolute bottom-0 left-0 bg-accent-green text-white p-1.5 rounded-full border-4 border-white dark:border-slate-800 flex items-center justify-center shadow-lg">
                         <span class="material-symbols-outlined text-base font-bold">check</span>
                     </div>
                     <?php endif; ?>
-                    <form method="POST" enctype="multipart/form-data" id="pfp-form">
-                        <input type="file" name="profile_pic" id="pfp-input" style="display:none;" onchange="document.getElementById('pfp-form').submit()" accept="image/*">
-                    </form>
                 </div>
 
                 <!-- Name + chips + skill badges -->

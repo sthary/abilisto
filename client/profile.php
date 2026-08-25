@@ -221,7 +221,11 @@ $initials = getInitials($user['full_name']);
                             <?php echo $initials; ?>
                         </div>
                     <?php endif; ?>
-                    
+
+                    <a href="edit_profile_photo.php" class="absolute bottom-0 left-0 bg-white dark:bg-slate-800 text-primary p-1 rounded-full border-2 border-white dark:border-slate-800 flex items-center justify-center shadow-sm cursor-pointer hover:bg-primary hover:text-white transition-colors">
+                        <span class="material-symbols-outlined text-xs">photo_camera</span>
+                    </a>
+
                     <?php if($user['is_email_verified'] && $user['is_phone_verified']): ?>
                     <div class="absolute bottom-0 right-0 bg-accent-green text-white p-0.5 rounded-full border border-white dark:border-slate-800 flex items-center justify-center shadow-sm">
                         <span class="material-symbols-outlined text-xs">check</span>
