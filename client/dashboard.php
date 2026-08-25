@@ -414,17 +414,17 @@ if ($chk && $chk['is_email_verified'] == 0): ?>
             ?>
             <div class="mb-6" id="<?php echo $sectionId; ?>">
                 <div class="flex items-center justify-between mb-2.5">
-                    <div class="flex items-center gap-2 md:gap-3">
-                        <div class="w-8 h-8 md:w-10 md:h-10 bg-blue-100 dark:bg-blue-900/30 text-primary rounded-lg md:rounded-xl flex items-center justify-center">
-                            <span class="material-symbols-outlined text-xl"><?php echo $cfg['icon']; ?></span>
+                    <div class="flex items-center gap-1.5 md:gap-3">
+                        <div class="w-6 h-6 md:w-10 md:h-10 bg-blue-100 dark:bg-blue-900/30 text-primary rounded-lg md:rounded-xl flex items-center justify-center">
+                            <span class="material-symbols-outlined text-sm md:text-xl"><?php echo $cfg['icon']; ?></span>
                         </div>
-                        <h2 class="text-lg md:text-xl font-bold tracking-tight"><?php echo htmlspecialchars($main); ?></h2>
-                        <span class="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                        <h2 class="text-xs md:text-xl font-bold tracking-tight"><?php echo htmlspecialchars($main); ?></h2>
+                        <span class="text-[10px] md:text-xs font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 md:px-2 py-0.5 rounded-full">
                             <?php echo count($workers_by_main[$main]); ?>
                         </span>
                     </div>
-                    <a href="search_results.php?main=<?php echo urlencode($main); ?>" class="text-primary text-sm font-bold flex items-center gap-1 hover:underline">
-                        View All <span class="material-symbols-outlined text-lg">arrow_right_alt</span>
+                    <a href="search_results.php?main=<?php echo urlencode($main); ?>" class="text-primary text-[11px] md:text-sm font-bold flex items-center gap-1 hover:underline">
+                        View All <span class="material-symbols-outlined text-sm md:text-lg">arrow_right_alt</span>
                     </a>
                 </div>
                 <!-- Horizontal scroll -->
