@@ -222,6 +222,36 @@ if (isset($_POST['login_btn'])) {
             to   { opacity: 1; transform: translateY(0); }
         }
         .animate-slideUp { animation: slideUp 0.5s ease forwards; }
+
+        /* Purely decorative — the branding panel's two ambient blobs drift
+           toward the cursor and slowly morph shape; a soft spotlight glow
+           follows the pointer. No functional purpose, just liveliness for
+           what was empty space. */
+        .auth-brand-panel { cursor: default; }
+        .auth-blob {
+            transition: transform 0.6s cubic-bezier(.22,1,.36,1);
+            animation: authBlobMorph 9s ease-in-out infinite;
+            will-change: transform, border-radius;
+        }
+        .auth-blob#authBlob2 { animation-delay: -4.5s; }
+        @keyframes authBlobMorph {
+            0%, 100% { border-radius: 50%; }
+            25%      { border-radius: 46% 54% 60% 40% / 55% 45% 55% 45%; }
+            50%      { border-radius: 60% 40% 45% 55% / 40% 60% 40% 60%; }
+            75%      { border-radius: 40% 60% 55% 45% / 60% 40% 60% 40%; }
+        }
+        .auth-spotlight {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: radial-gradient(circle 260px at var(--mx, 50%) var(--my, 30%), rgba(255,255,255,0.16), transparent 70%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        .auth-brand-panel:hover .auth-spotlight { opacity: 1; }
+        @media (prefers-reduced-motion: reduce) {
+            .auth-blob { animation: none; transition: none; }
+        }
     </style>
 </head>
 <body class="radial-bg min-h-screen flex items-center justify-center p-4 transition-colors duration-300">
@@ -231,10 +261,11 @@ if (isset($_POST['login_btn'])) {
     <!-- Desktop-only branding panel — hidden below lg, this + the form card
          below together fill the wide layout instead of a lone narrow card
          floating in the middle of the screen. -->
-    <div class="hidden lg:flex lg:w-1/2 lg:flex-col lg:justify-between rounded-l-2xl p-12 relative overflow-hidden text-white"
+    <div class="hidden lg:flex lg:w-1/2 lg:flex-col lg:justify-between rounded-l-2xl p-12 relative overflow-hidden text-white auth-brand-panel" id="authBrandPanel"
          style="background: linear-gradient(135deg, #146af5 0%, #0d4fc2 100%);">
-        <div class="absolute -top-24 -right-24 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
-        <div class="absolute -bottom-32 -left-16 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
+        <div class="absolute -top-24 -right-24 w-72 h-72 bg-white/10 rounded-full blur-3xl auth-blob" id="authBlob1"></div>
+        <div class="absolute -bottom-32 -left-16 w-72 h-72 bg-white/10 rounded-full blur-3xl auth-blob" id="authBlob2"></div>
+        <div class="auth-spotlight" id="authSpotlight"></div>
         <div class="relative z-10">
             <div class="flex items-center gap-1 mb-1">
                 <span class="text-3xl font-extrabold tracking-tight">Abi</span>
@@ -413,6 +444,33 @@ if (isset($_POST['login_btn'])) {
             icon.textContent = 'visibility';
         }
     }
+
+    // Decorative cursor interaction on the branding panel: the spotlight
+    // follows the pointer, and the two ambient blobs drift/scale toward it.
+    (function () {
+        const panel = document.getElementById('authBrandPanel');
+        const blob1 = document.getElementById('authBlob1');
+        const blob2 = document.getElementById('authBlob2');
+        const spotlight = document.getElementById('authSpotlight');
+        if (!panel || !blob1 || !blob2 || !spotlight) return;
+
+        panel.addEventListener('mousemove', function (e) {
+            const rect = panel.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            spotlight.style.setProperty('--mx', (x / rect.width * 100) + '%');
+            spotlight.style.setProperty('--my', (y / rect.height * 100) + '%');
+
+            const dx = (x - rect.width / 2) / rect.width;
+            const dy = (y - rect.height / 2) / rect.height;
+            blob1.style.transform = 'translate(' + (dx * 34) + 'px,' + (dy * 34) + 'px) scale(1.12)';
+            blob2.style.transform = 'translate(' + (dx * -28) + 'px,' + (dy * -28) + 'px) scale(1.12)';
+        });
+        panel.addEventListener('mouseleave', function () {
+            blob1.style.transform = '';
+            blob2.style.transform = '';
+        });
+    })();
 </script>
 </body>
 </html>
