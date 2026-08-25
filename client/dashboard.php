@@ -47,7 +47,7 @@ $active_mains = array_keys($workers_by_main);
 // Top Rated Workers preview — only shown on the default, unfiltered view.
 $top_rated_preview = [];
 if ($filter_main === '' && $filter_sub === '' && $search_q === '') {
-    $top_rated_preview = array_slice(searchWorkers($conn, ['sort' => 'rating']), 0, 5);
+    $top_rated_preview = array_slice(searchWorkers($conn, ['sort' => 'rating']), 0, 8);
 }
 ?>
 <!DOCTYPE html>
@@ -423,16 +423,13 @@ if ($chk && $chk['is_email_verified'] == 0): ?>
                         </div>
                         <h2 class="text-xs md:text-xl font-bold tracking-tight">Top Rated Workers</h2>
                     </div>
-                    <a href="top_rated.php" class="text-primary text-[11px] md:text-sm font-bold flex items-center gap-1 hover:underline">
-                        View All <span class="material-symbols-outlined text-sm md:text-lg">arrow_right_alt</span>
-                    </a>
                 </div>
-                <!-- Mobile: 2 rows, horizontally-scrolling columns -->
+                <!-- Mobile: 2 rows, horizontally-scrolling columns (8 workers -> 4 columns) -->
                 <div class="md:hidden grid grid-rows-2 grid-flow-col auto-cols-[82%] gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
                     <?php foreach ($top_rated_preview as $worker): renderWorkerCardList($worker, $BADGE_CONFIG, $SUB_ICONS); endforeach; ?>
                 </div>
-                <!-- Desktop: plain vertical list -->
-                <div class="hidden md:block space-y-3">
+                <!-- Desktop: 2 rows x 4 columns, all 8 visible without scrolling -->
+                <div class="hidden md:grid grid-cols-4 gap-3 lg:gap-4">
                     <?php foreach ($top_rated_preview as $worker): renderWorkerCardList($worker, $BADGE_CONFIG, $SUB_ICONS); endforeach; ?>
                 </div>
             </div>

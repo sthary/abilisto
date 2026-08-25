@@ -336,7 +336,7 @@ function renderWorkerCardList(array $worker, array $badgeCfg, array $subIcons): 
     $topSkill    = $skills[0] ?? null;
     ?>
     <a href="worker_details.php?id=<?php echo $worker['id']; ?>"
-       class="group flex items-center gap-3 md:gap-4 bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 card-shadow hover:shadow-lg hover:border-primary/30 transition-all duration-300 p-2.5 md:p-3 w-full worker-card-list">
+       class="group flex items-center gap-3 md:gap-4 bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl card-shadow hover:shadow-lg transition-all duration-300 p-2.5 md:p-3 w-full worker-card-list">
 
         <div class="relative w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden shrink-0 <?php echo !$hasImage ? 'bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center' : ''; ?>">
             <?php if ($hasImage): ?>
