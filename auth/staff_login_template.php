@@ -94,30 +94,16 @@
 
         .auth-magnifier {
             position: absolute;
-            width: 54px;
-            height: 54px;
-            border-radius: 50%;
-            border: 2.5px solid rgba(255,255,255,0.6);
-            background: rgba(255,255,255,0.05);
-            box-shadow: 0 6px 18px rgba(0,0,0,0.18), inset 0 0 14px rgba(255,255,255,0.1);
+            width: 40px;
+            height: 40px;
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.25s ease;
-            transform: translate(-50%, -50%);
+            transform: translate(-41%, -41%);
+            filter: drop-shadow(0 4px 10px rgba(0,0,0,0.2));
             z-index: 5;
         }
-        .auth-magnifier::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 3px;
-            background: rgba(255,255,255,0.6);
-            border-radius: 2px;
-            bottom: -3px;
-            right: -13px;
-            transform: rotate(45deg);
-            transform-origin: left center;
-        }
+        .auth-magnifier svg { width: 100%; height: 100%; display: block; }
         .auth-brand-panel:hover .auth-magnifier { opacity: 1; }
         @media (prefers-reduced-motion: reduce) {
             .auth-blob { animation: none; transition: none; }
@@ -140,12 +126,18 @@
         $auth_house_positions = [
             [14,16], [76,12], [42,24], [88,42], [22,52],
             [58,60], [8,74], [33,86], [70,80],
+            [62,18], [92,20], [6,34], [48,48], [80,64], [16,92],
         ];
         foreach ($auth_house_positions as $hp):
         ?>
         <div class="auth-house" data-house style="left:<?php echo $hp[0]; ?>%; top:<?php echo $hp[1]; ?>%;"><?php echo $auth_house_svg; ?></div>
         <?php endforeach; ?>
-        <div class="auth-magnifier" id="authMagnifier"></div>
+        <div class="auth-magnifier" id="authMagnifier">
+            <svg viewBox="0 0 32 32" fill="none">
+                <circle cx="13" cy="13" r="9" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.85)" stroke-width="2.5"/>
+                <line x1="19.5" y1="19.5" x2="27" y2="27" stroke="rgba(255,255,255,0.85)" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+        </div>
         <div class="relative z-10">
             <div class="flex items-center gap-1 mb-1">
                 <span class="text-3xl font-extrabold tracking-tight">Abi</span>
