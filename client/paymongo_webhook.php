@@ -168,7 +168,12 @@ if ($type === 'mobilization' && $booking_id) {
         intval($booking['is_escrow']) === 1
     );
 
-    $mobilization_amount = $mobilization_released ? floatval($booking['calculated_fee']) : 0;
+    // Release net of the convenience fee — that portion covers PayMongo's
+    // real gateway cut and stays with the platform, matching every other
+    // escrow-release call site.
+    $mobilization_amount = $mobilization_released
+        ? floatval($booking['calculated_fee']) - floatval($booking['convenience_fee'] ?? 0)
+        : 0;
     $credit_amount        = $mobilization_released ? $labor_cost : $total_final_cost;
 
     $credit_result = $wallet->creditOnlineFinalPayment($booking_id, $booking['worker_id'], $mobilization_amount, $credit_amount, $gateway_fee);

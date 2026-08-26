@@ -94,6 +94,9 @@ if (isset($_POST['submit_completion'])) {
 }
 
 $mobilization_paid = ($booking['payment_method'] == 'PayMongo' && $booking['payment_status'] == 'Paid');
+// What the worker actually receives — the convenience fee (PayMongo
+// bookings only) covers gateway processing and stays with the platform.
+$mobilization_payout = floatval($booking['calculated_fee']) - floatval($booking['convenience_fee'] ?? 0);
 ?>
 
 <!DOCTYPE html>
@@ -230,7 +233,10 @@ $mobilization_paid = ($booking['payment_method'] == 'PayMongo' && $booking['paym
             <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-slate-400 dark:text-slate-500">payments</span>
                 <span class="text-slate-600 dark:text-slate-300 font-medium">
-                    Mobilization Fee: <span class="text-slate-900 dark:text-white font-bold">₱<?php echo number_format($booking['calculated_fee'], 2); ?></span>
+                    Mobilization Fee: <span class="text-slate-900 dark:text-white font-bold">₱<?php echo number_format($mobilization_payout, 2); ?></span>
+                    <?php if ($booking['convenience_fee'] > 0): ?>
+                    <span class="block text-xs text-slate-400 font-normal">Client paid ₱<?php echo number_format($booking['calculated_fee'], 2); ?> (incl. ₱<?php echo number_format($booking['convenience_fee'], 2); ?> payment processing fee)</span>
+                    <?php endif; ?>
                 </span>
             </div>
             <?php if ($mobilization_paid): ?>

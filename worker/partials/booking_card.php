@@ -21,8 +21,13 @@ function renderBookingCard($booking, $type) {
     $booking['payment_method']       = $booking['payment_method']       ?? 'Cash';
     $booking['payment_status']       = $booking['payment_status']       ?? 'Pending';
     $booking['calculated_fee']       = $booking['calculated_fee']       ?? 0;
+    $booking['convenience_fee']      = $booking['convenience_fee']      ?? 0;
     $booking['labor_materials_cost'] = $booking['labor_materials_cost'] ?? 0;
     $booking['total_final_cost']     = $booking['total_final_cost']     ?? 0;
+    // What the worker actually receives — the convenience fee portion
+    // (PayMongo bookings only) covers gateway processing and stays with
+    // the platform, so it's excluded from the mobilization figure shown here.
+    $mobilizationPayout = $booking['calculated_fee'] - $booking['convenience_fee'];
 
     // ── Booking date & time display ───────────────────────────────────────────
     if (!empty($booking['booking_date'])) {
@@ -186,7 +191,10 @@ function renderBookingCard($booking, $type) {
     <div class="flex items-center gap-4 sm:gap-6 mb-4">
         <div class="flex flex-col">
             <span class="text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-400 font-bold">Mobilization</span>
-            <span class="text-base sm:text-lg font-bold text-slate-900">₱<?php echo number_format($booking['calculated_fee'], 2); ?></span>
+            <span class="text-base sm:text-lg font-bold text-slate-900">₱<?php echo number_format($mobilizationPayout, 2); ?></span>
+            <?php if ($booking['convenience_fee'] > 0): ?>
+            <span class="text-[9px] sm:text-[10px] text-slate-400">Client paid ₱<?php echo number_format($booking['calculated_fee'], 2); ?> (incl. ₱<?php echo number_format($booking['convenience_fee'], 2); ?> payment processing fee)</span>
+            <?php endif; ?>
         </div>
         <?php if ($hasFinalCosts): ?>
         <div class="h-8 w-px bg-slate-200"></div>

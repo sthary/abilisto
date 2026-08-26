@@ -1,16 +1,33 @@
 <?php
 // admin/bookings.php
 include '../db_connect.php';
+require_once '../includes/functions/wallet_manager.php';
 
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') { 
-    header("Location: ../auth/login.php"); 
-    exit(); 
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+    header("Location: ../auth/login.php");
+    exit();
 }
 
 // STATUS OVERRIDE
 if (isset($_GET['action']) && isset($_GET['bid'])) {
     $bid = intval($_GET['bid']);
     $status = $_GET['action'];
+
+    // Force-cancelling a booking that still has a PayMongo payment sitting
+    // in escrow must reverse it here too — a plain status flip otherwise
+    // leaves that money stuck in admin_wallet with no refund and no record
+    // of owing the client anything (same gap client/cancel_booking.php had).
+    if ($status === 'Cancelled') {
+        $b_check = $conn->prepare("SELECT client_id, payment_method, payment_status, is_escrow, calculated_fee FROM bookings WHERE id = ?");
+        $b_check->execute([$bid]);
+        $b_row = $b_check->fetch();
+        if ($b_row && $b_row['payment_method'] === 'PayMongo' &&
+            $b_row['payment_status'] === 'Paid' && (int)$b_row['is_escrow'] === 1) {
+            $wallet = new WalletManager($conn);
+            $wallet->refundEscrowPayment($bid, $b_row['client_id'], $b_row['calculated_fee']);
+        }
+    }
+
     $conn->prepare("UPDATE bookings SET status=? WHERE id=?")->execute([$status, $bid]);
     header("Location: bookings.php?msg=updated");
     exit();

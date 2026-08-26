@@ -49,7 +49,10 @@ error_log("Booking found: #$booking_id - Client: {$booking['client_name']}");
 
 // Determine if mobilization was paid via PayMongo
 $mobilization_paid = ($booking['payment_method'] == 'PayMongo' && $booking['payment_status'] == 'Paid');
-$mobilization_amount = floatval($booking['calculated_fee']);
+$convenience_fee = floatval($booking['convenience_fee'] ?? 0);
+// What the worker actually receives — the convenience fee (PayMongo
+// bookings only) covers gateway processing and stays with the platform.
+$mobilization_amount = floatval($booking['calculated_fee']) - $convenience_fee;
 $labor_materials = floatval($booking['labor_materials_cost']);
 $total_cost = floatval($booking['total_final_cost']);
 
@@ -131,7 +134,12 @@ if ($remaining_balance == 0 && $booking['status'] === 'Completed') {
         $wallet = new WalletManager($conn);
 
         $mobilization_released = ($mobilization_paid && intval($booking['is_escrow']) === 1);
-        $mobilization_amount   = $mobilization_released ? floatval($booking['calculated_fee']) : 0;
+        // Release net of the convenience fee — that portion covers PayMongo's
+        // real gateway cut and stays with the platform, matching every other
+        // escrow-release call site (client_booking_actions.php, worker_action.php).
+        $mobilization_amount   = $mobilization_released
+            ? floatval($booking['calculated_fee']) - $convenience_fee
+            : 0;
 
         if ($mobilization_amount > 0) {
             $wallet->creditOnlineFinalPayment($booking_id, $worker_id, $mobilization_amount, 0);
@@ -280,7 +288,12 @@ if ($remaining_balance == 0 && $booking['status'] === 'Completed') {
             <!-- Line Items -->
             <div class="space-y-6 mb-12">
                 <div class="flex justify-between items-center py-4 border-b border-slate-100 dark:border-slate-800">
-                    <span class="text-slate-500 dark:text-slate-400 font-medium">Mobilization Fee</span>
+                    <div>
+                        <span class="text-slate-500 dark:text-slate-400 font-medium">Mobilization Fee</span>
+                        <?php if ($convenience_fee > 0): ?>
+                        <p class="text-xs text-slate-400">Client paid ₱<?php echo number_format($mobilization_amount + $convenience_fee, 2); ?> (incl. ₱<?php echo number_format($convenience_fee, 2); ?> payment processing fee)</p>
+                        <?php endif; ?>
+                    </div>
                     <span class="font-semibold">₱<?php echo number_format($mobilization_amount, 2); ?></span>
                 </div>
                 
