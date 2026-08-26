@@ -151,6 +151,22 @@ function getDistance($lat1, $lon1, $lat2, $lon2) {
 $initial_distance = round(getDistance($clientLat, $clientLng, $worker['latitude'], $worker['longitude']), 2);
 $initial_fee      = round(20 + ($initial_distance * 5));
 
+// ── Worker map-pin display coords: randomly offset 30-60m so the pin gives
+// a sense of distance without exposing the worker's exact location ────────
+function offsetLatLng($lat, $lng, $minMeters = 30, $maxMeters = 60) {
+    if (empty($lat) || empty($lng)) return ['lat' => $lat, 'lng' => $lng];
+    $earthRadius = 6371000;
+    $distance    = mt_rand($minMeters, $maxMeters);
+    $angle       = mt_rand() / mt_getrandmax() * 2 * M_PI;
+    $latOffset   = $distance / $earthRadius * 180 / M_PI;
+    $lngOffset   = $distance / $earthRadius * 180 / M_PI / cos(deg2rad($lat));
+    return [
+        'lat' => round($lat + $latOffset * sin($angle), 8),
+        'lng' => round($lng + $lngOffset * cos($angle), 8),
+    ];
+}
+$worker_display = offsetLatLng($worker['latitude'], $worker['longitude']);
+
 // ============================================
 // 5. PROCESS BOOKING SUBMISSION
 // ============================================
@@ -336,6 +352,7 @@ $initials = getInitials($worker['full_name']);
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
     <link href="../includes/tour_engine.css" rel="stylesheet"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="../assets/fontawesome/css/all.min.css">
 
@@ -347,6 +364,7 @@ $initials = getInitials($worker['full_name']);
         .soft-shadow { box-shadow:0 20px 25px -5px rgba(0,0,0,.05),0 10px 10px -5px rgba(0,0,0,.02); }
         .no-scrollbar::-webkit-scrollbar{display:none} .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
         #map{height:300px;width:100%;z-index:1;border-radius:16px}
+        .leaflet-routing-container{display:none!important}
         @keyframes slideInRight{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
         @keyframes slideOutRight{from{transform:translateX(0);opacity:1}to{transform:translateX(100%);opacity:0}}
         @keyframes shake{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-5px)}20%,40%,60%,80%{transform:translateX(5px)}}
@@ -709,6 +727,7 @@ $initials = getInitials($worker['full_name']);
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
 <script>
 // ============================================
@@ -718,6 +737,11 @@ var busySlots  = <?php echo json_encode($busy_slots); ?>;         // raw datetim
 var urgencyFees = <?php echo json_encode($urgency_fees); ?>;
 var workerLat  = <?php echo $worker['latitude']  ?: 0; ?>;
 var workerLng  = <?php echo $worker['longitude'] ?: 0; ?>;
+// Randomly offset 30-60m from the worker's real coordinates — shown on the
+// map pin so the client gets a sense of distance without seeing their exact
+// address. The fee/distance math above still uses the real workerLat/Lng.
+var workerDisplayLat = <?php echo $worker_display['lat'] ?: 0; ?>;
+var workerDisplayLng = <?php echo $worker_display['lng'] ?: 0; ?>;
 var cashEnabled = <?php echo $cash_enabled ? 'true' : 'false'; ?>;
 
 // ============================================
@@ -870,7 +894,12 @@ function checkAvailability(selectedDate) {
 // ============================================
 // MAP & LOCATION
 // ============================================
-var map, marker, mapInitialized = false;
+var map, marker, workerMarker, routingControl, mapInitialized = false;
+
+var workerIcon = L.icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/1995/1995470.png',
+    iconSize: [36, 36], iconAnchor: [18, 36], popupAnchor: [0, -36]
+});
 
 function initMap(lat, lng) {
     var mapContainer = document.getElementById('map');
@@ -879,6 +908,12 @@ function initMap(lat, lng) {
     map = L.map('map').setView([lat,lng],15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OpenStreetMap'}).addTo(map);
     map.on('click', function(e){ placeMarker(e.latlng); });
+
+    if (workerDisplayLat && workerDisplayLng) {
+        workerMarker = L.marker([workerDisplayLat, workerDisplayLng], {icon: workerIcon}).addTo(map)
+            .bindPopup('<b>Worker\'s approximate location</b>');
+    }
+
     placeMarker(L.latLng(lat,lng));
     setTimeout(function(){ map.invalidateSize(); }, 100);
     mapInitialized = true;
@@ -892,6 +927,25 @@ function placeMarker(latlng) {
     }
     updateLocationInfo(latlng);
     updatePrice();
+    updateRoute(latlng);
+}
+
+function updateRoute(clientLatLng) {
+    if (!workerDisplayLat || !workerDisplayLng) return;
+    var workerLatLng = L.latLng(workerDisplayLat, workerDisplayLng);
+    if (routingControl) {
+        routingControl.setWaypoints([workerLatLng, clientLatLng]);
+    } else {
+        routingControl = L.Routing.control({
+            waypoints: [workerLatLng, clientLatLng],
+            lineOptions: { styles: [{ color: '#146af5', opacity: 0.8, weight: 5 }] },
+            createMarker: function() { return null; },
+            show: false,
+            addWaypoints: false,
+            draggableWaypoints: false,
+            fitSelectedRoutes: false
+        }).addTo(map);
+    }
 }
 
 function updateLocationInfo(latlng) {

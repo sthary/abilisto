@@ -84,7 +84,6 @@ $problems = is_array($_SESSION['quick_match']['problems']) ?
             implode(", ", $_SESSION['quick_match']['problems']) :
             $_SESSION['quick_match']['problems'];
 $urgency = $_SESSION['quick_match']['urgency'];
-$fee = $_SESSION['quick_match']['fee'];
 
 // Get client info
 $client_stmt = $conn->prepare("SELECT full_name, latitude, longitude FROM users WHERE id = ?");
@@ -127,6 +126,10 @@ try {
     foreach ($workers as $index => $worker) {
         $worker_id = $worker['id'];
         $score = $worker['score'] ?? (100 - ($index * 5));
+        // Each worker was quoted their own base+distance+urgency price in the
+        // step-5 results (quick_match.php's $total_price) — charge that, not
+        // a single flat fee shared across every candidate worker.
+        $worker_fee = $worker['total_price'] ?? (15 + ceil($worker['distance'] ?? 0) * 5);
         
         $sql = "INSERT INTO job_candidates (broadcast_id, worker_id, score)
                 VALUES (?, ?, ?)";
@@ -153,7 +156,7 @@ try {
                      ?, ?, '', NOW())";
 
             $book_stmt = $conn->prepare($sql);
-            if (!$book_stmt->execute([$client_id, $worker_id, $category, $problems, $fee,
+            if (!$book_stmt->execute([$client_id, $worker_id, $category, $problems, $worker_fee,
                      $urgency, $booking_date, $broadcast_id,
                      $lat, $lng])) {
                 throw new Exception("Error creating booking");

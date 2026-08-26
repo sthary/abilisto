@@ -216,7 +216,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $urgency_surcharge = 0;
         if ($urgency === 'Urgent')        $urgency_surcharge = 20;
         elseif ($urgency === 'Emergency') $urgency_surcharge = 30;
-        $fee = $urgency_surcharge;
 
         // [CHANGED] New query that joins worker_skills on sub_category
         $sql = "
@@ -297,7 +296,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         unset($w);
 
         $_SESSION['quick_match']['workers']            = $top_workers;
-        $_SESSION['quick_match']['fee']                = $fee;
         $_SESSION['quick_match']['urgency_surcharge']  = $urgency_surcharge;
 
         header("Location: quick_match.php?step=5");
@@ -511,7 +509,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <?php
     $workers     = $_SESSION['quick_match']['workers'] ?? [];
-    $fee         = $_SESSION['quick_match']['fee'] ?? 50;
     $worker_count = count($workers);
     $available_count   = count(array_filter($workers, fn($w) => $w['available'] ?? true));
     $unavailable_count = $worker_count - $available_count;
