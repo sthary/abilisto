@@ -440,6 +440,7 @@ $initials = getInitials($worker['full_name']);
                 <p class="text-white/70 text-[10px] md:text-xs font-medium uppercase tracking-wider mb-0.5 md:mb-1">Estimated Total</p>
                 <div class="text-2xl md:text-3xl font-extrabold mb-2 md:mb-3" id="priceDisplay">₱<?php echo $initial_fee; ?></div>
                 <div class="space-y-1 text-[10px] md:text-xs text-white/80 border-t border-white/10 pt-2 md:pt-3" id="urgencyNote">
+                    <div class="flex justify-between"><span>Base Booking Fee</span><span>+₱20.00</span></div>
                     <div class="flex justify-between"><span>Travel (<?php echo $initial_distance; ?>km)</span><span>+₱<?php echo round($initial_distance * 5, 2); ?></span></div>
                     <div class="flex justify-between"><span>Service Fee</span><span>+₱0</span></div>
                 </div>
@@ -1068,6 +1069,7 @@ function updatePrice() {
         : '₱'+total.toFixed(2);
     document.getElementById("feeInput").value=total;
     document.getElementById("urgencyNote").innerHTML=
+        '<div class="flex justify-between"><span>Base Booking Fee</span><span>+₱'+base.toFixed(2)+'</span></div>'+
         '<div class="flex justify-between"><span>Travel ('+dist.toFixed(2)+'km)</span><span>+₱'+distFee.toFixed(2)+'</span></div>'+
         '<div class="flex justify-between"><span>Urgency Fee ('+urgency+')</span><span>+₱'+urgencyFee+'</span></div>'+
         (voucherDiscount>0 ? '<div class="flex justify-between"><span>Voucher ('+voucherLabel+')</span><span>-₱'+voucherDiscount.toFixed(2)+'</span></div>' : '');
