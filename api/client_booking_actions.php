@@ -78,10 +78,13 @@ try {
                     $booking['payment_status'] == 'Paid' && 
                     $booking['is_escrow'] == 1) {
                     
+                    // Worker is paid calculated_fee minus the convenience fee — that
+                    // portion covers PayMongo's real gateway cut and stays with the
+                    // platform, matching worker/worker_action.php's accept path.
                     $release_result = $wallet->releaseEscrowPayment(
                         $booking_id,
                         $booking['worker_id'],
-                        $booking['calculated_fee']
+                        $booking['calculated_fee'] - ($booking['convenience_fee'] ?? 0)
                     );
                     
                     if (!$release_result['success']) {

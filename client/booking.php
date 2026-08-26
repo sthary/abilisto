@@ -167,6 +167,12 @@ function offsetLatLng($lat, $lng, $minMeters = 30, $maxMeters = 60) {
 }
 $worker_display = offsetLatLng($worker['latitude'], $worker['longitude']);
 
+// PayMongo's real processing fee, passed through to the client as a
+// "Convenience Fee" line so the platform isn't the one absorbing it — see
+// the PayMongo pricing math below for how this combines with the 10% online
+// discount without either one silently eating the other.
+const PAYMONGO_CONVENIENCE_FEE_RATE = 0.0223;
+
 // ============================================
 // 5. PROCESS BOOKING SUBMISSION
 // ============================================
@@ -200,9 +206,24 @@ if (isset($_POST['book_btn'])) {
                      ? round(getDistance($booking_lat, $booking_lng, $worker['latitude'], $worker['longitude']), 2)
                      : $initial_distance;
 
-        $subtotal         = 20 + ($distance * 5) + $urgency_fee;
-        $calculated_fee   = ($payment_method === 'PayMongo') ? round($subtotal * 0.9, 2) : $subtotal;
-        $discount_amount  = $subtotal - $calculated_fee;
+        $subtotal = 20 + ($distance * 5) + $urgency_fee;
+
+        // PayMongo pricing: net_target is what the platform actually intends
+        // to net (subtotal after the real 10% discount — same number the
+        // worker gets paid, unchanged from before). calculated_fee grosses
+        // that up by the convenience-fee rate so that, after PayMongo takes
+        // its real cut on the amount actually charged, the platform is left
+        // with exactly net_target instead of eating the gateway fee itself.
+        if ($payment_method === 'PayMongo') {
+            $net_target      = round($subtotal * 0.9, 2);
+            $calculated_fee  = round($net_target / (1 - PAYMONGO_CONVENIENCE_FEE_RATE), 2);
+            $convenience_fee = round($calculated_fee - $net_target, 2);
+        } else {
+            $net_target      = $subtotal;
+            $calculated_fee  = $subtotal;
+            $convenience_fee = 0;
+        }
+        $discount_amount  = round($subtotal - $net_target, 2);
         $client_name      = $_SESSION['full_name'];
 
         // Re-validate the voucher server-side — never trust the submitted ID alone.
@@ -223,6 +244,10 @@ if (isset($_POST['book_btn'])) {
             if ($applied_voucher) {
                 $voucher_discount = min((float)$applied_voucher['reward_value'], $calculated_fee);
                 $calculated_fee   = round($calculated_fee - $voucher_discount, 2);
+                // A voucher can cover more than net_target once the fee is
+                // grossed up for the convenience fee — floor at 0 rather
+                // than letting the worker payout basis go negative.
+                $net_target       = max(0, round($net_target - $voucher_discount, 2));
             }
         }
 
@@ -233,11 +258,11 @@ if (isset($_POST['book_btn'])) {
 
         $insert_stmt = $conn->prepare("INSERT INTO bookings (
             client_id, worker_id, problem_desc, booking_date, urgency_level,
-            payment_method, payment_status, status, calculated_fee, voucher_discount,
+            payment_method, payment_status, status, calculated_fee, voucher_discount, convenience_fee,
             latitude, longitude, location_address, created_at
         ) VALUES (
             ?, ?, ?, ?, ?,
-            ?, 'Pending', 'Pending', ?, ?,
+            ?, 'Pending', 'Pending', ?, ?, ?,
             ?, ?, ?, NOW()
         )");
 
@@ -246,7 +271,7 @@ if (isset($_POST['book_btn'])) {
         try {
             $insert_stmt->execute([
                 $client_id, $worker_id, $problem_desc, $booking_datetime, $urgency,
-                $payment_method, $calculated_fee, $voucher_discount,
+                $payment_method, $calculated_fee, $voucher_discount, $convenience_fee,
                 ($booking_lat ?: null), ($booking_lng ?: null), $location_address
             ]);
             $booking_id     = $conn->lastInsertId('bookings_id_seq');
@@ -1038,6 +1063,17 @@ function calculateDistanceJS(lat1,lon1,lat2,lon2) {
     return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
+var PAYMONGO_FEE_RATE = 0.0223; // must match PAYMONGO_CONVENIENCE_FEE_RATE in booking.php
+
+// Grosses up netTarget (what the platform should net after its real 10%
+// discount) so that once PayMongo takes its real cut of the amount actually
+// charged, the platform is left with exactly netTarget instead of quietly
+// absorbing the gateway fee itself.
+function payMongoGrossUp(netTarget) {
+    var total = Math.round((netTarget / (1 - PAYMONGO_FEE_RATE)) * 100) / 100;
+    return { total: total, convenienceFee: Math.round((total - netTarget) * 100) / 100 };
+}
+
 function updatePrice() {
     var lat=document.getElementById('latitude').value, lng=document.getElementById('longitude').value;
     var urgency=document.getElementById("urgencySelect").value, urgencyFee=urgencyFees[urgency]||0;
@@ -1051,7 +1087,16 @@ function updatePrice() {
         var dd=document.getElementById('distanceDisplay');
         if(dd) dd.innerHTML='<span class="material-symbols-outlined text-[14px] md:text-sm">location_on</span> '+dist.toFixed(2)+' km';
     }
-    var sub=base+distFee+urgencyFee, total=pm==='PayMongo'?Math.round(sub*0.9*100)/100:sub, disc=sub-total;
+    var sub=base+distFee+urgencyFee, total, convenienceFee=0;
+    if (pm === 'PayMongo') {
+        var netTarget = Math.round(sub*0.9*100)/100;
+        var grossed = payMongoGrossUp(netTarget);
+        total = grossed.total;
+        convenienceFee = grossed.convenienceFee;
+    } else {
+        total = sub;
+    }
+    var disc = sub - total;
 
     var voucherEl=document.getElementById('voucherSelect'), voucherRaw=0, voucherLabel='';
     if(voucherEl && voucherEl.value!=='0'){
@@ -1072,11 +1117,12 @@ function updatePrice() {
         '<div class="flex justify-between"><span>Base Booking Fee</span><span>+₱'+base.toFixed(2)+'</span></div>'+
         '<div class="flex justify-between"><span>Travel ('+dist.toFixed(2)+'km)</span><span>+₱'+distFee.toFixed(2)+'</span></div>'+
         '<div class="flex justify-between"><span>Urgency Fee ('+urgency+')</span><span>+₱'+urgencyFee+'</span></div>'+
+        (convenienceFee>0 ? '<div class="flex justify-between"><span>Convenience Fee</span><span>+₱'+convenienceFee.toFixed(2)+'</span></div>' : '')+
         (voucherDiscount>0 ? '<div class="flex justify-between"><span>Voucher ('+voucherLabel+')</span><span>-₱'+voucherDiscount.toFixed(2)+'</span></div>' : '');
     var cashFinal=Math.max(0, Math.round((sub-Math.min(voucherRaw,sub))*100)/100);
     document.getElementById("cashText").innerHTML='₱'+cashFinal.toFixed(2);
-    var disc2=Math.round(sub*0.9*100)/100;
-    var onlineFinal=Math.max(0, Math.round((disc2-Math.min(voucherRaw,disc2))*100)/100);
+    var onlineGrossed=payMongoGrossUp(Math.round(sub*0.9*100)/100);
+    var onlineFinal=Math.max(0, Math.round((onlineGrossed.total-Math.min(voucherRaw,onlineGrossed.total))*100)/100);
     document.getElementById("onlineText").innerHTML=
         '<p class="text-slate-400 line-through text-xs md:text-sm">₱'+sub.toFixed(2)+'</p>'+
         '<p class="text-emerald-600 text-lg md:text-xl font-extrabold">₱'+onlineFinal.toFixed(2)+'</p>';

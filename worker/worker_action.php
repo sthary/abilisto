@@ -23,6 +23,11 @@ if (isset($_GET['action']) && isset($_GET['booking_id'])) {
 
     if ($booking) {
         $amount = $booking['calculated_fee'];
+        // Worker is paid calculated_fee minus the convenience fee — that
+        // portion exists purely to cover PayMongo's real gateway cut and
+        // stays with the platform. Declines still refund the client the
+        // full $amount they were charged, so that path is untouched.
+        $worker_payout = $amount - ($booking['convenience_fee'] ?? 0);
         $wallet = new WalletManager($conn);
 
         $conn->beginTransaction();
@@ -38,9 +43,9 @@ if (isset($_GET['action']) && isset($_GET['booking_id'])) {
                     // idempotent path used everywhere else, including the
                     // ₱30 acceptance fee it deducts as part of releasing.
                     if ($booking['payment_method'] == 'PayMongo' && $booking['payment_status'] == 'Paid') {
-                        $release_result = $wallet->releaseEscrowPayment($b_id, $worker_id, $amount);
+                        $release_result = $wallet->releaseEscrowPayment($b_id, $worker_id, $worker_payout);
                         $msg = $release_result['success']
-                            ? "Booking Accepted! Payment of ₱$amount released to your wallet."
+                            ? "Booking Accepted! Payment of ₱$worker_payout released to your wallet."
                             : "Booking Accepted!";
                     } else {
                         $msg = "Booking Accepted!";

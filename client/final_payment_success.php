@@ -88,7 +88,12 @@ if (!$booking_id) {
                 $booking['payment_status']   === 'Paid'    &&
                 intval($booking['is_escrow']) === 1
             );
-            $mobilization_amount = $mobilization_released ? floatval($booking['calculated_fee']) : 0;
+            // Worker's mobilization release excludes the convenience fee — that
+            // portion covers PayMongo's real gateway cut and stays with the
+            // platform, matching worker/worker_action.php's accept path.
+            $mobilization_amount = $mobilization_released
+                ? floatval($booking['calculated_fee']) - floatval($booking['convenience_fee'] ?? 0)
+                : 0;
             $step2_credit         = $mobilization_released ? $labor_cost : $total_final_cost;
 
             $credit_result = $wallet_credit_result = null;
