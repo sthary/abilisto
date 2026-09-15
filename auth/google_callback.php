@@ -3,6 +3,7 @@
 session_start();
 include '../db_connect.php';
 include 'google_config.php';
+require_once '../includes/functions/feature_flags.php';
 
 if (isset($_GET['code'])) {
 
@@ -123,13 +124,18 @@ if (isset($_GET['code'])) {
         // municipality's CHECK constraint explicitly allows '', and
         // worker/profile_edit.php is where address/municipality get filled
         // in later.
+        // New signups start waitlisted whenever the feature is turned on
+        // (admin/settings.php) — same rule register_core.php applies to
+        // regular email/password signups.
+        $initial_status = isFeatureEnabled($conn, 'feature_waitlist_enabled') ? 'waitlisted' : 'active';
+
         $stmt_insert = $conn->prepare(
-            "INSERT INTO users (full_name, email, google_id, avatar, role, password, phone, address, municipality, is_email_verified, is_phone_verified)
-             VALUES (?, ?, ?, ?, ?, NULL, '', '', '', TRUE, FALSE)"
+            "INSERT INTO users (full_name, email, google_id, avatar, role, password, phone, address, municipality, is_email_verified, is_phone_verified, account_status)
+             VALUES (?, ?, ?, ?, ?, NULL, '', '', '', TRUE, FALSE, ?)"
         );
 
         try {
-            $stmt_insert->execute([$g_name, $g_email, $g_id, $g_picture, $role]);
+            $stmt_insert->execute([$g_name, $g_email, $g_id, $g_picture, $role, $initial_status]);
             $new_id = $conn->lastInsertId('users_id_seq');
         } catch (PDOException $e) {
             // The replay guard above should make this unreachable in

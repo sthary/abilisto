@@ -36,6 +36,12 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Waitlist / early-access gate — must run after the session is guaranteed
+// active. See includes/functions/enforce_waitlist.php for what this does
+// and why it lives here (every page and api/ endpoint already includes
+// this file, so this is the one place that reaches all of them).
+require_once __DIR__ . '/includes/functions/enforce_waitlist.php';
+
 function sendNotification($conn, $user_id, $message, $link = '#') {
     $stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link) VALUES (?, ?, ?)");
     if ($stmt->execute([$user_id, $message, $link])) {

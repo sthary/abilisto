@@ -5,6 +5,7 @@ include '../db_connect.php';
 include '../includes/mailer.php';
 require_once '../includes/functions/ph_provinces.php';
 require_once '../includes/functions/ph_municipalities.php';
+require_once '../includes/functions/feature_flags.php';
 
 if (isset($_POST['register_btn'])) {
 
@@ -72,18 +73,24 @@ if (isset($_POST['register_btn'])) {
     // ============================================================
     $email_token = bin2hex(random_bytes(32));
 
+    // New signups start waitlisted whenever the feature is turned on
+    // (admin/settings.php); existing accounts are never touched by this —
+    // it only ever affects rows created from this point forward.
+    $initial_status = isFeatureEnabled($conn, 'feature_waitlist_enabled') ? 'waitlisted' : 'active';
+
     $stmt = $conn->prepare(
         "INSERT INTO users (
             full_name, email, password, phone, address, municipality, role,
-            latitude, longitude, verification_token, is_email_verified, is_phone_verified
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, FALSE)"
+            latitude, longitude, verification_token, is_email_verified, is_phone_verified,
+            account_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, FALSE, ?)"
     );
 
     try {
         $stmt->execute([
             $full_name, $email, $password, $phone,
             $full_address, $municipality, $role,
-            $lat, $lng, $email_token
+            $lat, $lng, $email_token, $initial_status
         ]);
         $execute_ok = true;
     } catch (PDOException $e) {

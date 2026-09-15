@@ -5,6 +5,7 @@ include '../includes/init_lang.php';
 include '../db_connect.php';
 include 'google_config.php';
 require_once '../includes/functions/identify_user.php';
+require_once '../includes/functions/feature_flags.php';
 
 $error = '';
 $flash_success = '';
@@ -43,6 +44,18 @@ if (isset($_GET['google_token']) && !empty($_GET['google_token'])) {
         $_SESSION['longitude']         = $user['longitude'];
         $_SESSION['is_email_verified'] = 1; // Google always verifies email
         $_SESSION['is_phone_verified'] = $user['is_phone_verified'];
+
+        // Waitlist gate — send straight there instead of profile setup or the
+        // dashboard. This is just the direct, no-extra-hop version of what
+        // includes/functions/enforce_waitlist.php would do on the very next
+        // page load anyway; that guard (not this check) is the real
+        // enforcement, re-verified fresh against the DB on every request.
+        if (in_array($user['role'], ['client', 'worker'], true)
+            && $user['account_status'] !== 'active'
+            && isFeatureEnabled($conn, 'feature_waitlist_enabled')) {
+            header("Location: ../waitlist.php");
+            exit();
+        }
 
         // New Google users go to profile setup; returning users go to dashboard
         if ($user['is_new'] == 1) {
@@ -135,6 +148,18 @@ if (isset($_POST['login_btn'])) {
             $_SESSION['longitude']         = $user['longitude'];
             $_SESSION['is_email_verified'] = $user['is_email_verified'];
             $_SESSION['is_phone_verified'] = $user['is_phone_verified'];
+
+            // Waitlist gate — send straight there instead of profile setup or
+            // the dashboard. This is just the direct, no-extra-hop version of
+            // what includes/functions/enforce_waitlist.php would do on the
+            // very next page load anyway; that guard (not this check) is the
+            // real enforcement, re-verified fresh against the DB every request.
+            if (in_array($user['role'], ['client', 'worker'], true)
+                && $user['account_status'] !== 'active'
+                && isFeatureEnabled($conn, 'feature_waitlist_enabled')) {
+                header("Location: ../waitlist.php");
+                exit();
+            }
 
             // New users go to profile setup first
             if ($user['is_new'] == 1) {

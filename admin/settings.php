@@ -78,7 +78,7 @@ if (isset($_POST['save_fees'])) {
 
 // Save Feature Toggles (app-wide kill-switches)
 if (isset($_POST['save_features'])) {
-    $feature_keys = ['feature_quickmatch_enabled', 'feature_greenloop_enabled', 'feature_wemap_enabled'];
+    $feature_keys = ['feature_quickmatch_enabled', 'feature_greenloop_enabled', 'feature_wemap_enabled', 'feature_waitlist_enabled'];
     $upsert_stmt = $conn->prepare("INSERT INTO settings (setting_key, setting_value)
                      VALUES (?, ?)
                      ON CONFLICT (setting_key) DO UPDATE SET setting_value = ?");
@@ -127,6 +127,7 @@ $default_settings = [
     'feature_quickmatch_enabled' => '1',
     'feature_greenloop_enabled'  => '1',
     'feature_wemap_enabled'      => '1',
+    'feature_waitlist_enabled'   => '0',
 ];
 
 $default_insert_stmt = $conn->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)");
@@ -576,6 +577,7 @@ if (in_array($active_tab, ['general', 'security'])) {
                     'feature_quickmatch_enabled' => ['label' => 'Quick Match', 'desc' => 'Instant job broadcast/matching for clients and workers.', 'icon' => 'bolt'],
                     'feature_greenloop_enabled'  => ['label' => 'GreenLoop', 'desc' => 'Scrap recycling reports, wallet, and the junkshop partner portal.', 'icon' => 'recycling'],
                     'feature_wemap_enabled'      => ['label' => 'We Map', 'desc' => "Client-facing live map of nearby workers.", 'icon' => 'map'],
+                    'feature_waitlist_enabled'   => ['label' => 'Waitlist / Early Access', 'desc' => 'New signups are held on a Waitlist page until manually approved in Manage Users. Existing accounts are never affected.', 'icon' => 'hourglass_top'],
                 ];
                 foreach ($feature_toggle_list as $fkey => $finfo):
                     $f_active = ($settings[$fkey] ?? '1') == '1';

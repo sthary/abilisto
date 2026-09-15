@@ -37,6 +37,22 @@ if (isset($_GET['toggle_flag']) && isset($_GET['user_id'])) {
     $stmt->execute([$new_flag, $uid]);
     header("Location: users.php?".http_build_query(['search'=>$_GET['search']??'','role'=>$_GET['role']??'','msg'=>'flag_updated'])); exit();
 }
+if (isset($_GET['approve_user']) && isset($_GET['user_id'])) {
+    $uid = intval($_GET['user_id']);
+    $stmt = $conn->prepare("UPDATE users SET account_status='active' WHERE id=? AND account_status='waitlisted'");
+    $stmt->execute([$uid]);
+    header("Location: users.php?".http_build_query(['search'=>$_GET['search']??'','role'=>$_GET['role']??'','waitlisted'=>$_GET['waitlisted']??'','msg'=>'user_approved'])); exit();
+}
+if (isset($_GET['toggle_suspend']) && isset($_GET['user_id'])) {
+    $uid = intval($_GET['user_id']);
+    $suspend = intval($_GET['toggle_suspend']) === 1;
+    // Never touch a still-waitlisted account here — Approve is the only
+    // valid transition out of 'waitlisted', so this toggle only ever moves
+    // an account between 'active' and 'suspended'.
+    $stmt = $conn->prepare("UPDATE users SET account_status=? WHERE id=? AND account_status IN ('active','suspended')");
+    $stmt->execute([$suspend ? 'suspended' : 'active', $uid]);
+    header("Location: users.php?".http_build_query(['search'=>$_GET['search']??'','role'=>$_GET['role']??'','waitlisted'=>$_GET['waitlisted']??'','msg'=>'status_updated'])); exit();
+}
 if (isset($_GET['delete_id'])) {
     $del = intval($_GET['delete_id']);
     if ($del !== (int)$_SESSION['user_id']) {
@@ -47,9 +63,10 @@ if (isset($_GET['delete_id'])) {
 }
 
 // ── Filters ─────────────────────────────────────────────────
-$search      = $_GET['search']  ?? '';
-$role_filter = $_GET['role']    ?? '';
-$flag_filter = $_GET['flagged'] ?? ''; // 'yes' | ''
+$search       = $_GET['search']     ?? '';
+$role_filter  = $_GET['role']       ?? '';
+$flag_filter  = $_GET['flagged']    ?? ''; // 'yes' | ''
+$wait_filter  = $_GET['waitlisted'] ?? ''; // 'yes' | ''
 
 $where  = "WHERE u.role NOT IN ('admin','finance','hr')";
 $params = [];
@@ -62,16 +79,17 @@ if ($role_filter && in_array($role_filter,['client','worker','business'])) {
     $params[] = $role_filter;
 }
 if ($flag_filter === 'yes') $where .= " AND u.is_flagged=TRUE";
+if ($wait_filter === 'yes') $where .= " AND u.account_status='waitlisted'";
 
 $users_stmt = $conn->prepare("SELECT u.id, u.full_name, u.email, u.phone, u.role, u.created_at,
     u.municipality, u.profile_pic, u.is_flagged, u.violation_count, u.has_prior_violation,
-    u.cash_enabled, u.cash_restriction_at, u.appeal_eligible, u.appeal_deadline,
+    u.cash_enabled, u.cash_restriction_at, u.appeal_eligible, u.appeal_deadline, u.account_status,
     COALESCE(wp.can_accept_bookings,TRUE) AS can_accept_bookings,
     wp.wallet_balance, wp.verification_status, wp.deletion_pending
     FROM users u
     LEFT JOIN worker_profiles wp ON wp.user_id=u.id AND u.role='worker'
     $where
-    ORDER BY u.is_flagged DESC, u.violation_count DESC, u.id DESC");
+    ORDER BY (u.account_status='waitlisted') DESC, u.is_flagged DESC, u.violation_count DESC, u.id DESC");
 $users_stmt->execute($params);
 $users = $users_stmt->fetchAll();
 $total_users = count($users);
@@ -81,6 +99,8 @@ $flagged_stmt = $conn->query("SELECT COUNT(*) as c FROM users WHERE is_flagged=T
 $flagged_count  = (int)$flagged_stmt->fetch()['c'];
 $pending_stmt = $conn->query("SELECT (SELECT COUNT(*) FROM reports WHERE status='pending')+(SELECT COUNT(*) FROM reports_worker WHERE status='pending') as c");
 $pending_reports= (int)$pending_stmt->fetch()['c'];
+$waitlisted_stmt = $conn->query("SELECT COUNT(*) as c FROM users WHERE account_status='waitlisted' AND role NOT IN ('admin','finance','hr')");
+$waitlisted_count = (int)$waitlisted_stmt->fetch()['c'];
 
 function getUserAvatar($user) {
     if (!empty($user['profile_pic']) && file_exists("../uploads/profiles/".$user['profile_pic'])) return "../uploads/profiles/".$user['profile_pic'];
@@ -173,13 +193,13 @@ $current_date = date('M d, Y');
             <p class="text-xs text-amber-600 font-semibold mb-1">Pending Reports</p>
             <p class="text-2xl font-bold text-amber-700"><?php echo $pending_reports; ?></p>
         </div>
-        <div class="card p-4">
-            <p class="text-xs text-slate-400 font-semibold mb-1">Showing</p>
-            <p class="text-2xl font-bold"><?php echo $total_users; ?></p>
+        <div class="card p-4 border-blue-200 dark:border-blue-900/50">
+            <p class="text-xs text-primary font-semibold mb-1 flex items-center gap-1"><span class="material-icons-round text-sm">hourglass_top</span>Waitlisted</p>
+            <p class="text-2xl font-bold text-primary"><?php echo $waitlisted_count; ?></p>
         </div>
     </div>
 
-    <!-- Role + flag filter pills -->
+    <!-- Role + flag/waitlist filter pills -->
     <div class="flex flex-wrap items-center gap-3 mb-6">
         <?php foreach([''=>'All Users','client'=>'Clients','worker'=>'Workers','business'=>'Business'] as $rv=>$rl):
             $ac=($role_filter===$rv)?'bg-slate-900 text-white dark:bg-white dark:text-slate-900':'bg-white dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700';
@@ -192,11 +212,17 @@ $current_date = date('M d, Y');
             <span class="material-icons-round text-sm">flag</span>
             <?php echo $flag_filter==='yes'?'Show All':'Flagged Only'; ?>
         </a>
+
+        <a href="?<?php echo $role_filter?"role=$role_filter&":''; ?><?php echo $search?"search=".urlencode($search)."&":''; ?>waitlisted=<?php echo $wait_filter==='yes'?'':'yes'; ?>"
+           class="px-5 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-1 <?php echo $wait_filter==='yes'?'bg-primary text-white':'bg-blue-50 dark:bg-blue-900/20 text-primary border border-blue-200 dark:border-blue-800'; ?>">
+            <span class="material-icons-round text-sm">hourglass_top</span>
+            <?php echo $wait_filter==='yes'?'Show All':'Waitlisted Only'; ?>
+        </a>
     </div>
 
     <!-- Toast messages -->
     <?php
-    $msgs=['deleted'=>['success','User deleted.'],'cash_updated'=>['success','Cash payment updated.'],'accept_updated'=>['success','Booking acceptance updated.'],'flag_updated'=>['success','Flag status updated.']];
+    $msgs=['deleted'=>['success','User deleted.'],'cash_updated'=>['success','Cash payment updated.'],'accept_updated'=>['success','Booking acceptance updated.'],'flag_updated'=>['success','Flag status updated.'],'user_approved'=>['success','User approved — they now have full access.'],'status_updated'=>['success','Account status updated.']];
     if(isset($_GET['msg'])&&isset($msgs[$_GET['msg']])){$m=$msgs[$_GET['msg']];echo "<script>document.addEventListener('DOMContentLoaded',()=>showToast('{$m[1]}','{$m[0]}'));<\/script>";}
     ?>
 
@@ -217,11 +243,14 @@ $current_date = date('M d, Y');
                 <?php if(count($users) > 0): foreach($users as $row):
                     $av         = getUserAvatar($row);
                     $joined     = date("M d, Y",strtotime($row['created_at']));
-                    $is_flagged = (int)$row['is_flagged'] === 1;
+                    $is_flagged    = (int)$row['is_flagged'] === 1;
+                    $is_waitlisted = $row['account_status'] === 'waitlisted';
+                    $is_suspended  = $row['account_status'] === 'suspended';
                     $violations = (int)$row['violation_count'];
                     $del_pend   = (int)($row['deletion_pending'] ?? 0);
                     $vio_row    = $violations >= 3 ? 'vio-3' : ($violations >= 2 ? 'vio-2' : ($violations >= 1 ? 'vio-1' : ''));
                     $rbadge     = match($row['role']){'client'=>'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400','worker'=>'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400','business'=>'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',default=>'bg-slate-100 dark:bg-slate-800 text-slate-500'};
+                    $qs         = "search=".urlencode($search)."&role=".urlencode($role_filter)."&waitlisted=".urlencode($wait_filter);
                 ?>
                 <tr class="group transition-all <?php echo $vio_row; ?> <?php echo $is_flagged?'flagged-row':''; ?>" id="user-row-<?php echo $row['id']; ?>">
                     <!-- User -->
@@ -266,11 +295,22 @@ $current_date = date('M d, Y');
                     </td>
                     <!-- Status indicators -->
                     <td class="px-4 py-4 text-center">
+                        <?php if($is_waitlisted): ?>
+                        <span class="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-primary border border-blue-200 dark:border-blue-800">
+                            <span class="material-icons-round" style="font-size:10px">hourglass_top</span>WAITLISTED
+                        </span>
+                        <br>
+                        <?php elseif($is_suspended): ?>
+                        <span class="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-1 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600">
+                            <span class="material-icons-round" style="font-size:10px">block</span>SUSPENDED
+                        </span>
+                        <br>
+                        <?php endif; ?>
                         <?php if($is_flagged): ?>
                         <span class="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 border border-red-200 dark:border-red-800">
                             <span class="material-icons-round" style="font-size:10px">flag</span>FLAGGED
                         </span>
-                        <?php else: ?>
+                        <?php elseif(!$is_waitlisted && !$is_suspended): ?>
                         <span class="text-[9px] text-slate-400">—</span>
                         <?php endif; ?>
                         <?php if($violations > 0): ?>
@@ -282,6 +322,26 @@ $current_date = date('M d, Y');
                     <!-- Actions -->
                     <td class="px-4 py-4 text-right">
                         <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+
+                            <!-- Approve (waitlisted only) -->
+                            <?php if($is_waitlisted): ?>
+                            <a href="?approve_user=1&user_id=<?php echo $row['id']; ?>&<?php echo $qs; ?>"
+                               onclick="return confirm('Approve <?php echo addslashes(htmlspecialchars($row['full_name'])); ?>? They will get full access to Abilisto.')"
+                               class="p-1.5 text-primary hover:text-blue-700 transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/10"
+                               title="Approve — grant access">
+                                <span class="material-icons-round text-base">how_to_reg</span>
+                            </a>
+                            <?php endif; ?>
+
+                            <!-- Suspend / reactivate (not while still waitlisted — Approve is the way out of that state) -->
+                            <?php if(!$is_waitlisted): ?>
+                            <a href="?toggle_suspend=<?php echo $is_suspended?0:1; ?>&user_id=<?php echo $row['id']; ?>&<?php echo $qs; ?>"
+                               onclick="return confirm('<?php echo $is_suspended?'Reactivate':'Suspend'; ?> <?php echo addslashes(htmlspecialchars($row['full_name'])); ?>?<?php echo $is_suspended?'':' They will lose access to Abilisto until reactivated.'; ?>')"
+                               class="p-1.5 <?php echo $is_suspended?'text-slate-400 hover:text-emerald-500':'text-slate-300 hover:text-red-500'; ?> transition-colors rounded-lg"
+                               title="<?php echo $is_suspended?'Reactivate':'Suspend'; ?>">
+                                <span class="material-icons-round text-base"><?php echo $is_suspended?'restart_alt':'block'; ?></span>
+                            </a>
+                            <?php endif; ?>
 
                             <!-- Flag toggle -->
                             <a href="?toggle_flag=<?php echo $is_flagged?0:1; ?>&user_id=<?php echo $row['id']; ?>&search=<?php echo urlencode($search); ?>&role=<?php echo urlencode($role_filter); ?>"
