@@ -21,8 +21,14 @@ if (isset($_POST['register_btn'])) {
     $barangay   = !empty($_POST['barangay']) ? $_POST['barangay'] : (isset($_POST['barangay_text']) ? $_POST['barangay_text'] : '');
     $municipality = $_POST['municipality'];
     $province   = isset($_POST['province']) && trim($_POST['province']) !== '' ? trim($_POST['province']) : 'Surigao del Sur';
-    $lat        = isset($_POST['latitude'])  ? $_POST['latitude']  : '';
-    $lng        = isset($_POST['longitude']) ? $_POST['longitude'] : '';
+    // latitude/longitude are a numeric column — '' is invalid input for it
+    // and signup_form.php never actually submits these fields (no
+    // geolocation capture on this form), so this was always NULL in
+    // practice. Bind NULL explicitly instead of '', which made every
+    // signup through this form fail with a DB exception until the location
+    // gets set later in auth/profile_setup.php.
+    $lat        = (isset($_POST['latitude'])  && $_POST['latitude']  !== '') ? $_POST['latitude']  : null;
+    $lng        = (isset($_POST['longitude']) && $_POST['longitude'] !== '') ? $_POST['longitude'] : null;
 
     // Whitelist check — confirms the chosen municipality actually belongs
     // to the chosen province (nationwide list), so a tampered request
